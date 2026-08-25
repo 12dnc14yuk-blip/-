@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v10</title>
+<title>ありがとうメッセージメーカー v11</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v10</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v11</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v10ではギフト有無に加えて、ギフト帯の中に『GACHA TICKET』があるかも自動判定します。見つけた人は🎫欄へ自動追加します。
+      v11ではガチャチケの探索範囲を横いっぱいに広げ、サポーターRankの青文字は別処理で直接読みます。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは名前の下の「Rank○獲得」から拾います。ガチャチケはギフト帯の『GACHA TICKET』文字を英語OCRでも確認し、検出した人を🎫欄へ自動追加します。</div>
+    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケはギフト帯を右端まで探索し、『GACHA TICKET』を検出した人を🎫欄へ自動追加します。</div>
     <div id="extras"></div>
   </div>
 
@@ -417,12 +417,49 @@ function giftVisualScore(c){
   }
   return total ? interesting/total : 0;
 }
+
+function preprocessRankCrop(c){
+  const o=document.createElement('canvas');
+  o.width=c.width*2; o.height=c.height*2;
+  const ctx=o.getContext('2d');
+  ctx.drawImage(c,0,0,o.width,o.height);
+  const im=ctx.getImageData(0,0,o.width,o.height);
+  for(let i=0;i<im.data.length;i+=4){
+    const r=im.data[i],g=im.data[i+1],b=im.data[i+2];
+    // REALITY Rank text is light blue. Keep blue-ish pixels and dark text, erase white background.
+    const blueish = b > r+12 && b > g-5 && b > 135;
+    const dark = (r+g+b)/3 < 150;
+    const v = (blueish || dark) ? 0 : 255;
+    im.data[i]=im.data[i+1]=im.data[i+2]=v;
+  }
+  ctx.putImageData(im,0,0);
+  return o;
+}
+async function readSupporterRank(canvas,y,W,H){
+  // Rank label sits just below the display name, beginning around x=0.15.
+  const raw=cropRect(canvas,W*0.145,y+H*0.006,W*0.42,H*0.045,1.5);
+  let texts=[];
+  try{
+    const rr0=await recognizeCanvas(raw,'jpn+eng',{tessedit_pageseg_mode:7});
+    texts.push(norm(rr0.data.text||''));
+  }catch(e){}
+  try{
+    const pp=preprocessRankCrop(raw);
+    const rr1=await recognizeCanvas(pp,'jpn+eng',{tessedit_pageseg_mode:7});
+    texts.push(norm(rr1.data.text||''));
+  }catch(e){}
+  const joined=texts.join(' ');
+  let m=joined.match(/Rank\s*([1-4])\s*獲得/i);
+  if(!m) m=joined.match(/Rank\s*([1-4])/i);
+  if(!m) m=joined.match(/R[a-zA-Z]*\s*([1-4])\s*獲得/i);
+  return {rank:m?Number(m[1]):null,text:joined,raw};
+}
 async function rowHasGift(canvas,y,nextY,W,H){
   let bottom = nextY ? Math.min(nextY-H*0.018, y+H*0.20) : Math.min(H*0.92, y+H*0.18);
   let top = y + H*0.032;
   if(bottom-top < H*0.025) return {hasGift:false, hasTicket:false, reason:'short-row', countText:''};
 
-  const band = cropRect(canvas, W*0.025, top, W*0.59, bottom-top, 1.25);
+  const band = cropRect(canvas, W*0.025, top, W*0.93, bottom-top, 1.25);
   const score = giftVisualScore(band);
 
   let txt='', rawTxt='';
@@ -447,9 +484,9 @@ async function rowHasGift(canvas,y,nextY,W,H){
   // Require a reasonably ticket-like token to avoid random matches.
   const hasTicket =
       /GACHA\s*TICKET/.test(joined) ||
-      /\bGACHA\b/.test(joined) ||
-      /\bTICKET\b/.test(joined) ||
-      /T1CKET|TICKE[T7]|GAC[HNM]A/.test(joined);
+      /GACHA/.test(joined) ||
+      /TICKET/.test(joined) ||
+      /T1CKET|TICKE[T7]|GAC[HNM]A|G[AO]CHA/.test(joined);
 
   return {
     hasGift:hasCount || hasVisual,
@@ -555,15 +592,9 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
     });
     const parsed=parseNameCropText(res.data.text);
 
-    // Rank text is below the name, so read a very small second strip only for Rank.
-    const rankRaw=cropRect(canvas,W*0.155,y+H*0.014,W*0.34,H*0.030,1.8);
-    const rankCrop=preprocessTextCrop(rankRaw);
-    let rank=null;
-    try{
-      const rr=await recognizeCanvas(rankCrop,'jpn+eng',{tessedit_pageseg_mode:7});
-      const m=(rr.data.text||'').match(/Rank\s*([1-4])\s*獲得/i);
-      if(m) rank=Number(m[1]);
-    }catch(e){}
+    // Supporter Rank uses blue text, so read it with a dedicated blue-text pipeline.
+    const rankInfo=await readSupporterRank(canvas,y,W,H);
+    const rank=rankInfo.rank;
 
     const nextY = j+1<anchors.length ? anchors[j+1] : null;
     const giftInfo = await rowHasGift(canvas,y,nextY,W,H);
@@ -584,6 +615,7 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
         <img src="${tight.toDataURL('image/jpeg',0.9)}" style="flex:1;min-width:0">
       </div>
       ${giftInfo.band?`<img src="${giftInfo.band.toDataURL('image/jpeg',0.78)}" style="width:100%;margin-top:6px;max-height:92px;object-fit:cover">`:''}
+      ${rankInfo.raw?`<img src="${rankInfo.raw.toDataURL('image/jpeg',0.86)}" style="width:100%;margin-top:4px;max-height:48px;object-fit:cover">`:''}
       <div class="small">${
         !parsed ? '→ 名前として採用せず' :
         giftInfo.hasGift
@@ -728,7 +760,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v10ではギフト帯の『GACHA TICKET』も英語OCRで探して🎫欄へ自動追加します。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v11では右端のガチャチケまで横いっぱい探索し、青いRank文字も専用処理で読みます。`;
     renderAll();
   }catch(e){
     console.error(e);
