@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v14</title>
+<title>ありがとうメッセージメーカー v15</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v14</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v15</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v14ではガチャチケを『水色だけ』では判定しません。ピンク＋水色のグラデーションと『GACHA TICKET』文字の両方を目印にします。
+      v15では誤検出を止めるため、ガチャチケ自動判定は『GACHA TICKET』文字を読めた場合だけに限定します。色は参考表示だけにします。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは『GACHA TICKET』文字と、ピンク＋水色が同じ枠にある特徴を使って判定します。</div>
+    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは誤検出防止のため『GACHA TICKET』文字を読めた場合だけ自動判定します。色は参考情報としてのみ表示します。</div>
     <div id="extras"></div>
   </div>
 
@@ -539,8 +539,9 @@ async function detectGachaTicketInBand(band){
     }
   }
 
-  // Accept if OCR sees GACHA TICKET, OR the distinctive pink+cyan palette is strong.
-  const hasTicket = best.textHit || (best.gradientHit && best.score>=0.38);
+  // v15: false positives were caused by other pink+cyan gifts/UI.
+  // Auto-accept only when the ticket text itself is recognized.
+  const hasTicket = best.textHit;
 
   return {
     hasTicket,
@@ -714,7 +715,7 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
           ? '🎁 採用'+(giftInfo.hasTicket?' / 🎫ガチャチケ検出':'')+
             ' / ticket='+Number(giftInfo.ticketScore||0).toFixed(2)+
             (giftInfo.ticketTextHit?' [文字✓]':'')+
-            (giftInfo.ticketGradientHit?' [桃+水✓]':'')+
+            (giftInfo.ticketGradientHit?' [桃+水参考]':'')+
             ' / OCR → '+escapeHtml(cleanNameText(parsed.name))+
             (match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+
             (rank?' / Rank.'+rank:'')
@@ -858,7 +859,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v14ではガチャチケを『GACHA TICKET』文字、またはピンク＋水色の特徴で判定します。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v15ではガチャチケは『GACHA TICKET』文字を読めた人だけ自動で🎫欄へ入れます。`;
     renderAll();
   }catch(e){
     console.error(e);
