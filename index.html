@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v16</title>
+<title>ありがとうメッセージメーカー v17</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v16</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v17</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v16ではガチャチケの見本画像そのものをアプリ内に保存し、スクショ内のギフト画像と画像照合します。文字OCRや色だけの判定には頼りません。
+      v17では見本画像との類似度だけでなく、『色のついた長方形カードが面積を占めているか』も確認します。文字だけのカラフルなギフトを除外します。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは登録済みの見本画像と各ギフト画像を比較し、十分似ている場合だけ🎫欄へ自動追加します。</div>
+    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは見本画像との比較に加え、色付きの横長カード本体が十分な面積を持つ場合だけ自動判定します。</div>
     <div id="extras"></div>
   </div>
 
@@ -553,6 +553,37 @@ async function getTicketReferenceFeatures(){
   return __ticketRefFeatures;
 }
 
+
+function coloredCardCoverage(c){
+  const ctx=c.getContext('2d'), W=c.width,H=c.height;
+  const d=ctx.getImageData(0,0,W,H).data;
+  let colored=0,total=0;
+  let minX=W,minY=H,maxX=-1,maxY=-1;
+  for(let y=0;y<H;y+=2){
+    for(let x=0;x<W;x+=2){
+      const i=(y*W+x)*4;
+      const r=d[i],g=d[i+1],b=d[i+2];
+      const mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+      const lum=(r+g+b)/3;
+      const sat=mx-mn;
+      const isColored = sat>28 && lum<245;
+      if(isColored){
+        colored++;
+        minX=Math.min(minX,x);minY=Math.min(minY,y);
+        maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
+      }
+      total++;
+    }
+  }
+  const ratio=total?colored/total:0;
+  let boxCoverage=0,aspect=0;
+  if(maxX>=0){
+    const bw=maxX-minX+1,bh=maxY-minY+1;
+    boxCoverage=(bw*bh)/(W*H);
+    aspect=bw/Math.max(1,bh);
+  }
+  return {ratio,boxCoverage,aspect};
+}
 async function detectGachaTicketInBand(band){
   const ref=await getTicketReferenceFeatures();
   const BW=band.width,BH=band.height;
@@ -573,8 +604,9 @@ async function detectGachaTicketInBand(band){
 
     const feat=imageFeatures(tight);
     const score=featureSimilarity(ref,feat);
+    const card=coloredCardCoverage(tight);
 
-    // Optional OCR confirmation, not required.
+    // Optional OCR confirmation.
     let ocr='';
     try{
       const rr=await recognizeCanvas(tight,'eng',{tessedit_pageseg_mode:11});
@@ -583,23 +615,31 @@ async function detectGachaTicketInBand(band){
     const compact=ocr.replace(/\s+/g,'');
     const textHit=/GACHATICKET/.test(compact) || (/GACHA/.test(compact) && /TICKET/.test(compact));
 
-    // Combine template similarity with strong text confirmation.
-    const finalScore=Math.max(score, textHit?0.98:0);
+    // False-positive guard:
+    // Real ticket has a colored rectangular card body occupying much of the tile.
+    // Colorful text stickers tend to have low colored-area coverage.
+    const cardLike =
+      card.ratio >= 0.24 &&
+      card.boxCoverage >= 0.42 &&
+      card.aspect >= 1.35;
+
+    const finalScore = textHit ? 0.99 : (cardLike ? score : score*0.72);
 
     if(finalScore>best.score){
       best={
         score:finalScore,
         tileIndex:k,
         tile:tight,
-        evidence:`template=${score.toFixed(3)} ocr="${ocr}"`,
+        evidence:`template=${score.toFixed(3)} cardRatio=${card.ratio.toFixed(3)} box=${card.boxCoverage.toFixed(3)} aspect=${card.aspect.toFixed(2)} ocr="${ocr}"`,
         textHit,
-        gradientHit:false
+        gradientHit:cardLike
       };
     }
   }
 
-  // Threshold tuned conservatively to avoid other gifts being called tickets.
-  const hasTicket = best.score >= 0.78;
+  // v17: exact text wins immediately.
+  // Otherwise require a much stronger reference-image match after the rectangular-card check.
+  const hasTicket = best.textHit || best.score >= 0.88;
 
   return {
     hasTicket,
@@ -774,7 +814,7 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
           ? '🎁 採用'+(giftInfo.hasTicket?' / 🎫ガチャチケ検出':'')+
             ' / ticketMatch='+Number(giftInfo.ticketScore||0).toFixed(2)+
             (giftInfo.ticketTextHit?' [文字✓]':'')+
-            (giftInfo.ticketGradientHit?' [桃+水参考]':'')+
+            (giftInfo.ticketGradientHit?' [カード形✓]':'')+
             ' / OCR → '+escapeHtml(cleanNameText(parsed.name))+
             (match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+
             (rank?' / Rank.'+rank:'')
@@ -918,7 +958,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v16ではガチャチケを見本画像との類似度で判定します。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v17では見本画像との類似度に加えて、色付きの横長カード形状も確認して誤検出を減らします。`;
     renderAll();
   }catch(e){
     console.error(e);
