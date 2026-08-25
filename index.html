@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v5</title>
+<title>ありがとうメッセージメーカー v4</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v5</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v4</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      REALITYの「フォローする／フォロー中」ボタンを目印にユーザー行を見つけ、その真左だけを名前としてOCRします。ギフト画像を名前として読む事故をさらに減らした版です。
+      画面全体をOCRする方式をやめ、REALITYの横線でユーザー行を分割してから「名前欄だけ」をOCRします。ギフト画像や「フォローする」は最初から読み取り範囲の外です。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは名前の下の「Rank○獲得」から拾います。チケットは誤判定を避けるため、この版では最終確認を優先してチェックで修正できます。</div>
+    <div class="small">「GACHA TICKET」「Rank1獲得」などをOCRで拾います。必要ならここで修正できます。</div>
     <div id="extras"></div>
   </div>
 
@@ -228,148 +228,136 @@ function canvasFromImage(img){
   c.getContext('2d').drawImage(img,0,0);
   return c;
 }
-function cropRect(canvas,sx,sy,sw,sh,scale=1){
-  sx=Math.max(0,Math.floor(sx)); sy=Math.max(0,Math.floor(sy));
-  sw=Math.min(canvas.width-sx,Math.floor(sw)); sh=Math.min(canvas.height-sy,Math.floor(sh));
+function rowLineScores(canvas){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const x0=Math.floor(W*0.035), x1=Math.floor(W*0.955);
+  const stepX=Math.max(2,Math.floor(W/260));
+  const scores=[];
+  for(let y=Math.floor(H*0.08); y<Math.floor(H*0.94); y+=2){
+    const data=ctx.getImageData(x0,y,x1-x0,1).data;
+    let grayish=0,total=0;
+    for(let i=0;i<data.length;i+=4*stepX){
+      const r=data[i],g=data[i+1],b=data[i+2];
+      const mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+      const lum=(r+g+b)/3;
+      if(mx-mn<8 && lum>205 && lum<248) grayish++;
+      total++;
+    }
+    scores.push({y,score:total?grayish/total:0});
+  }
+  return scores;
+}
+function detectSeparators(canvas){
+  const H=canvas.height;
+  const scores=rowLineScores(canvas);
+  const raw=scores.filter(v=>v.score>0.58).map(v=>v.y);
+  const groups=[];
+  for(const y of raw){
+    const g=groups[groups.length-1];
+    if(!g || y-g[g.length-1]>8) groups.push([y]); else g.push(y);
+  }
+  let seps=groups.map(g=>Math.round(g.reduce((a,b)=>a+b,0)/g.length));
+  // UI dividers are not extremely close together.
+  seps=seps.filter((y,i)=>i===0 || y-seps[i-1]>55);
+  return seps;
+}
+function buildBands(canvas){
+  const W=canvas.width,H=canvas.height;
+  const seps=detectSeparators(canvas);
+  const bounds=[Math.floor(H*0.09),...seps,Math.floor(H*0.93)]
+    .sort((a,b)=>a-b)
+    .filter((v,i,a)=>i===0 || v-a[i-1]>30);
+  const bands=[];
+  for(let i=0;i<bounds.length-1;i++){
+    const top=bounds[i],bottom=bounds[i+1],h=bottom-top;
+    if(h < H*0.055 || h > H*0.34) continue;
+    bands.push({top,bottom,h});
+  }
+  return bands;
+}
+function cropCanvas(canvas, band){
+  const W=canvas.width,H=canvas.height;
+  // REALITY name column: avatar ends at ~14% W, follow button begins ~64% W.
+  const sx=Math.floor(W*0.155);
+  const sw=Math.floor(W*0.47);
+  // Name sits near the top of each user band. Keep rank/初見 line for metadata.
+  const sy=Math.max(0, Math.floor(band.top + band.h*0.07));
+  const sh=Math.max(54, Math.floor(Math.min(band.h*0.38, H*0.095)));
   const c=document.createElement('canvas');
-  c.width=Math.max(1,Math.floor(sw*scale)); c.height=Math.max(1,Math.floor(sh*scale));
-  const ctx=c.getContext('2d');
-  ctx.imageSmoothingEnabled=true;
-  ctx.drawImage(canvas,sx,sy,sw,sh,0,0,c.width,c.height);
+  c.width=sw; c.height=sh;
+  c.getContext('2d').drawImage(canvas,sx,sy,sw,sh,0,0,sw,sh);
   return c;
 }
-function preprocessTextCrop(c){
+function preprocessCrop(c){
+  // Upscale + grayscale + gentle contrast, improves small Japanese text.
+  const scale=2;
   const o=document.createElement('canvas');
-  o.width=c.width; o.height=c.height;
-  const ox=o.getContext('2d'); ox.drawImage(c,0,0);
+  o.width=c.width*scale; o.height=c.height*scale;
+  const ox=o.getContext('2d');
+  ox.imageSmoothingEnabled=true;
+  ox.drawImage(c,0,0,o.width,o.height);
   const im=ox.getImageData(0,0,o.width,o.height);
   for(let i=0;i<im.data.length;i+=4){
     const r=im.data[i],g=im.data[i+1],b=im.data[i+2];
-    const max=Math.max(r,g,b),min=Math.min(r,g,b);
     let v=.299*r+.587*g+.114*b;
-    // Keep dark neutral text; erase most colored avatars/gift art.
-    if(v>205 || (max-min)>55) v=255;
-    else v = v<150 ? 0 : Math.min(255,(v-150)*4);
+    v = v<205 ? Math.max(0,(v-110)*1.45+95) : 255;
     im.data[i]=im.data[i+1]=im.data[i+2]=v;
   }
   ox.putImageData(im,0,0);
   return o;
 }
-function groupWordsIntoLines(words){
-  const arr=(words||[]).filter(w=>w.text && (w.confidence??0)>25).map(w=>({
-    text:norm(w.text), x0:w.bbox.x0, x1:w.bbox.x1, y0:w.bbox.y0,y1:w.bbox.y1,
-    cy:(w.bbox.y0+w.bbox.y1)/2
-  })).filter(w=>w.text);
-  arr.sort((a,b)=>a.cy-b.cy || a.x0-b.x0);
-  const lines=[];
-  for(const w of arr){
-    let l=lines.find(x=>Math.abs(x.cy-w.cy)<18);
-    if(!l){l={cy:w.cy,items:[]};lines.push(l)}
-    l.items.push(w);
-    l.cy=l.items.reduce((a,b)=>a+b.cy,0)/l.items.length;
-  }
-  return lines.map(l=>{
-    l.items.sort((a,b)=>a.x0-b.x0);
-    return {cy:l.cy,text:norm(l.items.map(x=>x.text).join(' '))};
-  }).sort((a,b)=>a.cy-b.cy);
-}
-function followAnchorsFromOcr(data, yOffset=0, scale=1){
-  const lines=groupWordsIntoLines(data.words||[]);
-  const anchors=[];
-  for(const l of lines){
-    const t=l.text.replace(/\s+/g,'');
-    if(/フォロー(?:する|中)?/.test(t)){
-      anchors.push(yOffset + l.cy/scale);
-    }
-  }
-  anchors.sort((a,b)=>a-b);
-  // de-dupe OCR echoes
-  return anchors.filter((y,i,a)=>i===0 || y-a[i-1]>35);
-}
-function parseNameCropText(text){
-  const ls=(text||'').split(/\n+/).map(norm).filter(Boolean);
-  let rank=null;
-  for(const l of ls){
+function parseCropText(text){
+  const rawLines=(text||'').split(/\n+/).map(norm).filter(Boolean);
+  if(!rawLines.length) return null;
+  let rank=null, initial=false;
+  for(const l of rawLines){
     const m=l.match(/Rank\s*([1-4])\s*獲得/i);
     if(m) rank=Number(m[1]);
+    if(/初見/.test(l)) initial=true;
   }
+  // The first meaningful line is the display name.
   let name=null;
-  for(const l of ls){
-    let c=cleanNameText(l);
-    if(!c) continue;
-    if(/Rank\s*[1-4]|初見|フォロー/i.test(c)) continue;
-    if(plausibleName(c)){name=c;break}
+  for(const l of rawLines){
+    const c=cleanNameText(l);
+    if(plausibleName(c) && !/^(Rank|初見)/i.test(c)){ name=c; break; }
   }
-  return name ? {name,rank,rawLines:ls} : null;
-}
-async function recognizeCanvas(c, langs='jpn+eng', opts={}){
-  return await Tesseract.recognize(c,langs,{
-    ...opts,
-    logger:opts.logger
-  });
+  if(!name) return null;
+  return {name,rank,initial,rawLines};
 }
 async function analyzeRealityFile(file, fileIndex, totalFiles){
   const loaded=await fileToImage(file);
   const canvas=canvasFromImage(loaded.img);
-  const W=canvas.width,H=canvas.height;
+  const bands=buildBands(canvas);
   const previews=$('#cropPreview');
 
-  // 1) Find rows using the repeated Follow button on the right.
-  const rx=W*0.56, ry=H*0.07, rw=W*0.34, rh=H*0.88;
-  const rightCrop=preprocessTextCrop(cropRect(canvas,rx,ry,rw,rh,1.6));
-  $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：フォローボタンからユーザー行を探しています…`;
-  const followRes=await recognizeCanvas(rightCrop,'jpn+eng',{
-    tessedit_pageseg_mode:6,
-    logger:m=>{
-      if(m.status==='recognizing text'){
-        const overall=(fileIndex+(m.progress||0)*0.2)/totalFiles;
-        $('#bar').style.width=`${Math.round(overall*100)}%`;
-      }
-    }
-  });
-  let anchors=followAnchorsFromOcr(followRes.data,ry,1.6);
-
-  // Fallback: if button OCR misses too much, search a wider right area.
-  if(anchors.length<2){
-    const wide=preprocessTextCrop(cropRect(canvas,W*0.48,H*0.05,W*0.47,H*0.9,1.4));
-    const rr=await recognizeCanvas(wide,'jpn+eng',{tessedit_pageseg_mode:6});
-    anchors=followAnchorsFromOcr(rr.data,H*0.05,1.4);
-  }
-
   let accepted=0;
-  for(let j=0;j<anchors.length;j++){
-    const y=anchors[j];
-    // Name sits directly to the left of follow button.
-    const nameCropRaw=cropRect(canvas,W*0.145,y-H*0.032,W*0.43,H*0.078,2.2);
-    const nameCrop=preprocessTextCrop(nameCropRaw);
-
-    $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：名前 ${j+1}/${anchors.length} を読んでいます…`;
-    const res=await recognizeCanvas(nameCrop,'jpn+eng',{
-      tessedit_pageseg_mode:6,
+  for(let j=0;j<bands.length;j++){
+    const crop=preprocessCrop(cropCanvas(canvas,bands[j]));
+    $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：ユーザー欄 ${j+1}/${bands.length} を読んでいます…`;
+    const res=await Tesseract.recognize(crop,'jpn+eng',{
       logger:m=>{
         if(m.status==='recognizing text'){
-          const local=0.2 + 0.8*((j+(m.progress||0))/Math.max(1,anchors.length));
-          const overall=(fileIndex+local)/totalFiles;
+          const overall=(fileIndex + (j+(m.progress||0))/Math.max(1,bands.length))/totalFiles;
           $('#bar').style.width=`${Math.round(overall*100)}%`;
         }
       }
     });
-    const parsed=parseNameCropText(res.data.text);
-
+    const parsed=parseCropText(res.data.text);
     if(parsed){
       addPerson(parsed.name,{rank:parsed.rank});
       const p=state.people.find(p=>p.raw===parsed.name);
-      if(parsed.rank && p){p.rank=parsed.rank;state.ranks[parsed.rank].add(p.raw)}
+      if(parsed.rank && p){ p.rank=parsed.rank; state.ranks[parsed.rank].add(p.raw); }
       accepted++;
     }
 
-    if(previews.children.length<16){
+    // Debug preview for first few rows so the user can see what the app actually read.
+    if(previews.children.length<12){
       const card=document.createElement('div'); card.className='cropcard';
-      card.innerHTML=`<img src="${nameCropRaw.toDataURL('image/jpeg',0.84)}"><div class="small">${parsed ? '→ '+escapeHtml(parsed.name)+(parsed.rank?' / Rank.'+parsed.rank:'') : '→ 名前として採用せず'}</div>`;
+      card.innerHTML=`<img src="${crop.toDataURL('image/jpeg',0.8)}"><div class="small">${parsed ? '→ '+escapeHtml(parsed.name)+(parsed.rank?' / Rank.'+parsed.rank:'') : '→ 名前として採用せず'}</div>`;
       previews.appendChild(card);
     }
   }
-
   URL.revokeObjectURL(loaded.url);
   return accepted;
 }
@@ -503,7 +491,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ${state.people.length}人を抽出しました。下には「フォローボタンの真左だけ」を切り抜いた画像が出ます。`;
+    $('#status').textContent=`完了！ ${state.people.length}人を抽出しました。下に表示される「実際にOCRした名前欄」も確認できます。`;
     renderAll();
   }catch(e){
     console.error(e);
