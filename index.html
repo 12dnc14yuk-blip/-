@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v13</title>
+<title>ありがとうメッセージメーカー v14</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v13</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v14</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v13ではガチャチケだけOCRをやめ、見た目で判定します。水色の横長チケット形状をギフト枠ごとに探します。
+      v14ではガチャチケを『水色だけ』では判定しません。ピンク＋水色のグラデーションと『GACHA TICKET』文字の両方を目印にします。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは各ギフト枠の水色・横長形状を画像判定し、検出した人を🎫欄へ自動追加します。</div>
+    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは『GACHA TICKET』文字と、ピンク＋水色が同じ枠にある特徴を使って判定します。</div>
     <div id="extras"></div>
   </div>
 
@@ -474,21 +474,18 @@ function ticketLikeColorScore(c){
 async function detectGachaTicketInBand(band){
   const BW=band.width, BH=band.height;
   const tileCount=5;
-  let best={score:0,tileIndex:null,tile:null,evidence:''};
+  let best={score:0,tileIndex:null,tile:null,evidence:'',textHit:false,gradientHit:false};
 
   for(let k=0;k<tileCount;k++){
     const x0=BW*k/tileCount;
     const x1=BW*(k+1)/tileCount;
-    const tile=cropRect(band,x0,0,x1-x0,BH,2.2);
+    const tile=cropRect(band,x0,0,x1-x0,BH,3.0);
 
     const ctx=tile.getContext('2d');
     const W=tile.width,H=tile.height;
     const d=ctx.getImageData(0,0,W,H).data;
 
-    // GACHA TICKET is a cyan/blue horizontal card with lots of white text.
-    let cyan=0, white=0, dark=0, total=0;
-    let minX=W,minY=H,maxX=-1,maxY=-1;
-
+    let cyan=0,pink=0,white=0,total=0;
     for(let y=0;y<H;y+=2){
       for(let x=0;x<W;x+=2){
         const i=(y*W+x)*4;
@@ -496,52 +493,63 @@ async function detectGachaTicketInBand(band){
         const mx=Math.max(r,g,b),mn=Math.min(r,g,b);
         const lum=(r+g+b)/3;
 
-        const isCyan = b>145 && g>125 && b>r+18 && g>r+3 && lum>105;
-        const isWhite = lum>235 && mx-mn<22;
-        const isDark = lum<100;
+        // Ticket artwork: light cyan/blue + pink/magenta coexist in the same small card.
+        const isCyan = b>145 && g>120 && b>r+18 && g>r-5 && lum>105;
+        const isPink = r>165 && b>120 && r>g+18 && b>g-5 && lum>115;
+        const isWhite = lum>238 && mx-mn<20;
 
-        if(isCyan){
-          cyan++;
-          minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
-        }
+        if(isCyan) cyan++;
+        if(isPink) pink++;
         if(isWhite) white++;
-        if(isDark) dark++;
         total++;
       }
     }
 
     const cyanRatio=total?cyan/total:0;
+    const pinkRatio=total?pink/total:0;
     const whiteRatio=total?white/total:0;
-    const darkRatio=total?dark/total:0;
 
-    let aspect=0, coverage=0;
-    if(maxX>=0){
-      const bw=maxX-minX+1,bh=maxY-minY+1;
-      aspect=bw/Math.max(1,bh);
-      coverage=(bw*bh)/(W*H);
-    }
+    let ocr='';
+    try{
+      const rr=await recognizeCanvas(tile,'eng',{tessedit_pageseg_mode:11});
+      ocr=norm(rr.data.text||'').toUpperCase().replace(/\s+/g,' ');
+    }catch(e){}
 
-    // Ticket card: enough cyan, wider than tall, occupies a meaningful chunk.
-    // Keep thresholds permissive because screenshots may be scaled/compressed.
+    const compact=ocr.replace(/\s+/g,'');
+    const textHit =
+      /GACHATICKET/.test(compact) ||
+      (/GACHA/.test(compact) && /TICKET/.test(compact)) ||
+      /GAC[HNM]A/.test(compact) && /T1CKET|TICKE[T7]/.test(compact);
+
+    // Stronger visual requirement: BOTH pink and cyan must be present.
+    const gradientHit = cyanRatio>=0.018 && pinkRatio>=0.010;
+
+    // Score favors exact text, otherwise requires the characteristic two-color palette.
     let score=0;
-    score += Math.min(1, cyanRatio/0.07)*0.55;
-    score += Math.min(1, Math.max(0,aspect-1.35)/1.5)*0.20;
-    score += Math.min(1, coverage/0.20)*0.15;
-    // White lettering often appears inside the cyan card.
-    score += Math.min(1, whiteRatio/0.35)*0.10;
+    if(textHit) score += 0.78;
+    if(gradientHit) score += 0.36;
+    score += Math.min(0.10, whiteRatio*0.25);
 
     if(score>best.score){
-      best={score,tileIndex:k,tile,evidence:`cyan=${cyanRatio.toFixed(3)}, aspect=${aspect.toFixed(2)}, coverage=${coverage.toFixed(3)}`};
+      best={
+        score,tileIndex:k,tile,
+        evidence:`ocr="${ocr}" cyan=${cyanRatio.toFixed(3)} pink=${pinkRatio.toFixed(3)}`,
+        textHit,gradientHit
+      };
     }
   }
 
-  // Visual threshold chosen to be conservative; can be manually overridden in UI.
+  // Accept if OCR sees GACHA TICKET, OR the distinctive pink+cyan palette is strong.
+  const hasTicket = best.textHit || (best.gradientHit && best.score>=0.38);
+
   return {
-    hasTicket: best.score>=0.62,
-    evidence: best.evidence,
-    tileIndex: best.tileIndex,
-    tile: best.tile,
-    visualScore: best.score
+    hasTicket,
+    evidence:best.evidence,
+    tileIndex:best.tileIndex,
+    tile:best.tile,
+    visualScore:best.score,
+    textHit:best.textHit,
+    gradientHit:best.gradientHit
   };
 }
 async function rowHasGift(canvas,y,nextY,W,H){
@@ -576,7 +584,9 @@ async function rowHasGift(canvas,y,nextY,W,H){
     band,
     ticketTile:ticketInfo.tile,
     ticketTileIndex:ticketInfo.tileIndex,
-    ticketScore:ticketInfo.visualScore||0
+    ticketScore:ticketInfo.visualScore||0,
+    ticketTextHit:!!ticketInfo.textHit,
+    ticketGradientHit:!!ticketInfo.gradientHit
   };
 }
 function trimNameCrop(c){
@@ -701,7 +711,13 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
       <div class="small">${
         !parsed ? '→ 名前として採用せず' :
         giftInfo.hasGift
-          ? '🎁 採用'+(giftInfo.hasTicket?' / 🎫ガチャチケ検出':'')+' / ticketScore='+Number(giftInfo.ticketScore||0).toFixed(2)+' / OCR → '+escapeHtml(cleanNameText(parsed.name))+(match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+(rank?' / Rank.'+rank:'')
+          ? '🎁 採用'+(giftInfo.hasTicket?' / 🎫ガチャチケ検出':'')+
+            ' / ticket='+Number(giftInfo.ticketScore||0).toFixed(2)+
+            (giftInfo.ticketTextHit?' [文字✓]':'')+
+            (giftInfo.ticketGradientHit?' [桃+水✓]':'')+
+            ' / OCR → '+escapeHtml(cleanNameText(parsed.name))+
+            (match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+
+            (rank?' / Rank.'+rank:'')
           : '🚫 ギフトなしとして除外 / '+escapeHtml(cleanNameText(parsed.name))
       }</div>`;
       previews.appendChild(card);
@@ -842,7 +858,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v13ではガチャチケだけ文字認識をやめ、水色の横長チケット形状を画像として探します。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v14ではガチャチケを『GACHA TICKET』文字、またはピンク＋水色の特徴で判定します。`;
     renderAll();
   }catch(e){
     console.error(e);
