@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v6</title>
+<title>ありがとうメッセージメーカー v7</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v6</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v7</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      名前欄の切り抜きに加えて、左のアバターも端末内で特徴として記憶します。一度呼び方を保存した人は、次回からOCRが崩れてもアバター照合で呼び方を復元できます。
+      v7では『フォローする』文字のOCRを目印にするのをやめ、右側の灰色ボタンそのものを画像から検出します。名前の高さをそこに合わせるので、ギフト画像や変な空白を拾いにくくします。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -331,6 +331,66 @@ function followAnchorsFromOcr(data, yOffset=0, scale=1){
   // de-dupe OCR echoes
   return anchors.filter((y,i,a)=>i===0 || y-a[i-1]>35);
 }
+
+function detectFollowButtonCenters(canvas){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const x0=Math.floor(W*0.635), x1=Math.floor(W*0.825);
+  const stepX=Math.max(1,Math.floor((x1-x0)/90));
+  const rows=[];
+  for(let y=Math.floor(H*0.08); y<Math.floor(H*0.93); y+=2){
+    const data=ctx.getImageData(x0,y,x1-x0,1).data;
+    let lightGray=0, total=0;
+    for(let i=0;i<data.length;i+=4*stepX){
+      const r=data[i],g=data[i+1],b=data[i+2];
+      const max=Math.max(r,g,b),min=Math.min(r,g,b);
+      const lum=(r+g+b)/3;
+      // REALITY follow button is a broad, very light neutral-gray pill.
+      if(max-min<10 && lum>=232 && lum<=250) lightGray++;
+      total++;
+    }
+    rows.push({y,score:total?lightGray/total:0});
+  }
+  const ys=rows.filter(v=>v.score>0.34).map(v=>v.y);
+  const groups=[];
+  for(const y of ys){
+    const g=groups[groups.length-1];
+    if(!g || y-g[g.length-1]>8) groups.push([y]);
+    else g.push(y);
+  }
+  let centers=groups
+    .filter(g=>g.length>=4)
+    .map(g=>Math.round((g[0]+g[g.length-1])/2))
+    .filter(y=>y>H*0.10 && y<H*0.91);
+
+  // Deduplicate close detections.
+  centers=centers.filter((y,i,a)=>i===0 || y-a[i-1]>H*0.065);
+  return centers;
+}
+function trimNameCrop(c){
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const d=ctx.getImageData(0,0,W,H).data;
+  let minX=W,minY=H,maxX=-1,maxY=-1;
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const i=(y*W+x)*4;
+      const r=d[i],g=d[i+1],b=d[i+2];
+      const max=Math.max(r,g,b),min=Math.min(r,g,b);
+      const lum=(r+g+b)/3;
+      // Dark neutral-ish text, ignore faint background and colored avatar/gift remnants.
+      if(lum<175 && max-min<90){
+        minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
+      }
+    }
+  }
+  if(maxX<0) return c;
+  const padX=Math.max(8,Math.floor(W*0.025));
+  const padY=Math.max(8,Math.floor(H*0.12));
+  minX=Math.max(0,minX-padX); maxX=Math.min(W-1,maxX+padX);
+  minY=Math.max(0,minY-padY); maxY=Math.min(H-1,maxY+padY);
+  return cropRect(c,minX,minY,maxX-minX+1,maxY-minY+1,1);
+}
 function parseNameCropText(text){
   const ls=(text||'').split(/\n+/).map(norm).filter(Boolean);
   let rank=null;
@@ -359,43 +419,27 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
   const W=canvas.width,H=canvas.height;
   const previews=$('#cropPreview');
 
-  // 1) Find rows using the repeated Follow button on the right.
-  const rx=W*0.56, ry=H*0.07, rw=W*0.34, rh=H*0.88;
-  const rightCrop=preprocessTextCrop(cropRect(canvas,rx,ry,rw,rh,1.6));
-  $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：フォローボタンからユーザー行を探しています…`;
-  const followRes=await recognizeCanvas(rightCrop,'jpn+eng',{
-    tessedit_pageseg_mode:6,
-    logger:m=>{
-      if(m.status==='recognizing text'){
-        const overall=(fileIndex+(m.progress||0)*0.2)/totalFiles;
-        $('#bar').style.width=`${Math.round(overall*100)}%`;
-      }
-    }
-  });
-  let anchors=followAnchorsFromOcr(followRes.data,ry,1.6);
-
-  // Fallback: if button OCR misses too much, search a wider right area.
-  if(anchors.length<2){
-    const wide=preprocessTextCrop(cropRect(canvas,W*0.48,H*0.05,W*0.47,H*0.9,1.4));
-    const rr=await recognizeCanvas(wide,'jpn+eng',{tessedit_pageseg_mode:6});
-    anchors=followAnchorsFromOcr(rr.data,H*0.05,1.4);
-  }
+  $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：右側のフォローボタンを画像から探しています…`;
+  const anchors=detectFollowButtonCenters(canvas);
 
   let accepted=0;
   for(let j=0;j<anchors.length;j++){
     const y=anchors[j];
-    // Name sits directly to the left of follow button.
-    const nameCropRaw=cropRect(canvas,W*0.145,y-H*0.032,W*0.43,H*0.078,2.2);
-    const nameCrop=preprocessTextCrop(nameCropRaw);
-    const avatarCrop=cropRect(canvas,W*0.035,y-H*0.038,W*0.105,H*0.076,1.6);
+
+    // Tighter name region, centered on the detected follow button.
+    const raw=cropRect(canvas,W*0.155,y-H*0.027,W*0.455,H*0.054,2.35);
+    const tight=trimNameCrop(raw);
+    const nameCrop=preprocessTextCrop(tight);
+
+    const avatarCrop=cropRect(canvas,W*0.035,y-H*0.035,W*0.108,H*0.070,1.6);
     const avatarHash=avatarHashFromCanvas(avatarCrop);
 
     $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：名前 ${j+1}/${anchors.length} を読んでいます…`;
     const res=await recognizeCanvas(nameCrop,'jpn+eng',{
-      tessedit_pageseg_mode:6,
+      tessedit_pageseg_mode:7,
       logger:m=>{
         if(m.status==='recognizing text'){
-          const local=0.2 + 0.8*((j+(m.progress||0))/Math.max(1,anchors.length));
+          const local=(j+(m.progress||0))/Math.max(1,anchors.length);
           const overall=(fileIndex+local)/totalFiles;
           $('#bar').style.width=`${Math.round(overall*100)}%`;
         }
@@ -403,17 +447,31 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
     });
     const parsed=parseNameCropText(res.data.text);
 
+    // Rank text is below the name, so read a very small second strip only for Rank.
+    const rankRaw=cropRect(canvas,W*0.155,y+H*0.014,W*0.34,H*0.030,1.8);
+    const rankCrop=preprocessTextCrop(rankRaw);
+    let rank=null;
+    try{
+      const rr=await recognizeCanvas(rankCrop,'jpn+eng',{tessedit_pageseg_mode:7});
+      const m=(rr.data.text||'').match(/Rank\s*([1-4])\s*獲得/i);
+      if(m) rank=Number(m[1]);
+    }catch(e){}
+
     if(parsed){
-      addPerson(parsed.name,{rank:parsed.rank,avatarHash});
+      addPerson(parsed.name,{rank,avatarHash});
       const p=state.people.find(p=>p.raw===cleanNameText(parsed.name));
-      if(parsed.rank && p){p.rank=parsed.rank;state.ranks[parsed.rank].add(p.raw)}
+      if(rank && p){p.rank=rank;state.ranks[rank].add(p.raw)}
       accepted++;
     }
 
-    if(previews.children.length<16){
-      const card=document.createElement('div'); card.className='cropcard';
+    if(previews.children.length<18){
       const match=bestAvatarMatch(avatarHash);
-      card.innerHTML=`<div style="display:flex;gap:8px;align-items:center"><img src="${avatarCrop.toDataURL('image/jpeg',0.84)}" style="width:58px;height:58px;object-fit:cover"><img src="${nameCropRaw.toDataURL('image/jpeg',0.84)}" style="flex:1;min-width:0"></div><div class="small">${parsed ? 'OCR → '+escapeHtml(cleanNameText(parsed.name))+(match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+(parsed.rank?' / Rank.'+parsed.rank:'') : '→ 名前として採用せず'}</div>`;
+      const card=document.createElement('div'); card.className='cropcard';
+      card.innerHTML=`<div style="display:flex;gap:8px;align-items:center">
+        <img src="${avatarCrop.toDataURL('image/jpeg',0.84)}" style="width:54px;height:54px;object-fit:cover;border-radius:50%">
+        <img src="${tight.toDataURL('image/jpeg',0.9)}" style="flex:1;min-width:0">
+      </div>
+      <div class="small">${parsed ? 'OCR → '+escapeHtml(cleanNameText(parsed.name))+(match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+(rank?' / Rank.'+rank:'') : '→ 名前として採用せず'}</div>`;
       previews.appendChild(card);
     }
   }
@@ -552,7 +610,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ${state.people.length}人を抽出しました。下には「フォローボタンの真左だけ」を切り抜いた画像が出ます。`;
+    $('#status').textContent=`完了！ ${state.people.length}人を抽出しました。v7では灰色のフォローボタンの高さを基準に、名前1行だけを細く切り抜いています。`;
     renderAll();
   }catch(e){
     console.error(e);
