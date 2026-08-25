@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v17</title>
+<title>ありがとうメッセージメーカー v18</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v17</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v18</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v17では見本画像との類似度だけでなく、『色のついた長方形カードが面積を占めているか』も確認します。文字だけのカラフルなギフトを除外します。
+      v18ではギフト欄を5等分するのをやめ、横方向を細かくスキャンしてガチャチケを探します。右端や枠の境目にあるチケットも拾いやすくします。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは見本画像との比較に加え、色付きの横長カード本体が十分な面積を持つ場合だけ自動判定します。</div>
+    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは固定5枠ではなく、ギフト欄を横にずらしながら見本画像と比較します。</div>
     <div id="extras"></div>
   </div>
 
@@ -587,68 +587,87 @@ function coloredCardCoverage(c){
 async function detectGachaTicketInBand(band){
   const ref=await getTicketReferenceFeatures();
   const BW=band.width,BH=band.height;
-  let best={score:0,tileIndex:null,tile:null,evidence:'',textHit:false,gradientHit:false};
 
-  // REALITY shows up to about 5 gifts horizontally. Compare each gift slot.
-  const slots=5;
-  for(let k=0;k<slots;k++){
-    const x0=BW*k/slots;
-    const x1=BW*(k+1)/slots;
+  let best={
+    score:0, rawScore:0, x:null, width:null,
+    tile:null, evidence:'', textHit:false, gradientHit:false
+  };
 
-    // Only use the upper image portion of the gift cell, excluding ×1 / ×10 count text.
-    const raw=cropRect(band,x0,0,x1-x0,Math.min(BH,BH*0.72),2.0);
-    const tight=cropNonWhite(raw);
+  // v18:
+  // Do NOT assume five perfectly aligned gift slots.
+  // Slide several window sizes horizontally so a ticket at the far right
+  // or across a former "slot boundary" can still be captured intact.
+  const widths=[0.13,0.16,0.19,0.22].map(v=>BW*v);
+  const step=Math.max(6, BW*0.025);
+  const scanH=Math.min(BH, BH*0.72);
 
-    // Reject nearly empty regions.
-    if(tight.width<12 || tight.height<12) continue;
+  for(const ww of widths){
+    for(let x=0; x<=BW-ww; x+=step){
+      const raw=cropRect(band,x,0,ww,scanH,2.2);
+      const tight=cropNonWhite(raw);
 
-    const feat=imageFeatures(tight);
-    const score=featureSimilarity(ref,feat);
-    const card=coloredCardCoverage(tight);
+      if(tight.width<16 || tight.height<12) continue;
 
-    // Optional OCR confirmation.
-    let ocr='';
-    try{
-      const rr=await recognizeCanvas(tight,'eng',{tessedit_pageseg_mode:11});
-      ocr=norm(rr.data.text||'').toUpperCase();
-    }catch(e){}
-    const compact=ocr.replace(/\s+/g,'');
-    const textHit=/GACHATICKET/.test(compact) || (/GACHA/.test(compact) && /TICKET/.test(compact));
+      const feat=imageFeatures(tight);
+      const rawScore=featureSimilarity(ref,feat);
+      const card=coloredCardCoverage(tight);
 
-    // False-positive guard:
-    // Real ticket has a colored rectangular card body occupying much of the tile.
-    // Colorful text stickers tend to have low colored-area coverage.
-    const cardLike =
-      card.ratio >= 0.24 &&
-      card.boxCoverage >= 0.42 &&
-      card.aspect >= 1.35;
+      // A real GACHA TICKET is a colored, horizontally oriented card.
+      const cardLike =
+        card.ratio >= 0.20 &&
+        card.boxCoverage >= 0.34 &&
+        card.aspect >= 1.20;
 
-    const finalScore = textHit ? 0.99 : (cardLike ? score : score*0.72);
+      // OCR is only a confirmation path. With a correctly aligned crop,
+      // "GACHA TICKET" is much easier to read.
+      let ocr='';
+      try{
+        const rr=await recognizeCanvas(tight,'eng',{tessedit_pageseg_mode:11});
+        ocr=norm(rr.data.text||'').toUpperCase();
+      }catch(e){}
 
-    if(finalScore>best.score){
-      best={
-        score:finalScore,
-        tileIndex:k,
-        tile:tight,
-        evidence:`template=${score.toFixed(3)} cardRatio=${card.ratio.toFixed(3)} box=${card.boxCoverage.toFixed(3)} aspect=${card.aspect.toFixed(2)} ocr="${ocr}"`,
-        textHit,
-        gradientHit:cardLike
-      };
+      const compact=ocr.replace(/\s+/g,'');
+      const textHit =
+        /GACHATICKET/.test(compact) ||
+        (/GACHA/.test(compact) && /TICKET/.test(compact)) ||
+        (/GAC[HNM]A/.test(compact) && /T1CKET|TICKE[T7]/.test(compact));
+
+      // Penalize non-card stickers strongly.
+      let finalScore = cardLike ? rawScore : rawScore*0.68;
+      if(textHit) finalScore=Math.max(finalScore,0.99);
+
+      if(finalScore>best.score){
+        best={
+          score:finalScore,
+          rawScore,
+          x,
+          width:ww,
+          tile:tight,
+          evidence:
+            `template=${rawScore.toFixed(3)} `+
+            `cardRatio=${card.ratio.toFixed(3)} `+
+            `box=${card.boxCoverage.toFixed(3)} `+
+            `aspect=${card.aspect.toFixed(2)} `+
+            `ocr="${ocr}"`,
+          textHit,
+          gradientHit:cardLike
+        };
+      }
     }
   }
 
-  // v17: exact text wins immediately.
-  // Otherwise require a much stronger reference-image match after the rectangular-card check.
-  const hasTicket = best.textHit || best.score >= 0.88;
+  // Exact text is definitive. Otherwise require a strong image match
+  // AND a card-like shape.
+  const hasTicket = best.textHit || (best.gradientHit && best.rawScore>=0.74);
 
   return {
     hasTicket,
     evidence:best.evidence,
-    tileIndex:best.tileIndex,
+    tileIndex:best.x===null?null:Math.round(best.x),
     tile:best.tile,
-    visualScore:best.score,
+    visualScore:best.rawScore,
     textHit:best.textHit,
-    gradientHit:false
+    gradientHit:best.gradientHit
   };
 }
 
@@ -958,7 +977,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v17では見本画像との類似度に加えて、色付きの横長カード形状も確認して誤検出を減らします。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v18ではギフト欄を横方向にスキャンし、右端や境目にあるガチャチケも見本画像と照合します。`;
     renderAll();
   }catch(e){
     console.error(e);
