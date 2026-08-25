@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v9</title>
+<title>ありがとうメッセージメーカー v10</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v9</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v10</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v9では『ユーザーを見つける』だけでなく、その人の下に本当にギフトがあるかも確認します。ギフトがない入室者は最終リストから除外します。
+      v10ではギフト有無に加えて、ギフト帯の中に『GACHA TICKET』があるかも自動判定します。見つけた人は🎫欄へ自動追加します。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは名前の下の「Rank○獲得」から拾います。チケットは誤判定を避けるため、この版では最終確認を優先してチェックで修正できます。</div>
+    <div class="small">Rankは名前の下の「Rank○獲得」から拾います。ガチャチケはギフト帯の『GACHA TICKET』文字を英語OCRでも確認し、検出した人を🎫欄へ自動追加します。</div>
     <div id="extras"></div>
   </div>
 
@@ -418,28 +418,48 @@ function giftVisualScore(c){
   return total ? interesting/total : 0;
 }
 async function rowHasGift(canvas,y,nextY,W,H){
-  // The gift strip begins below the user name. Stop before the next user row.
   let bottom = nextY ? Math.min(nextY-H*0.018, y+H*0.20) : Math.min(H*0.92, y+H*0.18);
   let top = y + H*0.032;
-  if(bottom-top < H*0.025) return {hasGift:false, reason:'short-row', countText:''};
+  if(bottom-top < H*0.025) return {hasGift:false, hasTicket:false, reason:'short-row', countText:''};
 
-  // Exclude avatar and follow-button columns. This is the gift-thumbnail area.
   const band = cropRect(canvas, W*0.025, top, W*0.59, bottom-top, 1.25);
   const score = giftVisualScore(band);
 
-  let txt='';
+  let txt='', rawTxt='';
   try{
     const textBand=preprocessTextCrop(band);
     const rr=await recognizeCanvas(textBand,'jpn+eng',{tessedit_pageseg_mode:6});
     txt=norm(rr.data.text||'');
   }catch(e){}
 
-  // REALITY puts x1/x5/... beneath gift thumbnails.
-  const hasCount = /(?:×|x|X)\s*\d+/.test(txt);
-  // Image fallback when the count OCR is missed.
+  // Run a second English-focused OCR on the raw band.
+  // The GACHA TICKET gift has stable English text and can survive even when Japanese OCR misses it.
+  try{
+    const rr2=await recognizeCanvas(band,'eng',{tessedit_pageseg_mode:6});
+    rawTxt=norm(rr2.data.text||'');
+  }catch(e){}
+
+  const joined = (txt+' '+rawTxt).replace(/\s+/g,' ').toUpperCase();
+  const hasCount = /(?:×|x|X)\s*\d+/.test(txt+' '+rawTxt);
   const hasVisual = score > 0.095;
 
-  return {hasGift:hasCount || hasVisual, reason:hasCount?'count':(hasVisual?'visual':'blank'), countText:txt, score, band};
+  // Be tolerant of imperfect OCR: "GACHA TICKET", "GACHA", or "TICKET".
+  // Require a reasonably ticket-like token to avoid random matches.
+  const hasTicket =
+      /GACHA\s*TICKET/.test(joined) ||
+      /\bGACHA\b/.test(joined) ||
+      /\bTICKET\b/.test(joined) ||
+      /T1CKET|TICKE[T7]|GAC[HNM]A/.test(joined);
+
+  return {
+    hasGift:hasCount || hasVisual,
+    hasTicket,
+    reason:hasCount?'count':(hasVisual?'visual':'blank'),
+    countText:txt,
+    rawText:rawTxt,
+    score,
+    band
+  };
 }
 function trimNameCrop(c){
   const ctx=c.getContext('2d');
@@ -549,9 +569,10 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
     const giftInfo = await rowHasGift(canvas,y,nextY,W,H);
 
     if(parsed && giftInfo.hasGift){
-      addPerson(parsed.name,{rank,avatarHash});
+      addPerson(parsed.name,{rank,avatarHash,ticket:giftInfo.hasTicket});
       const p=state.people.find(p=>p.raw===cleanNameText(parsed.name));
       if(rank && p){p.rank=rank;state.ranks[rank].add(p.raw)}
+      if(giftInfo.hasTicket && p){p.ticket=true;state.tickets.add(p.raw)}
       accepted++;
     }
 
@@ -566,7 +587,7 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
       <div class="small">${
         !parsed ? '→ 名前として採用せず' :
         giftInfo.hasGift
-          ? '🎁 採用 / OCR → '+escapeHtml(cleanNameText(parsed.name))+(match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+(rank?' / Rank.'+rank:'')
+          ? '🎁 採用'+(giftInfo.hasTicket?' / 🎫ガチャチケ検出':'')+' / OCR → '+escapeHtml(cleanNameText(parsed.name))+(match?' / 👤登録済み→ '+escapeHtml(match.nick):'')+(rank?' / Rank.'+rank:'')
           : '🚫 ギフトなしとして除外 / '+escapeHtml(cleanNameText(parsed.name))
       }</div>`;
       previews.appendChild(card);
@@ -707,7 +728,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v9では各ユーザー行の下にギフト画像／×個数があるか確認して、ギフトなしの入室者を除外しています。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v10ではギフト帯の『GACHA TICKET』も英語OCRで探して🎫欄へ自動追加します。`;
     renderAll();
   }catch(e){
     console.error(e);
