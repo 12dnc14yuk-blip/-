@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v11</title>
+<title>ありがとうメッセージメーカー v12</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v11</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v12</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v11ではガチャチケの探索範囲を横いっぱいに広げ、サポーターRankの青文字は別処理で直接読みます。
+      v12ではガチャチケをギフト帯まるごと読むのではなく、各ギフト枠を1個ずつ拡大して『GACHA TICKET』を探します。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -114,7 +114,7 @@ details summary{cursor:pointer;font-weight:800}
 
   <div class="card">
     <div class="section-title">③ チケット・サポーター</div>
-    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケはギフト帯を右端まで探索し、『GACHA TICKET』を検出した人を🎫欄へ自動追加します。</div>
+    <div class="small">Rankは青い「Rank○獲得」を専用OCRで読みます。ガチャチケは各ギフト枠を1個ずつ拡大OCRし、『GACHA TICKET』を見つけた人を🎫欄へ自動追加します。</div>
     <div id="extras"></div>
   </div>
 
@@ -454,6 +454,72 @@ async function readSupporterRank(canvas,y,W,H){
   if(!m) m=joined.match(/R[a-zA-Z]*\s*([1-4])\s*獲得/i);
   return {rank:m?Number(m[1]):null,text:joined,raw};
 }
+
+function ticketLikeColorScore(c){
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const d=ctx.getImageData(0,0,W,H).data;
+  let cyan=0, total=0;
+  for(let y=0;y<H;y+=2){
+    for(let x=0;x<W;x+=2){
+      const i=(y*W+x)*4;
+      const r=d[i],g=d[i+1],b=d[i+2];
+      // GACHA TICKET card is cyan/light-blue with white lettering.
+      if(b>145 && g>125 && b>r+20 && g>r+5) cyan++;
+      total++;
+    }
+  }
+  return total ? cyan/total : 0;
+}
+async function detectGachaTicketInBand(band){
+  const BW=band.width, BH=band.height;
+  let evidence=[];
+
+  // 1) OCR the whole band at high scale, sparse-text mode.
+  try{
+    const up=cropRect(band,0,0,BW,BH,3.0);
+    const rr=await recognizeCanvas(up,'eng',{tessedit_pageseg_mode:11});
+    evidence.push(norm(rr.data.text||''));
+  }catch(e){}
+
+  // 2) REALITY gift row displays roughly 4-5 tiles.
+  // Read each tile individually so tiny GACHA TICKET text becomes large.
+  const tileCount=5;
+  for(let k=0;k<tileCount;k++){
+    const x0=BW*k/tileCount;
+    const x1=BW*(k+1)/tileCount;
+    const tile=cropRect(band,x0,0,x1-x0,BH,3.4);
+    let t='';
+    try{
+      const rr=await recognizeCanvas(tile,'eng',{tessedit_pageseg_mode:11});
+      t=norm(rr.data.text||'');
+      evidence.push(t);
+    }catch(e){}
+
+    const joined=t.replace(/\s+/g,'').toUpperCase();
+    const textHit =
+      /GACHATICKET/.test(joined) ||
+      /GACHA/.test(joined) ||
+      /TICKET/.test(joined) ||
+      /T1CKET|TICKE[T7]|GAC[HNM]A|G[AO]CHA/.test(joined);
+
+    // Color is only a fallback and requires a meaningful cyan share.
+    const colorHit=ticketLikeColorScore(tile)>0.075;
+
+    if(textHit || colorHit){
+      return {hasTicket:true, evidence:evidence.join(' | '), tileIndex:k, tile};
+    }
+  }
+
+  const all=evidence.join(' ').replace(/\s+/g,'').toUpperCase();
+  const wholeHit =
+    /GACHATICKET/.test(all) ||
+    /GACHA/.test(all) ||
+    /TICKET/.test(all) ||
+    /T1CKET|TICKE[T7]|GAC[HNM]A|G[AO]CHA/.test(all);
+
+  return {hasTicket:wholeHit, evidence:evidence.join(' | '), tileIndex:null, tile:null};
+}
 async function rowHasGift(canvas,y,nextY,W,H){
   let bottom = nextY ? Math.min(nextY-H*0.018, y+H*0.20) : Math.min(H*0.92, y+H*0.18);
   let top = y + H*0.032;
@@ -469,33 +535,23 @@ async function rowHasGift(canvas,y,nextY,W,H){
     txt=norm(rr.data.text||'');
   }catch(e){}
 
-  // Run a second English-focused OCR on the raw band.
-  // The GACHA TICKET gift has stable English text and can survive even when Japanese OCR misses it.
-  try{
-    const rr2=await recognizeCanvas(band,'eng',{tessedit_pageseg_mode:6});
-    rawTxt=norm(rr2.data.text||'');
-  }catch(e){}
-
-  const joined = (txt+' '+rawTxt).replace(/\s+/g,' ').toUpperCase();
-  const hasCount = /(?:×|x|X)\s*\d+/.test(txt+' '+rawTxt);
+  const hasCount = /(?:×|x|X)\s*\d+/.test(txt);
   const hasVisual = score > 0.095;
 
-  // Be tolerant of imperfect OCR: "GACHA TICKET", "GACHA", or "TICKET".
-  // Require a reasonably ticket-like token to avoid random matches.
-  const hasTicket =
-      /GACHA\s*TICKET/.test(joined) ||
-      /GACHA/.test(joined) ||
-      /TICKET/.test(joined) ||
-      /T1CKET|TICKE[T7]|GAC[HNM]A|G[AO]CHA/.test(joined);
+  // GACHA TICKET: inspect each gift tile individually at high scale.
+  const ticketInfo=await detectGachaTicketInBand(band);
+  const hasTicket=ticketInfo.hasTicket;
 
   return {
     hasGift:hasCount || hasVisual,
     hasTicket,
     reason:hasCount?'count':(hasVisual?'visual':'blank'),
     countText:txt,
-    rawText:rawTxt,
+    rawText:ticketInfo.evidence || '',
     score,
-    band
+    band,
+    ticketTile:ticketInfo.tile,
+    ticketTileIndex:ticketInfo.tileIndex
   };
 }
 function trimNameCrop(c){
@@ -615,6 +671,7 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
         <img src="${tight.toDataURL('image/jpeg',0.9)}" style="flex:1;min-width:0">
       </div>
       ${giftInfo.band?`<img src="${giftInfo.band.toDataURL('image/jpeg',0.78)}" style="width:100%;margin-top:6px;max-height:92px;object-fit:cover">`:''}
+      ${giftInfo.ticketTile?`<div class="small" style="margin-top:4px">🎫検出したギフト枠</div><img src="${giftInfo.ticketTile.toDataURL('image/jpeg',0.9)}" style="width:44%;margin-top:3px;max-height:110px;object-fit:contain;background:white">`:''}
       ${rankInfo.raw?`<img src="${rankInfo.raw.toDataURL('image/jpeg',0.86)}" style="width:100%;margin-top:4px;max-height:48px;object-fit:cover">`:''}
       <div class="small">${
         !parsed ? '→ 名前として採用せず' :
@@ -760,7 +817,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v11では右端のガチャチケまで横いっぱい探索し、青いRank文字も専用処理で読みます。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v12ではギフト枠を1個ずつ拡大してガチャチケを探し、青いRank文字も専用処理で読みます。`;
     renderAll();
   }catch(e){
     console.error(e);
