@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v7</title>
+<title>ありがとうメッセージメーカー v8</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v7</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v8</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v7では『フォローする』文字のOCRを目印にするのをやめ、右側の灰色ボタンそのものを画像から検出します。名前の高さをそこに合わせるので、ギフト画像や変な空白を拾いにくくします。
+      v8では『灰色ボタン検出』だけでなく、『フォローする文字OCR』も併用します。どちらか片方が見落としても、両方の候補を合体して全員を拾いやすくします。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -367,6 +367,37 @@ function detectFollowButtonCenters(canvas){
   centers=centers.filter((y,i,a)=>i===0 || y-a[i-1]>H*0.065);
   return centers;
 }
+
+function mergeAnchors(pixelAnchors, ocrAnchors, H){
+  const all=[...(pixelAnchors||[]),...(ocrAnchors||[])].sort((a,b)=>a-b);
+  const merged=[];
+  for(const y of all){
+    const near=merged.findIndex(v=>Math.abs(v-y)<H*0.028);
+    if(near>=0) merged[near]=Math.round((merged[near]+y)/2);
+    else merged.push(Math.round(y));
+  }
+  merged.sort((a,b)=>a-b);
+
+  // If there is a very obvious "one-row hole", insert an inferred center.
+  if(merged.length>=3){
+    const gaps=[];
+    for(let i=1;i<merged.length;i++) gaps.push(merged[i]-merged[i-1]);
+    const sorted=[...gaps].sort((a,b)=>a-b);
+    const typical=sorted[Math.floor(sorted.length/2)] || 0;
+    if(typical>0){
+      const out=[merged[0]];
+      for(let i=1;i<merged.length;i++){
+        const gap=merged[i]-merged[i-1];
+        if(gap>typical*1.65 && gap<typical*2.45){
+          out.push(Math.round((merged[i]+merged[i-1])/2));
+        }
+        out.push(merged[i]);
+      }
+      return out.filter((y,i,a)=>i===0 || y-a[i-1]>H*0.045);
+    }
+  }
+  return merged;
+}
 function trimNameCrop(c){
   const ctx=c.getContext('2d');
   const W=c.width,H=c.height;
@@ -419,9 +450,23 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
   const W=canvas.width,H=canvas.height;
   const previews=$('#cropPreview');
 
-  $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：右側のフォローボタンを画像から探しています…`;
-  const anchors=detectFollowButtonCenters(canvas);
+  $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：フォローボタンを2方式で探しています…`;
 
+  // A: pixel detection of gray follow pill
+  const pixelAnchors=detectFollowButtonCenters(canvas);
+
+  // B: OCR of the right column for the literal "フォローする / フォロー中"
+  let ocrAnchors=[];
+  try{
+    const rx=W*0.50, ry=H*0.055, rw=W*0.47, rh=H*0.90;
+    const rightCrop=preprocessTextCrop(cropRect(canvas,rx,ry,rw,rh,1.45));
+    const rr=await recognizeCanvas(rightCrop,'jpn+eng',{tessedit_pageseg_mode:6});
+    ocrAnchors=followAnchorsFromOcr(rr.data,ry,1.45);
+  }catch(e){}
+
+  const anchors=mergeAnchors(pixelAnchors,ocrAnchors,H);
+
+  $('#status').textContent=`${fileIndex+1}/${totalFiles}枚目：${anchors.length}行のユーザー候補を検出しました。名前を読んでいます…`;
   let accepted=0;
   for(let j=0;j<anchors.length;j++){
     const y=anchors[j];
@@ -610,7 +655,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ${state.people.length}人を抽出しました。v7では灰色のフォローボタンの高さを基準に、名前1行だけを細く切り抜いています。`;
+    $('#status').textContent=`完了！ ${state.people.length}人を抽出しました。v8では灰色ボタン検出＋『フォローする』文字検出を合体し、片方が取りこぼした行も拾うようにしています。`;
     renderAll();
   }catch(e){
     console.error(e);
