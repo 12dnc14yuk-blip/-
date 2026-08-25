@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>ありがとうメッセージメーカー v18</title>
+<title>ありがとうメッセージメーカー v19</title>
 <style>
 :root{
   --bg:#f7f7fb;--card:#fff;--ink:#1c1c1e;--muted:#777;--line:#e8e8ee;
@@ -80,9 +80,9 @@ details summary{cursor:pointer;font-weight:800}
   </div>
 
   <div class="card">
-    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v18</span></div>
+    <div class="section-title">① スクショを入れる <span class="pill">REALITY専用OCR v19</span></div>
     <div class="small" style="line-height:1.6;margin-bottom:10px">
-      v18ではギフト欄を5等分するのをやめ、横方向を細かくスキャンしてガチャチケを探します。右端や枠の境目にあるチケットも拾いやすくします。
+      v19では読み取り中でも見つけた名前をその場で一覧へ反映します。また、ガチャチケ探索を高速化し、候補画像だけOCRするようにしました。
     </div>
     <div class="filebox">
       <div style="font-size:28px">📸</div>
@@ -587,77 +587,82 @@ function coloredCardCoverage(c){
 async function detectGachaTicketInBand(band){
   const ref=await getTicketReferenceFeatures();
   const BW=band.width,BH=band.height;
-
-  let best={
-    score:0, rawScore:0, x:null, width:null,
-    tile:null, evidence:'', textHit:false, gradientHit:false
-  };
-
-  // v18:
-  // Do NOT assume five perfectly aligned gift slots.
-  // Slide several window sizes horizontally so a ticket at the far right
-  // or across a former "slot boundary" can still be captured intact.
   const widths=[0.13,0.16,0.19,0.22].map(v=>BW*v);
   const step=Math.max(6, BW*0.025);
   const scanH=Math.min(BH, BH*0.72);
+  const candidates=[];
 
+  // Stage 1: fast visual scan only.
   for(const ww of widths){
     for(let x=0; x<=BW-ww; x+=step){
-      const raw=cropRect(band,x,0,ww,scanH,2.2);
+      const raw=cropRect(band,x,0,ww,scanH,1.8);
       const tight=cropNonWhite(raw);
-
       if(tight.width<16 || tight.height<12) continue;
 
       const feat=imageFeatures(tight);
       const rawScore=featureSimilarity(ref,feat);
       const card=coloredCardCoverage(tight);
-
-      // A real GACHA TICKET is a colored, horizontally oriented card.
       const cardLike =
         card.ratio >= 0.20 &&
         card.boxCoverage >= 0.34 &&
         card.aspect >= 1.20;
 
-      // OCR is only a confirmation path. With a correctly aligned crop,
-      // "GACHA TICKET" is much easier to read.
-      let ocr='';
-      try{
-        const rr=await recognizeCanvas(tight,'eng',{tessedit_pageseg_mode:11});
-        ocr=norm(rr.data.text||'').toUpperCase();
-      }catch(e){}
-
-      const compact=ocr.replace(/\s+/g,'');
-      const textHit =
-        /GACHATICKET/.test(compact) ||
-        (/GACHA/.test(compact) && /TICKET/.test(compact)) ||
-        (/GAC[HNM]A/.test(compact) && /T1CKET|TICKE[T7]/.test(compact));
-
-      // Penalize non-card stickers strongly.
-      let finalScore = cardLike ? rawScore : rawScore*0.68;
-      if(textHit) finalScore=Math.max(finalScore,0.99);
-
-      if(finalScore>best.score){
-        best={
-          score:finalScore,
-          rawScore,
-          x,
-          width:ww,
-          tile:tight,
-          evidence:
-            `template=${rawScore.toFixed(3)} `+
-            `cardRatio=${card.ratio.toFixed(3)} `+
-            `box=${card.boxCoverage.toFixed(3)} `+
-            `aspect=${card.aspect.toFixed(2)} `+
-            `ocr="${ocr}"`,
-          textHit,
-          gradientHit:cardLike
-        };
-      }
+      const visualScore = cardLike ? rawScore : rawScore*0.68;
+      candidates.push({
+        x,ww,tight,rawScore,visualScore,cardLike,card
+      });
     }
   }
 
-  // Exact text is definitive. Otherwise require a strong image match
-  // AND a card-like shape.
+  candidates.sort((a,b)=>b.visualScore-a.visualScore);
+  const top=candidates.slice(0,4);
+
+  let best={
+    score:top[0]?.visualScore||0,
+    rawScore:top[0]?.rawScore||0,
+    x:top[0]?.x??null,
+    width:top[0]?.ww??null,
+    tile:top[0]?.tight||null,
+    evidence:'',
+    textHit:false,
+    gradientHit:!!top[0]?.cardLike
+  };
+
+  // Stage 2: OCR only the strongest few candidates.
+  for(const c of top){
+    let ocr='';
+    try{
+      const rr=await recognizeCanvas(c.tight,'eng',{tessedit_pageseg_mode:11});
+      ocr=norm(rr.data.text||'').toUpperCase();
+    }catch(e){}
+    const compact=ocr.replace(/\s+/g,'');
+    const textHit =
+      /GACHATICKET/.test(compact) ||
+      (/GACHA/.test(compact) && /TICKET/.test(compact)) ||
+      (/GAC[HNM]A/.test(compact) && /T1CKET|TICKE[T7]/.test(compact));
+
+    const finalScore=textHit?0.99:c.visualScore;
+
+    if(finalScore>best.score || textHit){
+      best={
+        score:finalScore,
+        rawScore:c.rawScore,
+        x:c.x,
+        width:c.ww,
+        tile:c.tight,
+        evidence:
+          `template=${c.rawScore.toFixed(3)} `+
+          `cardRatio=${c.card.ratio.toFixed(3)} `+
+          `box=${c.card.boxCoverage.toFixed(3)} `+
+          `aspect=${c.card.aspect.toFixed(2)} `+
+          `ocr="${ocr}"`,
+        textHit,
+        gradientHit:c.cardLike
+      };
+    }
+    if(textHit) break;
+  }
+
   const hasTicket = best.textHit || (best.gradientHit && best.rawScore>=0.74);
 
   return {
@@ -815,6 +820,11 @@ async function analyzeRealityFile(file, fileIndex, totalFiles){
       if(rank && p){p.rank=rank;state.ranks[rank].add(p.raw)}
       if(giftInfo.hasTicket && p){p.ticket=true;state.tickets.add(p.raw)}
       accepted++;
+
+      // v19: show results immediately instead of waiting for every screenshot to finish.
+      renderPeople();
+      renderExtras();
+      generate();
     }
 
     if(previews.children.length<20){
@@ -969,6 +979,8 @@ async function analyze(){
   if(!files.length){$('#status').textContent='スクショを選んでください。';return}
   state.people=[]; state.tickets=new Set(); state.ranks={1:new Set(),2:new Set(),3:new Set(),4:new Set()};
   $('#cropPreview').innerHTML='';
+  $('#people').innerHTML='<div class="status">⏳ 読み取り中です。見つけた名前から順番にここへ表示します。</div>';
+  $('#extras').innerHTML='<div class="status">⏳ 読み取り中です。チケット・Rankも順番に反映します。</div>';
   $('#analyzeBtn').disabled=true;
   $('#bar').style.width='0%';
   try{
@@ -977,7 +989,7 @@ async function analyze(){
       accepted += await analyzeRealityFile(files[i],i,files.length);
     }
     $('#bar').style.width='100%';
-    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v18ではギフト欄を横方向にスキャンし、右端や境目にあるガチャチケも見本画像と照合します。`;
+    $('#status').textContent=`完了！ ギフトを送った人として ${state.people.length}人を抽出しました。v19では読み取り途中から名前一覧へ反映し、ガチャチケOCRも候補だけに絞って高速化しています。`;
     renderAll();
   }catch(e){
     console.error(e);
