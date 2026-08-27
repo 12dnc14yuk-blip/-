@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v12</title>
+<title>ありがとうメッセージメーカー v13</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
@@ -29,6 +29,15 @@ button{border:0;border-radius:22px;padding:18px 16px;font-weight:900;font-size:2
 .progress{height:10px;border-radius:99px;background:#eee9e5;overflow:hidden;margin-top:14px}
 .progress>i{display:block;width:0;height:100%;background:linear-gradient(90deg,var(--orange),#ff7d7d);transition:.2s}
 #preview{width:100%;max-height:520px;object-fit:contain;border-radius:18px;background:#f7f4f2;margin-top:14px;display:none}
+#imageRail{display:none;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:8px 2px 4px;margin-top:8px;-webkit-overflow-scrolling:touch}
+#imageRail.show{display:flex}
+.shotthumb{flex:0 0 78%;max-width:520px;scroll-snap-align:start;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;background:#111;position:relative}
+.shotthumb img{display:block;width:100%;height:220px;object-fit:contain;background:#111}
+.shotthumb span{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px}
+#imgLightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:60;display:none;align-items:center;justify-content:center;padding:16px}
+#imgLightbox.show{display:flex}
+#imgLightbox img{max-width:96vw;max-height:88vh;object-fit:contain;border-radius:14px}
+#imgLightbox button{position:absolute;top:max(16px,env(safe-area-inset-top));right:16px;background:#fff;color:#222;padding:10px 14px;border-radius:14px;font-size:14px}
 .person{border:1.5px solid var(--line);border-radius:22px;padding:18px;margin:14px 0;background:#fff}
 .person.ok{border-color:#b8dec8}
 .person.warn{border-color:#eabe52;background:#fffdf8}
@@ -94,7 +103,7 @@ button{border-radius:14px;padding:12px 10px;font-size:15px}
 label{font-size:10px}
 input,select,textarea{border-radius:11px;padding:9px 10px;font-size:13px}
 textarea{min-height:260px}
-.personshot{width:100%;height:82px;object-fit:cover;border:1px solid var(--line);border-radius:12px;margin-top:8px;background:#111}
+.personshot{width:100%;height:72px;object-fit:cover;border:1px solid var(--line);border-radius:10px;margin-top:6px;background:#111}
 .manualbox{display:none;margin-top:10px}
 .manualbox.show{display:block}
 #workCanvas{border-radius:12px;max-height:360px;object-fit:contain}
@@ -112,7 +121,7 @@ textarea{min-height:260px}
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v12</h1>
+  <h1>🐰 ありがとうメッセージメーカー v13</h1>
   <p class="lead">REALITYの「メッセージの送信先」専用。<b>左の丸いアイコンだけを人物アンカー</b>にして、右の3行だけ読みます。</p>
 
   <section class="card">
@@ -127,6 +136,7 @@ textarea{min-height:260px}
     </div>
     <div class="progress"><i id="bar"></i></div>
     <div id="status" class="statusline">スクショを選んでください。</div>
+    <div id="imageRail" aria-label="スクショ確認"></div>
     <img id="preview">
     <div class="manualbox" id="manualbox">
       <canvas id="workCanvas"></canvas>
@@ -172,14 +182,15 @@ textarea{min-height:260px}
   </section>
 </div>
 
+<div id="imgLightbox"><button type="button" id="closeLightbox">閉じる</button><img id="lightboxImg" alt="スクショ拡大"></div>
 <div class="sticky"><button class="primary" id="copySticky">📋 完成文をコピー</button></div>
 
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={
   images:[], imageIndex:0, people:[], mode:null,
-  corrections:JSON.parse(localStorage.getItem('shuri_v12_corrections')||'[]'),
-  nick:JSON.parse(localStorage.getItem('shuri_v12_nick')||'{}')
+  corrections:JSON.parse(localStorage.getItem('shuri_v13_corrections')||'[]'),
+  nick:JSON.parse(localStorage.getItem('shuri_v13_nick')||'{}')
 };
 
 function setStatus(s){ $('#status').textContent=s }
@@ -193,16 +204,27 @@ function digits(s){
 }
 function rankOf(s){
   let t=(s||'').normalize('NFKC');
-  let m=t.match(/Rank\s*\.?\s*([123])/i);
+  let m=t.match(/Rank\s*\.?\s*([1234])/i);
   return m?parseInt(m[1],10):null;
 }
 function isNew(s){ return /新規/.test(s||'') }
+function isJpChar(ch){return /[\u3040-\u30ff\u3400-\u9fff々〆〄ヶ〃]/.test(ch||'')}
+function compactNameSpaces(s){
+  s=norm(s);
+  // 日本語文字どうしのOCR由来の空白は除去。英単語同士の空白は残す。
+  let prev;
+  do{prev=s;s=s.replace(/([\u3040-\u30ff\u3400-\u9fff々〆〄ヶ〃])\s+([\u3040-\u30ff\u3400-\u9fff々〆〄ヶ〃])/g,'$1$2')}while(s!==prev);
+  s=s.replace(/([\u3040-\u30ff\u3400-\u9fff々〆〄ヶ〃])\s+([@#$%&+_~・.,!?！？♡♥❤()（）\[\]【】<>＜＞])/g,'$1$2');
+  s=s.replace(/([@#$%&+_~・.,!?！？♡♥❤()（）\[\]【】<>＜＞])\s+([\u3040-\u30ff\u3400-\u9fff々〆〄ヶ〃])/g,'$1$2');
+  return s.trim();
+}
 function cleanName(s){
   s=norm(s);
   s=s.replace(/(?:🎁|♡|♥|❤)?\s*\d{1,3}(?:,\d{3})*\s*コイン.*$/,'');
-  s=s.replace(/Rank\s*\.?\s*[123].*$/i,'');
-  s=s.replace(/^\s*(?:0\/\d+人|ギフトコイン数.*|メッセージ.*送信先).*$/,'');
-  return norm(s);
+  s=s.replace(/Rank\s*\.?\s*[1234].*$/i,'');
+  s=s.replace(/^\s*(?:0\/\d+人|ギフトコイン数.*|メッセージ.*送信先|すべて選択).*$/,'');
+  s=s.replace(/\s+(?=コイン$)/,'');
+  return compactNameSpaces(s);
 }
 function lev(a,b){
   a=noSpaces(a);b=noSpaces(b); const m=a.length,n=b.length;
@@ -218,7 +240,7 @@ function nicknameFor(name){
   for(const k of Object.keys(state.nick)){let s=similarity(k,name); if(s>bs){bs=s;best=k}}
   return bs>=0.88?state.nick[best]:name;
 }
-function persist(){localStorage.setItem('shuri_v12_nick',JSON.stringify(state.nick));localStorage.setItem('shuri_v12_corrections',JSON.stringify(state.corrections))}
+function persist(){localStorage.setItem('shuri_v13_nick',JSON.stringify(state.nick));localStorage.setItem('shuri_v13_corrections',JSON.stringify(state.corrections))}
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
 
 async function loadImage(file){
@@ -364,11 +386,41 @@ function cropCanvas(img, box){
   const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
   return c;
 }
-async function ocrCanvas(c, psm=7){
-  const {data}=await Tesseract.recognize(c,'jpn+eng',{
-    logger:m=>{ if(m.status==='recognizing text') setProgress(15+Math.round(m.progress*70)); }
-  });
-  return norm(data.text);
+function prepCanvas(src, mode='normal'){
+  const c=document.createElement('canvas'), scale=2.2; c.width=Math.round(src.width*scale); c.height=Math.round(src.height*scale);
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false; x.drawImage(src,0,0,c.width,c.height);
+  if(mode==='normal') return c;
+  const im=x.getImageData(0,0,c.width,c.height),d=im.data;
+  let lum=0; for(let i=0;i<d.length;i+=4) lum += .299*d[i]+.587*d[i+1]+.114*d[i+2];
+  lum/=Math.max(1,d.length/4);
+  const dark=lum<128;
+  for(let i=0;i<d.length;i+=4){
+    let g=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+    if(mode==='gray'){d[i]=d[i+1]=d[i+2]=dark?255-g:g;continue}
+    const v=(dark?g>110:g<165)?0:255; d[i]=d[i+1]=d[i+2]=v;
+  }
+  x.putImageData(im,0,0); return c;
+}
+async function ocrCanvas(c, psm=7, kind='generic'){
+  const variants=kind==='name'?['normal','gray','bw']:['normal','gray'];
+  let candidates=[];
+  for(const mode of variants){
+    const pc=prepCanvas(c,mode);
+    const {data}=await Tesseract.recognize(pc,'jpn+eng',{
+      logger:m=>{ if(m.status==='recognizing text') setProgress(15+Math.round(m.progress*70)); },
+      tessedit_pageseg_mode:String(psm), preserve_interword_spaces:'1'
+    });
+    const t=norm(data.text); if(t)candidates.push(t);
+  }
+  if(!candidates.length)return'';
+  if(kind==='name'){
+    candidates=candidates.map(cleanName).filter(Boolean);
+    candidates.sort((a,b)=>{
+      const bad=x=>(/コイン|Rank|送信先|ギフトコイン/.test(x)?8:0)+(x.match(/\s/g)||[]).length*0.25+(x.match(/[|]{2,}/g)||[]).length*2;
+      return bad(a)-bad(b) || Math.abs(a.length-12)-Math.abs(b.length-12);
+    });
+  }
+  return candidates[0]||'';
 }
 function boxesFor(img,cy){
   const W=img.width;
@@ -382,9 +434,9 @@ function boxesFor(img,cy){
 }
 async function readPerson(img,cy,imgIndex,source='auto'){
   const b=boxesFor(img,cy);
-  const nameRaw=await ocrCanvas(cropCanvas(img,b.name));
-  const coinRaw=await ocrCanvas(cropCanvas(img,b.coin));
-  const rankRaw=await ocrCanvas(cropCanvas(img,b.rank));
+  const nameRaw=await ocrCanvas(cropCanvas(img,b.name),7,'name');
+  const coinRaw=await ocrCanvas(cropCanvas(img,b.coin),7,'coin');
+  const rankRaw=await ocrCanvas(cropCanvas(img,b.rank),7,'rank');
   let name=cleanName(nameRaw), coin=digits(coinRaw), rank=rankOf(rankRaw), isnew=isNew(rankRaw);
   let issues=[];
   if(!name||name.length<1)issues.push('名前');
@@ -461,10 +513,10 @@ function renderPeople(){
         <label>本文の名前（ニックネーム）<input data-i="${idx}" data-k="nick" value="${attr(nicknameFor(p.name||''))}"></label>
         <label>コイン<input type="number" min="0" data-i="${idx}" data-k="coin" value="${p.coin??''}"></label>
         <label>現在Rank<select data-i="${idx}" data-k="rank">
-          <option value="">なし</option><option value="1"${p.rank===1?' selected':''}>Rank.1</option><option value="2"${p.rank===2?' selected':''}>Rank.2</option><option value="3"${p.rank===3?' selected':''}>Rank.3</option>
+          <option value="">なし</option><option value="1"${p.rank===1?' selected':''}>Rank.1</option><option value="2"${p.rank===2?' selected':''}>Rank.2</option><option value="3"${p.rank===3?' selected':''}>Rank.3</option><option value="4"${p.rank===4?' selected':''}>Rank.4</option>
         </select></label>
         <label>新規獲得<select data-i="${idx}" data-k="newRank">
-          <option value="">なし</option><option value="1"${p.newRank===1?' selected':''}>Rank.1</option><option value="2"${p.newRank===2?' selected':''}>Rank.2</option><option value="3"${p.newRank===3?' selected':''}>Rank.3</option>
+          <option value="">なし</option><option value="1"${p.newRank===1?' selected':''}>Rank.1</option><option value="2"${p.newRank===2?' selected':''}>Rank.2</option><option value="3"${p.newRank===3?' selected':''}>Rank.3</option><option value="4"${p.newRank===4?' selected':''}>Rank.4</option>
         </select></label>
       </div>
       <div class="btnrow">
@@ -550,14 +602,28 @@ async function copyResult(){
   try{await navigator.clipboard.writeText($('#result').value);setStatus('完成文をコピーしました！')}catch(e){$('#result').select();document.execCommand('copy')}
 }
 
+function renderImageRail(){
+  const rail=$('#imageRail'); rail.innerHTML='';
+  rail.classList.toggle('show',state.images.length>0);
+  state.images.forEach((img,i)=>{
+    const wrap=document.createElement('button');wrap.type='button';wrap.className='shotthumb';wrap.style.padding='0';wrap.style.border='1.5px solid var(--line)';
+    const im=document.createElement('img');im.src=img.src;im.alt=`スクショ ${i+1}`;
+    const tag=document.createElement('span');tag.textContent=`${i+1}/${state.images.length}`;
+    wrap.append(im,tag); wrap.onclick=()=>{state.imageIndex=i;$('#lightboxImg').src=img.src;$('#imgLightbox').classList.add('show')};
+    rail.appendChild(wrap);
+  });
+}
+$('#closeLightbox').onclick=()=>$('#imgLightbox').classList.remove('show');
+$('#imgLightbox').onclick=e=>{if(e.target.id==='imgLightbox')$('#imgLightbox').classList.remove('show')};
 $('#file').onchange=async e=>{
   state.images=[];
   for(const f of e.target.files){state.images.push(await loadImage(f))}
   if(state.images[0]){state.imageIndex=0}
-  setStatus(`${state.images.length}枚選択しました。`);
+  renderImageRail();
+  setStatus(`${state.images.length}枚選択しました。横にスワイプして確認できます。`);
 }
 $('#readBtn').onclick=analyze;
-$('#clearBtn').onclick=()=>{state.images=[];state.people=[];$('#file').value='';$('#preview').style.display='none';$('#manualbox').classList.remove('show');renderPeople();generateResult();setProgress(0);setStatus('スクショを選んでください。')};
+$('#clearBtn').onclick=()=>{state.images=[];state.people=[];$('#file').value='';$('#preview').style.display='none';$('#manualbox').classList.remove('show');renderImageRail();renderPeople();generateResult();setProgress(0);setStatus('スクショを選んでください。')};
 $('#regenBtn').onclick=generateResult;
 $('#copyBtn').onclick=copyResult;$('#copySticky').onclick=copyResult;
 
@@ -581,7 +647,7 @@ $('#saveLearnBtn').onclick=()=>{
 $$('.tab').forEach(b=>b.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#dictPanel').classList.toggle('hidden',b.dataset.tab!=='dict');$('#learnPanel').classList.toggle('hidden',b.dataset.tab!=='learn')});
 $('#exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify({nick:state.nick,corrections:state.corrections},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shuriri-name-dictionary-v12.json';a.click();URL.revokeObjectURL(a.href);
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shuriri-name-dictionary-v13.json';a.click();URL.revokeObjectURL(a.href);
 }
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{
