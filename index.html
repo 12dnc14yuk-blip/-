@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。人物の右側○と左側アイコンを同じ行の基準にして名前を読みます。V8.2では名前欄だけ上下に少し余白を戻し、太字が欠けにくい範囲で読み取ります。コイン・Rankは専用行から別々に読み取ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。V8.3ではV8.2の名前読み取りを維持し、コイン行だけ範囲を広げました。数字だけでなく「3,000コイン」のまとまりとして複数回読み、桁落ちしにくくしています。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -763,6 +763,20 @@ function cleanZoneText(s){
 async function ocrZone(canvas, x, y, w, h, scale, psms){
   const crop=cropCanvasScaled(canvas,x,y,w,h,scale);
   const reads=[];
+
+  // Original image first. Thin gray UI text can be damaged by thresholding.
+  for(const psm of psms){
+    try{
+      const r=await Tesseract.recognize(crop,"jpn+eng",{
+        tessedit_pageseg_mode:psm
+      });
+      reads.push({
+        text:cleanZoneText(r.data.text||""),
+        conf:Number(r.data.confidence||0)
+      });
+    }catch(e){}
+  }
+
   for(const mode of [0,1,2]){
     const processed=preprocessName(crop,mode);
     for(const psm of psms){
@@ -851,42 +865,78 @@ function nameSimilarityQuick(a,b){
 
 function chooseCoinFromReads(reads){
   const vals=[];
+
   for(const r of reads){
-    const t=cleanZoneText(r.text||"").replace(/\s+/g,"");
-    const m=t.match(/([0-9][0-9,]*)コ.?イ.?[ンソ]/i) || t.match(/([0-9][0-9,]*)/);
-    if(m){
-      const v=Number(m[1].replace(/,/g,""));
-      if(Number.isFinite(v)) vals.push(v);
+    let t=cleanZoneText(r.text||"");
+
+    // Normalize common OCR confusions around digits/commas.
+    t=t
+      .replace(/[，､]/g,",")
+      .replace(/[OoＯ〇]/g,"0")
+      .replace(/[Ilｌ｜]/g,"1")
+      .replace(/\s+/g,"");
+
+    // Prefer numbers explicitly followed by コイン-like text.
+    const patterns=[
+      /([0-9][0-9,]*)コ.?イ.?[ンソ]/i,
+      /([0-9][0-9,]*)コイン/i,
+      /([0-9][0-9,]*)/
+    ];
+
+    let m=null;
+    for(const p of patterns){
+      m=t.match(p);
+      if(m) break;
     }
-  }
-  if(!vals.length) return {value:null,uncertain:true};
 
-  const positives=vals.filter(v=>v>0);
-  const pool=positives.length?positives:vals;
-  const counts=new Map();
-  for(const v of pool) counts.set(v,(counts.get(v)||0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1] || a[0]-b[0]);
-
-  let value=ranked[0][0];
-
-  // Fix common duplicated leading digit, e.g. 1000 -> 11000.
-  for(const small of [...new Set(pool)].sort((a,b)=>a-b)){
-    const ss=String(small);
-    for(const big of [...new Set(pool)]){
-      const bs=String(big);
-      if(bs.length===ss.length+1){
-        for(let i=0;i<bs.length;i++){
-          if(bs.slice(0,i)+bs.slice(i+1)===ss){
-            value=small;
-          }
-        }
+    if(m){
+      const raw=m[1].replace(/,/g,"");
+      const v=Number(raw);
+      if(Number.isFinite(v) && v>=0 && v<=9999999){
+        vals.push({value:v,conf:Number(r.conf||0),text:t});
       }
     }
   }
 
-  return {value,uncertain:ranked[0][1]===1 && pool.length>1};
-}
+  if(!vals.length) return {value:null,uncertain:true};
 
+  // Group same values and score by repetition + confidence.
+  const grouped=new Map();
+  for(const x of vals){
+    if(!grouped.has(x.value)) grouped.set(x.value,{count:0,conf:0});
+    const g=grouped.get(x.value);
+    g.count++;
+    g.conf=Math.max(g.conf,x.conf);
+  }
+
+  const ranked=[...grouped.entries()]
+    .map(([value,g])=>({
+      value,
+      score:g.count*30 + Math.min(25,g.conf*.3),
+      count:g.count
+    }))
+    .sort((a,b)=>b.score-a.score);
+
+  let chosen=ranked[0];
+
+  // If one candidate is a strict digit-subsequence of another, prefer the value
+  // that has stronger repetition; otherwise prefer the longer plausible coin number.
+  if(ranked.length>1){
+    const a=ranked[0], b=ranked[1];
+    const sa=String(a.value), sb=String(b.value);
+
+    if(a.count===b.count){
+      if(sa.length<sb.length && sb.includes(sa)) chosen=b;
+      else if(sb.length<sa.length && sa.includes(sb)) chosen=a;
+    }
+  }
+
+  const uncertain =
+    ranked.length>1 &&
+    (chosen.score - ranked[1].score < 8);
+
+  return {value:chosen.value,uncertain};
+}
 function chooseRankFromReads(reads){
   const vals=[];
   let newVotes=0;
@@ -956,17 +1006,18 @@ async function recognizeRealityPersonBlock(canvas,centerY){
   );
   const namePick=chooseNameFromReads(nameZone.reads);
 
-  // COIN: narrow line directly under the bold name.
-  const coinTop=Math.max(0,centerY+H*.004);
-  const coinBottom=Math.min(H,centerY+H*.027);
+  // COIN: V8.3 widens this area so the first digit/comma is not clipped.
+  // Read the whole "3,000コイン" style phrase, not just a tiny numeric strip.
+  const coinTop=Math.max(0,centerY-H*.001);
+  const coinBottom=Math.min(H,centerY+H*.033);
   const coinZone=await ocrZone(
     canvas,
-    W*.155,
+    W*.135,
     coinTop,
-    W*.44,
+    W*.56,
     Math.max(1,coinBottom-coinTop),
-    3.8,
-    [7,13]
+    4.0,
+    [6,7,11,13]
   );
   const coinPick=chooseCoinFromReads(coinZone.reads);
 
