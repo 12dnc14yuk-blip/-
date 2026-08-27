@@ -87,13 +87,13 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。各カードで、太字の名前・コイン数・現在Rank・新規獲得Rankをまとめて確認できます。名前は絵文字・顔文字を除いて文字部分だけ抽出します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。REALITYの1人分の行を基準に、太字の名前・コイン数・現在Rank・新規獲得Rankをセットで確認します。名前は太字部分を優先し、絵文字・顔文字とOCR由来の空白だけ除去します。怪しい候補は自動確定せず要確認へ送ります。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
   <div class="card">
     <div class="sec">③ ⚠️ 要確認</div>
-    <div class="small">明らかな文字欠け・UI混入など、本当に怪しいものだけ表示します。低い信頼度だけでは要確認にしません。</div>
+    <div class="small">明らかな文字欠け・UI混入・太字名と一致しない候補など、本当に怪しいものだけ表示します。OCRが作った長い謎文字列は採用せず、元画像の太字名を確認できるようにします。</div>
     <div id="reviews"></div>
   </div>
 
@@ -197,33 +197,52 @@ function stripEmojiAndKaomoji(s){
 
   return t;
 }
+
+// REALITY「メッセージの送信先」専用。
+// 名前を画面全体から推測せず、1人分の行の太字領域を優先して読む。
+function realityNameScore(raw){
+  const s=String(raw||"").trim();
+  if(!s) return -999;
+  let score=0;
+  // REALITY UI語が混ざった候補は名前ではない可能性が高い
+  if(/コイン|Rank|Lv\.?|新規|送信先|すべて選択|ギフトコイン|メッセージ/i.test(s)) score-=80;
+  // OCR暴走でありがちな長大な英数記号列を抑制
+  const latin=(s.match(/[A-Za-z0-9_$¥\\|<>]/g)||[]).length;
+  const jp=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
+  if(s.length>45) score-=35;
+  if(latin>18 && jp<4) score-=30;
+  // 太字名として自然な長さ・文字構成を加点
+  if(s.length>=1 && s.length<=32) score+=18;
+  if(jp>0) score+=12;
+  if(/[A-Za-z]/.test(s)) score+=4; // 海外名・英字名も許可
+  if(/[@!！?？._\-〜～・彡〇○]/u.test(s)) score+=2; // 名前に普通に入りうる記号
+  return score;
+}
+
+function normalizeRealityName(raw){
+  let s=String(raw||"");
+  // UI情報を名前から切り離す
+  s=s.replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"");
+  s=s.replace(/\s*Rank\s*\d+.*$/i,"").replace(/\s*Lv\.?\s*\d+.*$/i,"");
+  // 絵文字・顔文字装飾を除去
+  s=stripEmojiAndKaomoji(s);
+  // OCR由来の空白は詰める。ただし文字そのものは勝手に別名へ置換しない
+  s=s.replace(/[\s\u3000]+/gu,"");
+  // 先頭末尾のOCRゴミだけ除去
+  s=s.replace(/^[\\\/|｜,，、。．:：;；]+|[\\\/|｜,，、。．:：;；]+$/gu,"");
+  return s.trim();
+}
+
+function chooseRealityName(candidates){
+  const cleaned=(candidates||[])
+    .map(normalizeRealityName)
+    .filter(Boolean);
+  if(!cleaned.length) return "";
+  cleaned.sort((a,b)=>realityNameScore(b)-realityNameScore(a));
+  return cleaned[0];
+}
 function cleanName(s){
-  let t=norm(s);
-
-  // Remove obvious UI fragments.
-  t=t
-    .replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"")
-    .replace(/\s*Rank\s*[1-9]\d*.*$/i,"")
-    .replace(/\s*Lv\.?\s*\d+.*$/i,"");
-
-  // Remove leaked row/ranking prefixes such as "4。" or "3.".
-  t=t.replace(/^\s*[\\\/|｜]*\s*\d{1,3}\s*[\.．。・:：、,，\-\)\]】]*\s*/u,"");
-
-  // Remove stray OCR punctuation at the beginning.
-  t=t.replace(/^\s*[\\\/|｜・。．,，:：]+\s*/u,"");
-
-  // Remove emoji / kaomoji decoration, but keep actual multilingual text.
-  t=stripEmojiAndKaomoji(t);
-
-  // User preference: names contain no OCR-inserted spaces.
-  t=t.replace(/[\s\u3000]+/gu,"");
-
-  // Clean duplicated punctuation produced after emoji removal.
-  t=t
-    .replace(/^[,，、。．・:：;；]+/u,"")
-    .replace(/[,，、。．・:：;；]+$/u,"");
-
-  return t.trim();
+  return normalizeRealityName(norm(s));
 }
 function plausibleName(s){
   s=cleanName(s);
