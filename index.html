@@ -61,6 +61,12 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 .sticky .inner{max-width:820px;margin:auto;display:flex;gap:8px}.sticky button{flex:1}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal.show{display:flex}.modal img{max-width:100%;max-height:88vh;border-radius:14px}.modal button{position:absolute;top:18px;right:18px}
+
+.compactinfo{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr;gap:6px;margin-top:8px}
+.compactinfo .mini{border:1px solid var(--line);border-radius:10px;padding:7px 8px;background:#fff;font-size:12px}
+.compactinfo .mini b{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+@media(max-width:560px){.compactinfo{grid-template-columns:1fr 1fr}}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -543,19 +549,34 @@ function blockNameCandidate(lines, coinLine, H){
 }
 
 
-function findRealityRowCenters(canvas){
+function clusterYs(values,minGap=58){
+  const ys=[...new Set(values.map(v=>Math.round(v)).filter(Number.isFinite))].sort((a,b)=>a-b);
+  const groups=[];
+  for(const y of ys){
+    const last=groups[groups.length-1];
+    if(!last || y-last[last.length-1]>minGap) groups.push([y]);
+    else last.push(y);
+  }
+  return groups.map(g=>Math.round(g.reduce((a,b)=>a+b,0)/g.length));
+}
+
+async function findRealityRowCenters(canvas){
   /*
-    REALITYの「メッセージの送信先」は各人物行の右端に
-    灰色の丸い選択ボタンがある。
-    OCR文字を基準にせず、この丸を使って「人物が何人いるか」を先に確定する。
-    これでコインや名前のOCR失敗による取りこぼしを防ぐ。
+    人物検出を1方式に依存しない。
+    A) 右端の選択○
+    B) 全体OCRの「○○コイン」
+    C) Rank行
+    のY座標をまとめ、同じ人物の候補をクラスタリングする。
+    画面端で○が切れていても、コイン/Rankが見えていれば人物として残る。
   */
   const W=canvas.width,H=canvas.height;
+  const centers=[];
+
+  // A: gray selection circles on the right.
   const ctx=canvas.getContext("2d");
   const x0=Math.floor(W*.845), x1=Math.floor(W*.985);
   const d=ctx.getImageData(x0,0,x1-x0,H).data;
   const w=x1-x0;
-
   const scores=[];
   for(let y=0;y<H;y+=2){
     let mid=0;
@@ -563,39 +584,41 @@ function findRealityRowCenters(canvas){
       const i=(y*w+x)*4;
       const r=d[i],g=d[i+1],b=d[i+2];
       const lum=.299*r+.587*g+.114*b;
-      // 選択ボタンの薄い灰色リング。黒文字や青文字を拾いすぎない範囲。
       if(lum>145 && lum<235 && Math.max(r,g,b)-Math.min(r,g,b)<22) mid++;
     }
     scores.push({y,score:mid});
   }
-
-  // Candidate rows with enough gray-ring pixels.
-  const threshold=Math.max(5, Math.floor(w/35));
+  const threshold=Math.max(5,Math.floor(w/35));
   const ys=scores.filter(v=>v.score>=threshold).map(v=>v.y);
-
   const groups=[];
   for(const y of ys){
     const last=groups[groups.length-1];
     if(!last || y-last[last.length-1]>10) groups.push([y]);
     else last.push(y);
   }
-
-  let centers=groups
-    .filter(g=>g.length>=3)
-    .map(g=>Math.round((g[0]+g[g.length-1])/2));
-
-  // Merge fragments belonging to one circle.
-  const merged=[];
-  for(const y of centers){
-    if(!merged.length || y-merged[merged.length-1]>55) merged.push(y);
-    else merged[merged.length-1]=Math.round((merged[merged.length-1]+y)/2);
+  for(const g of groups.filter(g=>g.length>=3)){
+    const y=Math.round((g[0]+g[g.length-1])/2);
+    if(y>H*.18 && y<H*.985) centers.push(y);
   }
 
-  // Header's "select all" circle may exist. Person rows need enough vertical room
-  // and normally sit below the list heading.
-  return merged.filter(y=>y>H*.20 && y<H*.97);
-}
+  // B/C: OCR anchors as fallback, especially for partially visible rows.
+  try{
+    const r=await Tesseract.recognize(canvas,"jpn+eng",{tessedit_pageseg_mode:11});
+    const lines=groupLines(r.data.words);
+    for(const l of lines){
+      const txt=(l.text||"").normalize("NFKC");
+      if(/[0-9][0-9,]*\s*コ.?イ.?[ンソ]/i.test(txt)){
+        // coin line lies slightly below the row's visual center
+        centers.push(l.cy-H*.012);
+      }else if(/Rank\s*[1-9]/i.test(txt)){
+        // Rank line lies below the row's visual center
+        centers.push(l.cy-H*.035);
+      }
+    }
+  }catch(e){}
 
+  return clusterYs(centers,58).filter(y=>y>H*.18 && y<H*.985);
+}
 function parseRealityPersonText(text){
   const raw=String(text||"").replace(/\r/g,"");
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
@@ -696,7 +719,7 @@ async function analyzeOne(file,fileIndex,total){
   c.getContext("2d").drawImage(img,0,0);
 
   // 1) Detect EVERY visible person by the right-hand selection circles.
-  const centers=findRealityRowCenters(c);
+  const centers=await findRealityRowCenters(c);
   const rows=[];
 
   for(let j=0;j<centers.length;j++){
@@ -742,6 +765,52 @@ async function analyzeOne(file,fileIndex,total){
   URL.revokeObjectURL(url);
   return rows;
 }
+function simpleNameKey(s){
+  return cleanName(s||"")
+    .toLowerCase()
+    .replace(/[!！?？._\-〜～・@]/g,"")
+    .replace(/[0-9０-９]/g,"");
+}
+
+function dedupePeopleAcrossScreens(people){
+  const sorted=[...people].sort((a,b)=>(b.coin||0)-(a.coin||0));
+  const out=[];
+  for(const p of sorted){
+    const pk=simpleNameKey(p.raw||p.display);
+    let hit=-1;
+
+    for(let i=0;i<out.length;i++){
+      const q=out[i];
+      const qk=simpleNameKey(q.raw||q.display);
+
+      // Same coin + highly similar name is almost certainly the same person
+      // duplicated by overlapping screenshots.
+      const sameCoin=(p.coin===q.coin);
+      const sim=similarityQuick(pk,qk);
+      if(pk && qk && sameCoin && sim>=.62){
+        hit=i;break;
+      }
+    }
+
+    if(hit<0){
+      out.push(p);
+    }else{
+      const q=out[hit];
+      // Keep the more useful OCR result / metadata.
+      const pScore=(p.raw?.length||0)+(p.rank?8:0)+(p.isNew?4:0)-(p.needsReview?5:0);
+      const qScore=(q.raw?.length||0)+(q.rank?8:0)+(q.isNew?4:0)-(q.needsReview?5:0);
+      if(pScore>qScore){
+        p.display=q.display && q.display!==q.raw ? q.display : p.display;
+        out[hit]=p;
+      }
+      out[hit].rank=out[hit].rank||p.rank;
+      out[hit].isNew=out[hit].isNew||p.isNew;
+      out[hit].needsReview=out[hit].needsReview&&p.needsReview;
+    }
+  }
+  return out;
+}
+
 function renderGallery(){
   const box=$("#gallery");box.innerHTML="";
   state.files.forEach((f,i)=>{
@@ -770,7 +839,19 @@ function renderPeople(){
         <button class="ghost imageBtn" data-i="${idx}" style="flex:0 0 auto">📷画像を見る</button>
       </div>
 
-      <div class="grid2" style="margin-top:10px">
+      <div class="compactinfo">
+        <div class="mini"><b>👤 名前</b>${esc(p.display||p.raw||"未読取")}</div>
+        <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}</div>
+        <div class="mini"><b>❤️ Rank</b>${p.rank?"Rank."+p.rank:"なし"}</div>
+        <div class="mini"><b>🌱 新規</b>${p.isNew&&p.rank?"Rank."+p.rank:"なし"}</div>
+      </div>
+      <div class="compactinfo">
+        <div class="mini"><b>👤 読取</b>${esc(p.raw||"未読取")}</div>
+        <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}</div>
+        <div class="mini"><b>❤️ Rank</b>${p.rank?"Rank."+p.rank:"なし"}</div>
+        <div class="mini"><b>🌱 新規</b>${p.isNew&&p.rank?"Rank."+p.rank:"なし"}</div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
         <div>
           <label>🤖 読み取り名</label>
           <input class="rawName" data-i="${idx}" value="${esc(p.raw||"")}" autocomplete="off">
@@ -915,7 +996,7 @@ ${b[0]}：${b[1]}！`;
     for(const p of newRanks){
       rankText+=`✨ ${p.display}　Rank.${p.rank} GET！\n`;
       rankText+=p.rank===1
-        ? "🐰 しゅり村の仲間になりました！\n\n"
+        ? "🐰 なかまになった！\n\n"
         : "⚡ なかまLEVEL UP！\n\n";
     }
     rankText+="仲間になってくれてありがと〜ｯ！🙌\n";
@@ -971,8 +1052,9 @@ $("#analyze").onclick=async()=>{
       const rows=await analyzeOne(state.files[i].file,i,state.files.length);
       state.people.push(...rows);renderAll();
     }
+    state.people=dedupePeopleAcrossScreens(state.people);
     state.people.sort((a,b)=>(b.coin||0)-(a.coin||0));
-    $("#bar").style.width="100%";$("#status").textContent=`完了！ ${state.people.length}人候補を抽出しました。要確認だけ直してください。`;renderAll();
+    $("#bar").style.width="100%";$("#status").textContent=`完了！ 重複をまとめて ${state.people.length}人を抽出しました。要確認だけ直してください。`;renderAll();
   }catch(e){console.error(e);$("#status").textContent="読み取りに失敗しました。\n"+e.message}
   finally{$("#analyze").disabled=false}
 };
