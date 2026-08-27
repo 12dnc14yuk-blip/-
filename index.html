@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8f2">
-<title>しゅりり ありがとうメッセージメーカー v7</title>
+<title>しゅりり ありがとうメッセージメーカー V9</title>
 <style>
 :root{
   --bg:#fff8f2;--card:#fff;--ink:#4a372e;--muted:#90786b;--line:#ecdcd0;
@@ -72,7 +72,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v7</h1>
+  <h1>🐰 ありがとうメッセージメーカー V9</h1>
   <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
 
   <div class="card">
@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。V8.3ではV8.2の名前読み取りを維持し、コイン行だけ範囲を広げました。数字だけでなく「3,000コイン」のまとまりとして複数回読み、桁落ちしにくくしています。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含め、丸いプロフィールアイコンを検出した人を全員表示します。人物の判定は左側の丸いアイコンだけを基準にし、その右側にある「名前・コイン数・現在Rank・新規獲得Rank」の4項目だけを読み取ります。説明文・ヘッダー・ボタン・右側の選択○・Lv.などは読み取り対象外です。0コインの人は確認一覧には残りますが、完成文のギフト欄からは除外します。名前はスクショの表示名をできるだけそのまま読み取り、ニックネームへの変更は送信名欄で手動で行います。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -1050,6 +1050,231 @@ async function recognizeRealityPersonBlock(canvas,centerY){
     cropUrl:evidence.toDataURL("image/jpeg",.95)
   };
 }
+
+/* ============================================================
+   V9 CORE
+   PERSON = left circular profile avatar only.
+   OCR = one pass per screenshot.
+   Fields = NAME / COIN / CURRENT RANK / NEW RANK only.
+   Everything else is ignored.
+   ============================================================ */
+
+function v9AvatarActivity(canvas){
+  const W=canvas.width, H=canvas.height;
+  const ctx=canvas.getContext("2d");
+
+  // REALITY profile icons live in the far-left strip.
+  const x0=Math.floor(W*.035);
+  const x1=Math.floor(W*.145);
+  const w=Math.max(1,x1-x0);
+  const img=ctx.getImageData(x0,0,w,H).data;
+
+  const rows=[];
+  for(let y=0;y<H;y+=2){
+    let active=0;
+    let vivid=0;
+    let total=0;
+
+    for(let x=0;x<w;x+=2){
+      const i=(y*w+x)*4;
+      const r=img[i], g=img[i+1], b=img[i+2];
+      const max=Math.max(r,g,b), min=Math.min(r,g,b);
+      const chroma=max-min;
+      const lum=.299*r+.587*g+.114*b;
+
+      total++;
+      // Avatar pixels tend to contain either color or dense dark detail.
+      if((chroma>18 && lum<247) || lum<135){
+        active++;
+        if(chroma>28) vivid++;
+      }
+    }
+
+    rows.push({
+      y,
+      ratio: total ? active/total : 0,
+      vivid: total ? vivid/total : 0
+    });
+  }
+  return rows;
+}
+
+function v9FindAvatarCenters(canvas){
+  const H=canvas.height;
+  const scan=v9AvatarActivity(canvas);
+
+  // Sustained activity is required. This rejects the top-left back arrow,
+  // which is mostly white and only has a thin black stroke.
+  const hits=scan.filter(v => v.ratio>.18 || (v.ratio>.11 && v.vivid>.055));
+  const groups=[];
+
+  for(const h of hits){
+    const last=groups[groups.length-1];
+    if(!last || h.y-last[last.length-1].y>8) groups.push([h]);
+    else last.push(h);
+  }
+
+  const centers=[];
+  for(const g of groups){
+    const y0=g[0].y, y1=g[g.length-1].y;
+    const height=y1-y0;
+
+    // Full avatars are roughly 55-110 px high on the screenshots.
+    // Keep partially cropped avatars too, but reject tiny text/noise fragments.
+    if(height<22 || height>145) continue;
+
+    const avg=g.reduce((s,v)=>s+v.ratio,0)/g.length;
+    const vivid=g.reduce((s,v)=>s+v.vivid,0)/g.length;
+
+    if(avg<.13 && vivid<.045) continue;
+
+    const cy=Math.round((y0+y1)/2);
+
+    // Exclude only the extreme screen chrome. Rows near screenshot edges remain valid.
+    if(cy>H*.012 && cy<H*.992) centers.push(cy);
+  }
+
+  // Nearby fragments belong to the same avatar.
+  const merged=[];
+  for(const y of centers.sort((a,b)=>a-b)){
+    if(!merged.length || y-merged[merged.length-1]>58){
+      merged.push(y);
+    }else{
+      merged[merged.length-1]=Math.round((merged[merged.length-1]+y)/2);
+    }
+  }
+  return merged;
+}
+
+function v9WordBox(word){
+  const b=word.bbox||{};
+  const x0=Number(b.x0||0), y0=Number(b.y0||0), x1=Number(b.x1||0), y1=Number(b.y1||0);
+  return {x0,y0,x1,y1,cx:(x0+x1)/2,cy:(y0+y1)/2};
+}
+
+function v9TextInBand(words, x0, x1, y0, y1){
+  const selected=(words||[])
+    .map(w=>({w,b:v9WordBox(w)}))
+    .filter(o =>
+      o.b.cx>=x0 && o.b.cx<=x1 &&
+      o.b.cy>=y0 && o.b.cy<=y1 &&
+      String(o.w.text||"").trim()
+    )
+    .sort((a,b)=>a.b.x0-b.b.x0);
+
+  if(!selected.length) return {text:"",conf:0};
+
+  const text=selected.map(o=>String(o.w.text||"").trim()).join("");
+  const conf=selected.reduce((s,o)=>s+Number(o.w.confidence||o.w.conf||0),0)/selected.length;
+  return {text,conf};
+}
+
+function v9CleanNameOnly(s){
+  let t=String(s||"").normalize("NFKC");
+
+  // Remove emoji / pictographic decoration, while keeping normal punctuation
+  // that may genuinely be part of a username.
+  try{
+    t=t.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/gu,"");
+  }catch(e){}
+
+  // Names in REALITY are visually continuous; OCR-inserted spaces are removed.
+  t=t.replace(/\s+/g,"").trim();
+
+  // Explicitly reject UI vocabulary if it somehow leaks into the name band.
+  if(/メッセージ|送信先|個別メッセージ|サポーターバッジ|ギフトコイン|すべて選択|コイン数の多い順/i.test(t)){
+    return "";
+  }
+  if(/^(Rank|Lv|新規|コイン)$/i.test(t)) return "";
+  return t;
+}
+
+function v9ParseCoin(s){
+  let t=String(s||"").normalize("NFKC").replace(/\s+/g,"");
+  t=t.replace(/[，､]/g,",")
+     .replace(/[OoＯ〇]/g,"0")
+     .replace(/[Ilｌ｜]/g,"1");
+
+  // Strict rule: accept only a number in the dedicated coin band.
+  // "コイン" is preferred but not mandatory because OCR can drop gray suffix text.
+  let m=t.match(/([0-9][0-9,]*)コ.?イ.?[ンソ]?/i);
+  if(!m) m=t.match(/^([0-9][0-9,]*)/);
+  if(!m) return null;
+
+  const n=Number(m[1].replace(/,/g,""));
+  if(!Number.isFinite(n) || n<0 || n>9999999) return null;
+  return n;
+}
+
+function v9ParseRank(s){
+  const t=String(s||"").normalize("NFKC").replace(/\s+/g,"");
+  const m=t.match(/Rank[.:]?([1-9][0-9]*)/i);
+  if(!m) return {rank:null,isNew:false};
+  return {
+    rank:Number(m[1]),
+    isNew:/新規/.test(t)
+  };
+}
+
+function v9EvidenceCrop(canvas,cy){
+  const W=canvas.width,H=canvas.height;
+  const top=Math.max(0,cy-H*.052);
+  const bottom=Math.min(H,cy+H*.062);
+  return cropCanvasScaled(canvas,W*.025,top,W*.735,Math.max(1,bottom-top),1.25)
+    .toDataURL("image/jpeg",.94);
+}
+
+async function v9ReadScreenshot(canvas){
+  const W=canvas.width,H=canvas.height;
+  const centers=v9FindAvatarCenters(canvas);
+
+  // One OCR pass for the whole screenshot. This is the main speed improvement.
+  const ocr=await Tesseract.recognize(canvas,"jpn+eng",{
+    tessedit_pageseg_mode:11
+  });
+  const words=(ocr.data&&ocr.data.words)||[];
+
+  const rows=[];
+
+  for(const cy of centers){
+    // Only the area immediately to the RIGHT of the profile avatar is legal OCR territory.
+    const x0=W*.145;
+    const x1=W*.755;
+
+    // Dedicated non-overlapping bands.
+    const nameBand=v9TextInBand(words,x0,x1,cy-H*.032,cy+H*.003);
+    const coinBand=v9TextInBand(words,x0,x1,cy+H*.002,cy+H*.030);
+    const rankBand=v9TextInBand(words,x0,x1,cy+H*.028,cy+H*.058);
+
+    const raw=v9CleanNameOnly(nameBand.text);
+    const coin=v9ParseCoin(coinBand.text);
+    const rp=v9ParseRank(rankBand.text);
+
+    // A detected avatar means a person exists even if OCR fails.
+    // Missing fields become "要確認", never a guessed UI string.
+    const needsReview =
+      !raw ||
+      coin===null ||
+      ((coin||0)>0 && rp.rank===null) ||
+      Number(nameBand.conf||0)<34;
+
+    rows.push({
+      raw,
+      display:raw,
+      coin:coin===null?0:coin,
+      coinUnknown:coin===null,
+      rank:rp.rank,
+      isNew:rp.isNew,
+      conf:Number(nameBand.conf||0),
+      needsReview,
+      cropUrl:v9EvidenceCrop(canvas,cy),
+      alternatives:[]
+    });
+  }
+
+  return rows;
+}
+
 async function analyzeOne(file,fileIndex,total){
   const url=URL.createObjectURL(file);
   const img=new Image();
@@ -1060,55 +1285,13 @@ async function analyzeOne(file,fileIndex,total){
   c.height=img.naturalHeight;
   c.getContext("2d").drawImage(img,0,0);
 
-  // 1) Detect EVERY visible person by the right-hand selection circles.
-  const centers=await findRealityRowCenters(c);
-  const rows=[];
+  const rows=await v9ReadScreenshot(c);
 
-  for(let j=0;j<centers.length;j++){
-    const rr=await recognizeRealityPersonBlock(c,centers[j]);
-    const b=rr.best;
-
-    const raw=cleanName(b.name||"");
-    const coin=b.coin;
-    const rank=b.rank;
-    const isNew=!!b.isNew;
-
-    // A visible row must never disappear merely because OCR failed.
-    // Missing structured fields are sent to 要確認.
-    const needsReview=
-      !raw ||
-      !!b.nameUncertain ||
-      !!b.coinUncertain ||
-      (coin===null) ||
-      ((coin||0)>0 && (!!b.rankUncertain || rank===null)) ||
-      obviouslyBrokenName(raw,b.conf||0,0);
-
-    const alternatives=rr.alternatives
-      .map(x=>cleanName(x.name||""))
-      .filter((x,i,a)=>x && x!==raw && a.indexOf(x)===i)
-      .slice(0,4);
-
-    const normalizedCoin=coin===null?0:coin;
-
-    // Keep EVERY detected person in the confirmation list, including 0 coin.
-    // Publication filtering happens only when the final thank-you text is generated.
-    rows.push({
-      raw,
-      display:raw,
-      coin:normalizedCoin,
-      coinUnknown:coin===null,
-      rank,
-      isNew,
-      conf:b.conf||0,
-      needsReview,
-      cropUrl:rr.cropUrl,
-      fileIndex,
-      alternatives
-    });
-
-    const overall=(fileIndex+(j+1)/Math.max(1,centers.length))/total;
+  rows.forEach((r,i)=>{
+    r.fileIndex=fileIndex;
+    const overall=(fileIndex+(i+1)/Math.max(1,rows.length))/total;
     $("#bar").style.width=`${Math.min(100,Math.round(overall*100))}%`;
-  }
+  });
 
   URL.revokeObjectURL(url);
   return rows;
