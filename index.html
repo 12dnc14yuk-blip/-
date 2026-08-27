@@ -87,13 +87,13 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。REALITYの1人分の行を基準に、太字の名前・コイン数・現在Rank・新規獲得Rankをセットで確認します。名前は太字部分を優先し、絵文字・顔文字とOCR由来の空白だけ除去します。怪しい候補は自動確定せず要確認へ送ります。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。各カードで、太字の名前・コイン数・現在Rank・新規獲得Rankをまとめて確認できます。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンから画面に映っている人物を先に全員検出するので、名前やコインのOCR失敗だけで人物が消えないようにします。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
   <div class="card">
     <div class="sec">③ ⚠️ 要確認</div>
-    <div class="small">明らかな文字欠け・UI混入・太字名と一致しない候補など、本当に怪しいものだけ表示します。OCRが作った長い謎文字列は採用せず、元画像の太字名を確認できるようにします。</div>
+    <div class="small">明らかな文字欠け・UI混入など、本当に怪しいものだけ表示します。低い信頼度だけでは要確認にしません。</div>
     <div id="reviews"></div>
   </div>
 
@@ -197,52 +197,33 @@ function stripEmojiAndKaomoji(s){
 
   return t;
 }
-
-// REALITY「メッセージの送信先」専用。
-// 名前を画面全体から推測せず、1人分の行の太字領域を優先して読む。
-function realityNameScore(raw){
-  const s=String(raw||"").trim();
-  if(!s) return -999;
-  let score=0;
-  // REALITY UI語が混ざった候補は名前ではない可能性が高い
-  if(/コイン|Rank|Lv\.?|新規|送信先|すべて選択|ギフトコイン|メッセージ/i.test(s)) score-=80;
-  // OCR暴走でありがちな長大な英数記号列を抑制
-  const latin=(s.match(/[A-Za-z0-9_$¥\\|<>]/g)||[]).length;
-  const jp=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
-  if(s.length>45) score-=35;
-  if(latin>18 && jp<4) score-=30;
-  // 太字名として自然な長さ・文字構成を加点
-  if(s.length>=1 && s.length<=32) score+=18;
-  if(jp>0) score+=12;
-  if(/[A-Za-z]/.test(s)) score+=4; // 海外名・英字名も許可
-  if(/[@!！?？._\-〜～・彡〇○]/u.test(s)) score+=2; // 名前に普通に入りうる記号
-  return score;
-}
-
-function normalizeRealityName(raw){
-  let s=String(raw||"");
-  // UI情報を名前から切り離す
-  s=s.replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"");
-  s=s.replace(/\s*Rank\s*\d+.*$/i,"").replace(/\s*Lv\.?\s*\d+.*$/i,"");
-  // 絵文字・顔文字装飾を除去
-  s=stripEmojiAndKaomoji(s);
-  // OCR由来の空白は詰める。ただし文字そのものは勝手に別名へ置換しない
-  s=s.replace(/[\s\u3000]+/gu,"");
-  // 先頭末尾のOCRゴミだけ除去
-  s=s.replace(/^[\\\/|｜,，、。．:：;；]+|[\\\/|｜,，、。．:：;；]+$/gu,"");
-  return s.trim();
-}
-
-function chooseRealityName(candidates){
-  const cleaned=(candidates||[])
-    .map(normalizeRealityName)
-    .filter(Boolean);
-  if(!cleaned.length) return "";
-  cleaned.sort((a,b)=>realityNameScore(b)-realityNameScore(a));
-  return cleaned[0];
-}
 function cleanName(s){
-  return normalizeRealityName(norm(s));
+  let t=norm(s);
+
+  // Remove obvious UI fragments.
+  t=t
+    .replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"")
+    .replace(/\s*Rank\s*[1-9]\d*.*$/i,"")
+    .replace(/\s*Lv\.?\s*\d+.*$/i,"");
+
+  // Remove leaked row/ranking prefixes such as "4。" or "3.".
+  t=t.replace(/^\s*[\\\/|｜]*\s*\d{1,3}\s*[\.．。・:：、,，\-\)\]】]*\s*/u,"");
+
+  // Remove stray OCR punctuation at the beginning.
+  t=t.replace(/^\s*[\\\/|｜・。．,，:：]+\s*/u,"");
+
+  // Remove emoji / kaomoji decoration, but keep actual multilingual text.
+  t=stripEmojiAndKaomoji(t);
+
+  // User preference: names contain no OCR-inserted spaces.
+  t=t.replace(/[\s\u3000]+/gu,"");
+
+  // Clean duplicated punctuation produced after emoji removal.
+  t=t
+    .replace(/^[,，、。．・:：;；]+/u,"")
+    .replace(/[,，、。．・:：;；]+$/u,"");
+
+  return t.trim();
 }
 function plausibleName(s){
   s=cleanName(s);
@@ -561,6 +542,149 @@ function blockNameCandidate(lines, coinLine, H){
   };
 }
 
+
+function findRealityRowCenters(canvas){
+  /*
+    REALITYの「メッセージの送信先」は各人物行の右端に
+    灰色の丸い選択ボタンがある。
+    OCR文字を基準にせず、この丸を使って「人物が何人いるか」を先に確定する。
+    これでコインや名前のOCR失敗による取りこぼしを防ぐ。
+  */
+  const W=canvas.width,H=canvas.height;
+  const ctx=canvas.getContext("2d");
+  const x0=Math.floor(W*.845), x1=Math.floor(W*.985);
+  const d=ctx.getImageData(x0,0,x1-x0,H).data;
+  const w=x1-x0;
+
+  const scores=[];
+  for(let y=0;y<H;y+=2){
+    let mid=0;
+    for(let x=0;x<w;x+=3){
+      const i=(y*w+x)*4;
+      const r=d[i],g=d[i+1],b=d[i+2];
+      const lum=.299*r+.587*g+.114*b;
+      // 選択ボタンの薄い灰色リング。黒文字や青文字を拾いすぎない範囲。
+      if(lum>145 && lum<235 && Math.max(r,g,b)-Math.min(r,g,b)<22) mid++;
+    }
+    scores.push({y,score:mid});
+  }
+
+  // Candidate rows with enough gray-ring pixels.
+  const threshold=Math.max(5, Math.floor(w/35));
+  const ys=scores.filter(v=>v.score>=threshold).map(v=>v.y);
+
+  const groups=[];
+  for(const y of ys){
+    const last=groups[groups.length-1];
+    if(!last || y-last[last.length-1]>10) groups.push([y]);
+    else last.push(y);
+  }
+
+  let centers=groups
+    .filter(g=>g.length>=3)
+    .map(g=>Math.round((g[0]+g[g.length-1])/2));
+
+  // Merge fragments belonging to one circle.
+  const merged=[];
+  for(const y of centers){
+    if(!merged.length || y-merged[merged.length-1]>55) merged.push(y);
+    else merged[merged.length-1]=Math.round((merged[merged.length-1]+y)/2);
+  }
+
+  // Header's "select all" circle may exist. Person rows need enough vertical room
+  // and normally sit below the list heading.
+  return merged.filter(y=>y>H*.20 && y<H*.97);
+}
+
+function parseRealityPersonText(text){
+  const raw=String(text||"").replace(/\r/g,"");
+  const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+
+  let coin=null, rank=null, isNew=false;
+  let coinIndex=-1, rankIndex=-1;
+
+  for(let i=0;i<lines.length;i++){
+    const compact=lines[i].normalize("NFKC").replace(/\s+/g,"");
+    const cm=compact.match(/([0-9][0-9,]*)コ.?イ.?[ンソ]/i);
+    if(cm && coin===null){
+      coin=Number(cm[1].replace(/,/g,""));
+      coinIndex=i;
+    }
+    const rm=compact.match(/Rank[.:]?\s*([1-9]\d*)/i);
+    if(rm && rank===null){
+      rank=Number(rm[1]);
+      isNew=/新規/.test(compact);
+      rankIndex=i;
+    }
+  }
+
+  // Name should be the line immediately above coin. If coin OCR failed,
+  // take the first plausible line and leave coin blank for manual check.
+  let name="";
+  if(coinIndex>0){
+    name=lines[coinIndex-1];
+  }else{
+    name=lines.find(l=>plausibleName(l) && !/コ.?イ.?ン|Rank|Lv\.?|新規/i.test(l)) || "";
+  }
+
+  name=cleanName(name);
+
+  return {name,coin,rank,isNew,lines};
+}
+
+async function recognizeRealityPersonBlock(canvas,centerY){
+  const W=canvas.width,H=canvas.height;
+
+  // Full evidence card: avatar + bold name + coin + Rank.
+  const top=Math.max(0,centerY-H*.055);
+  const bottom=Math.min(H,centerY+H*.070);
+
+  const evidence=cropCanvasScaled(
+    canvas,W*.025,top,W*.955,bottom-top,1.35
+  );
+
+  // OCR crop excludes avatar and right-side circle to focus on text.
+  const textCrop=cropCanvasScaled(
+    canvas,W*.135,top,W*.70,bottom-top,2.5
+  );
+
+  const candidates=[];
+  for(const mode of [0,1,2]){
+    const processed=preprocessName(textCrop,mode);
+    for(const psm of [6,11]){
+      try{
+        const r=await Tesseract.recognize(processed,"jpn+eng",{
+          tessedit_pageseg_mode:psm
+        });
+        const parsed=parseRealityPersonText(r.data.text||"");
+        candidates.push({
+          ...parsed,
+          conf:Number(r.data.confidence||0),
+          source:`block-${mode}-${psm}`
+        });
+      }catch(e){}
+    }
+  }
+
+  // Score complete structured reads highest.
+  candidates.forEach(c=>{
+    let score=0;
+    if(c.name) score+=35;
+    if(c.coin!==null) score+=35;
+    if(c.rank!==null) score+=20;
+    score+=Math.min(10,c.conf*.12);
+    if(c.name && [...c.name].length>50) score-=40;
+    if(c.name && /コ.?イ.?ン|Rank|Lv/i.test(c.name)) score-=70;
+    c.score=score;
+  });
+  candidates.sort((a,b)=>b.score-a.score);
+
+  return {
+    best:candidates[0]||{name:"",coin:null,rank:null,isNew:false,conf:0},
+    alternatives:candidates.slice(1,4),
+    cropUrl:evidence.toDataURL("image/jpeg",.95)
+  };
+}
 async function analyzeOne(file,fileIndex,total){
   const url=URL.createObjectURL(file);
   const img=new Image();
@@ -571,77 +695,53 @@ async function analyzeOne(file,fileIndex,total){
   c.height=img.naturalHeight;
   c.getContext("2d").drawImage(img,0,0);
 
-  // First read the whole screenshot. Coin rows are used as structural anchors:
-  // NAME (bold) -> COIN -> CURRENT RANK / NEW.
-  const result=await Tesseract.recognize(c,"jpn+eng",{
-    logger:m=>{
-      if(m.status==="recognizing text"){
-        const overall=(fileIndex+(m.progress||0)*0.55)/total;
-        $("#bar").style.width=`${Math.round(overall*100)}%`;
-      }
-    }
-  });
-
-  const lines=groupLines(result.data.words);
-  const coinLines=lines.map(x=>({...x,coin:coinValue(x.text)})).filter(x=>x.coin!==null);
+  // 1) Detect EVERY visible person by the right-hand selection circles.
+  const centers=findRealityRowCenters(c);
   const rows=[];
 
-  for(let j=0;j<coinLines.length;j++){
-    const cl=coinLines[j];
+  for(let j=0;j<centers.length;j++){
+    const rr=await recognizeRealityPersonBlock(c,centers[j]);
+    const b=rr.best;
 
-    // Use the whole 3-line person block first. Dedicated name OCR is only a fallback/second opinion.
-    const blockCandidate=blockNameCandidate(lines,cl,c.height);
-    const fullCandidate=nearestFullPageName(lines,cl,c.height);
-    const region=await recognizeNameRegion(c,cl);
-    const chosen=chooseBestName(blockCandidate||fullCandidate,region);
+    const raw=cleanName(b.name||"");
+    const coin=b.coin;
+    const rank=b.rank;
+    const isNew=!!b.isNew;
 
-    let raw=chosen.best?.cleaned || blockCandidate?.cleaned || fullCandidate?.cleaned || "";
-    raw=cleanName(raw).replace(/\s+/g,""); // requested: remove OCR-inserted spaces in names
-    const conf=chosen.best?.conf || blockCandidate?.conf || 0;
+    // A visible row must never disappear merely because OCR failed.
+    // Missing structured fields are sent to 要確認.
+    const needsReview=
+      !raw ||
+      coin===null ||
+      (coin!==null && coin>0 && rank===null) ||
+      obviouslyBrokenName(raw,b.conf||0,0);
 
-    const ri=rankInfoNear(lines,cl,c.height);
-    const rank=ri.rank, isNew=ri.isNew;
-
-    // Confirmation image deliberately includes ALL evidence:
-    // bold name + coin + current rank/new marker. More generous than v7.
-    const rowTop=Math.max(0, cl.cy-c.height*.075);
-    const rowBottom=Math.min(c.height, cl.cy+c.height*.075);
-    const rowCrop=cropCanvasScaled(
-      c, c.width*.015, rowTop, c.width*.965, rowBottom-rowTop, 1.35
-    );
-    const cropUrl=rowCrop.toDataURL("image/jpeg",.95);
-
-    const ink=region?.inkScore||0;
-    const broken=obviouslyBrokenName(raw,conf,ink);
-    // Missing coin cannot happen here because coin is the anchor.
-    // Missing rank is review-worthy only when the screenshot visibly should contain metadata.
-    const needsReview=broken || chosen.disagreement || rank===null;
-
-    const alternatives=chosen.pool
-      .map(x=>cleanName(x.cleaned).replace(/\s+/g,""))
+    const alternatives=rr.alternatives
+      .map(x=>cleanName(x.name||""))
       .filter((x,i,a)=>x && x!==raw && a.indexOf(x)===i)
       .slice(0,4);
 
     rows.push({
-      raw, display:raw,
-      coin:cl.coin,
+      raw,
+      display:raw,
+      coin:coin===null?0:coin,
+      coinUnknown:coin===null,
       rank,
       isNew,
-      conf,
+      conf:b.conf||0,
       needsReview,
-      cropUrl,
+      cropUrl:rr.cropUrl,
       fileIndex,
       alternatives
     });
 
-    const overall=(fileIndex+.55+.45*((j+1)/Math.max(1,coinLines.length)))/total;
+    const overall=(fileIndex+(j+1)/Math.max(1,centers.length))/total;
     $("#bar").style.width=`${Math.min(100,Math.round(overall*100))}%`;
   }
 
   URL.revokeObjectURL(url);
   return rows;
 }
-
 function renderGallery(){
   const box=$("#gallery");box.innerHTML="";
   state.files.forEach((f,i)=>{
@@ -722,7 +822,7 @@ function renderReviews(){
     const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person review";
     d.innerHTML=`
       <div class="reviewtitle">⚠️ AI判断が不確か</div>
-      <div class="meta">AI読取候補：${esc(p.raw||"未読取")}${p.alternatives?.length?` / 他候補：${p.alternatives.map(esc).join("・")}`:""}<br>下の画像を見て修正してください。</div>
+      <div class="meta">AI読取候補：${esc(p.raw||"未読取")}${p.alternatives?.length?` / 他候補：${p.alternatives.map(esc).join("・")}`:""}<br>💰 コイン：${p.coinUnknown?"要確認":p.coin+"コイン"} / ❤️ 現在Rank：${p.rank?"Rank."+p.rank:"要確認"} / 🌱 新規獲得：${p.isNew&&p.rank?"Rank."+p.rank:"なし"}<br>下の画像を見て修正してください。</div>
       <img class="crop" src="${p.cropUrl}" style="margin-top:9px">
       <div class="grid2" style="margin-top:8px">
         <div>
