@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定し、その人の名前・コイン・Rankだけを同じ行から読みます。画面端で○が切れている場合だけコイン行から救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -569,6 +569,7 @@ async function findRealityRowCenters(canvas){
   const primary=[];
 
   // 1) PERSON ANCHOR = right-side selection circle.
+  // Top-edge rows are valid too, so do not discard the upper part of the screenshot.
   const ctx=canvas.getContext("2d");
   const x0=Math.floor(W*.86), x1=Math.floor(W*.985);
   const data=ctx.getImageData(x0,0,x1-x0,H).data;
@@ -599,10 +600,12 @@ async function findRealityRowCenters(canvas){
   for(const g of groups){
     if(g.length<4) continue;
     const y=Math.round((g[0]+g[g.length-1])/2);
-    if(y>H*.18 && y<H*.985) primary.push(y);
+
+    // Important: a valid person may be partially visible right at the top.
+    if(y>H*.018 && y<H*.992) primary.push(y);
   }
 
-  // Merge only fragments that are clearly from the SAME circle.
+  // Merge only fragments from the same circle.
   const centers=[];
   for(const y of primary.sort((a,b)=>a-b)){
     if(!centers.length || y-centers[centers.length-1]>48){
@@ -612,9 +615,10 @@ async function findRealityRowCenters(canvas){
     }
   }
 
-  // 2) EDGE RESCUE ONLY:
-  // If the row is partially cut at top/bottom and the circle is off-screen,
-  // a coin line may rescue it. Do not use headers or Rank lines to invent rows.
+  // 2) EDGE RESCUE:
+  // When the selection circle is cropped off, rescue a coin line only if there is
+  // a plausible NAME line directly above it. This allows top-edge users such as
+  // the person above "ミルク" without turning the page header into a fake person.
   try{
     const r=await Tesseract.recognize(canvas,"jpn+eng",{tessedit_pageseg_mode:11});
     const lines=groupLines(r.data.words);
@@ -624,14 +628,22 @@ async function findRealityRowCenters(canvas){
       const m=txt.match(/([0-9][0-9,]*)\s*コ.?イ.?[ンソ]/i);
       if(!m) continue;
 
-      // Ignore UI/header regions. Actual person coin lines are in list rows.
-      if(l.cy < H*.18) continue;
-
       const predicted=l.cy-H*.022;
+      if(predicted < H*.01 || predicted > H*.995) continue;
 
-      // Only rescue rows very near screen edges OR where there is a big gap
-      // between detected circles. This prevents headers from becoming people.
-      const nearEdge = predicted < H*.24 || predicted > H*.88;
+      const nameCandidates=lines
+        .filter(n=>{
+          const dy=l.cy-n.cy;
+          return dy>H*.006 && dy<H*.055 && plausibleName(n.text);
+        })
+        .sort((a,b)=>b.cy-a.cy);
+
+      if(!nameCandidates.length) continue;
+
+      const candidateName=cleanName(nameCandidates[0].text);
+      if(!plausibleName(candidateName)) continue;
+
+      const nearEdge = predicted < H*.22 || predicted > H*.90;
       const noNearby = !centers.some(c=>Math.abs(c-predicted)<78);
 
       if(nearEdge && noNearby){
@@ -642,14 +654,17 @@ async function findRealityRowCenters(canvas){
 
   centers.sort((a,b)=>a-b);
 
-  // Final strict merge: distinct REALITY rows are much farther apart than 70px.
+  // Final merge.
   const final=[];
   for(const y of centers){
-    if(!final.length || y-final[final.length-1]>70) final.push(y);
-    else final[final.length-1]=Math.round((final[final.length-1]+y)/2);
+    if(!final.length || y-final[final.length-1]>70){
+      final.push(y);
+    }else{
+      final[final.length-1]=Math.round((final[final.length-1]+y)/2);
+    }
   }
 
-  return final.filter(y=>y>H*.14 && y<H*.995);
+  return final.filter(y=>y>H*.008 && y<H*.997);
 }
 function parseRealityPersonText(text){
   const raw=String(text||"").replace(/\r/g,"");
