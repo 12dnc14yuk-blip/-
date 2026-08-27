@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8f2">
-<title>しゅりり ありがとうメッセージメーカー v5</title>
+<title>しゅりり ありがとうメッセージメーカー v6</title>
 <style>
 :root{
   --bg:#fff8f2;--card:#fff;--ink:#4a372e;--muted:#90786b;--line:#ecdcd0;
@@ -66,7 +66,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v5</h1>
+  <h1>🐰 ありがとうメッセージメーカー v6</h1>
   <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
 
   <div class="card">
@@ -87,7 +87,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前内の空白は自動で詰めます。名前欄だけを複数パターンで再読取し、短すぎる・欠けている可能性が高い名前だけ要確認に送ります。名前か「📷画像を見る」をタップすると元画像を確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前内の空白は自動で詰めます。コイン行のすぐ上にある名前欄だけを複数パターンで再読取します。「📷画像を見る」では、その人のアイコン・名前・コイン・Rankまで含む1行分を確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -234,12 +234,15 @@ function obviouslyBrokenName(raw,conf,inkScore=0){
   // Typical catastrophic OCR outputs seen in the screenshots.
   if(len<=2 && /^[&@#%*+=~on]+$/i.test(s)) return true;
 
-  // If the crop visibly contains a fair amount of dark text but OCR returned
-  // only 1-3 characters, the result is probably truncated.
-  if(inkScore>0.045 && len<=3) return true;
+  // If the crop visibly contains text but OCR returned only a tiny fragment,
+  // it is probably truncated.
+  if(inkScore>0.030 && len<=3) return true;
 
-  // Extremely low confidence + very short text is review-worthy.
-  if((conf||0)<22 && len<=4) return true;
+  // Very low confidence + short result is review-worthy.
+  if((conf||0)<28 && len<=5) return true;
+
+  // Common bad partial outputs.
+  if(/^(やっ|はや|on|of|or|in)$/i.test(s)) return true;
 
   return false;
 }
@@ -280,27 +283,36 @@ function preprocessName(c,mode=0){
 async function recognizeNameRegion(canvas, coinLine){
   const W=canvas.width,H=canvas.height;
 
-  // REALITY layout: avatar at left, name in the middle, coin row directly below.
-  // Crop only the name strip. Use several vertical windows because screenshots
-  // can vary slightly in scaling.
+  /*
+    REALITY layout:
+      NAME
+      COIN
+      Rank
+    Previous version cropped too high and sometimes read the previous user.
+    These bands sit immediately ABOVE the detected coin row.
+  */
   const configs=[
-    {sx:.145, sy:-.066, sw:.68, sh:.050, scale:2.8},
-    {sx:.145, sy:-.060, sw:.72, sh:.044, scale:3.1},
-    {sx:.135, sy:-.072, sw:.74, sh:.056, scale:2.5}
+    {sx:.145, top:-.046, bottom:-.010, sw:.70, scale:3.0},
+    {sx:.140, top:-.042, bottom:-.006, sw:.72, scale:3.2},
+    {sx:.150, top:-.050, bottom:-.014, sw:.68, scale:2.8}
   ];
 
   const candidates=[];
   let preview=null, previewInk=0;
 
   for(const cfg of configs){
+    const sy=coinLine.cy + H*cfg.top;
+    const sh=H*(cfg.bottom-cfg.top);
+
     const raw=cropCanvasScaled(
       canvas,
       W*cfg.sx,
-      coinLine.cy + H*cfg.sy,
+      sy,
       W*cfg.sw,
-      H*cfg.sh,
+      sh,
       cfg.scale
     );
+
     if(!preview){
       preview=raw;
       previewInk=nameVisualInkScore(raw);
@@ -308,11 +320,18 @@ async function recognizeNameRegion(canvas, coinLine){
 
     for(const mode of [0,1,2]){
       const test=preprocessName(raw,mode);
+
       for(const psm of [7,6,13]){
         try{
-          const r=await Tesseract.recognize(test,"jpn+eng",{tessedit_pageseg_mode:psm});
+          const r=await Tesseract.recognize(
+            test,
+            "jpn+eng",
+            {tessedit_pageseg_mode:psm}
+          );
+
           const original=norm(r.data.text||"");
           const cleaned=cleanName(original);
+
           if(plausibleName(cleaned)){
             candidates.push({
               original,
@@ -327,22 +346,27 @@ async function recognizeNameRegion(canvas, coinLine){
     }
   }
 
-  // Deduplicate identical OCR strings, keeping the best confidence.
   const map=new Map();
   for(const c of candidates){
     const old=map.get(c.cleaned);
     if(!old || c.conf>old.conf) map.set(c.cleaned,c);
   }
+
   const uniq=[...map.values()];
 
-  // Prefer longer complete strings, but keep confidence relevant.
-  // Strong penalty for obvious garbage.
   uniq.forEach(c=>{
-    let score=c.len*7 + c.conf*.45;
-    if(/^[&@#%*+=~]+$/.test(c.cleaned)) score-=80;
-    if(c.len<=2) score-=25;
+    let score=c.len*8 + c.conf*.40;
+
+    if(/^[&@#%*+=~]+$/.test(c.cleaned)) score-=100;
+    if(/^(on|of|or|in)$/i.test(c.cleaned)) score-=80;
+    if(c.len<=2) score-=35;
+
+    // Strings that look like app UI are never good name candidates.
+    if(/コ.?イ.?ン|Rank|Lv/i.test(c.cleaned)) score-=150;
+
     c.score=score;
   });
+
   uniq.sort((a,b)=>b.score-a.score);
 
   return {
@@ -358,20 +382,22 @@ async function analyzeOne(file,fileIndex,total){
   await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url});
 
   const c=document.createElement("canvas");
-  c.width=img.naturalWidth;c.height=img.naturalHeight;
+  c.width=img.naturalWidth;
+  c.height=img.naturalHeight;
   c.getContext("2d").drawImage(img,0,0);
 
-  // First OCR the whole screenshot only to find coin rows and Rank rows.
+  // Whole screenshot OCR is used only to locate COIN and Rank rows.
   const result=await Tesseract.recognize(c,"jpn+eng",{
     logger:m=>{
       if(m.status==="recognizing text"){
-        const overall=(fileIndex+(m.progress||0)*0.45)/total;
+        const overall=(fileIndex+(m.progress||0)*0.42)/total;
         $("#bar").style.width=`${Math.round(overall*100)}%`;
       }
     }
   });
 
   const lines=groupLines(result.data.words);
+
   const coinLines=lines
     .map(x=>({...x,coin:coinValue(x.text)}))
     .filter(x=>x.coin!==null);
@@ -381,30 +407,45 @@ async function analyzeOne(file,fileIndex,total){
   for(let j=0;j<coinLines.length;j++){
     const cl=coinLines[j];
 
-    // Dedicated OCR on the NAME STRIP only.
+    // Dedicated name OCR from the strip immediately above this coin line.
     const nr=await recognizeNameRegion(c,cl);
+
     const raw=nr.best?.cleaned||"";
     const conf=nr.best?.conf||0;
 
-    // Rank/new flag comes from rows below the coin line.
+    // Read Rank/new status under THIS coin row.
     const below=lines
-      .filter(l=>l.cy>cl.cy && l.cy-cl.cy<c.height*.085)
+      .filter(l=>l.cy>cl.cy && l.cy-cl.cy<c.height*.070)
       .sort((a,b)=>a.cy-b.cy);
 
-    let rank=null,isNew=false,rankLine=null;
+    let rank=null,isNew=false;
     for(const l of below){
       const m=l.text.match(/Rank\s*([1-4])/i);
       if(m){
         rank=Number(m[1]);
         isNew=/新規/.test(l.text);
-        rankLine=l;
         break;
       }
     }
 
-    // Review crop shows exactly the area used to infer this row.
-    let cropUrl="";
-    if(nr.crop) cropUrl=nr.crop.toDataURL("image/jpeg",.92);
+    /*
+      Confirmation image:
+      show the whole person's visible row, not only the OCR strip.
+      This makes it easy to compare avatar/name/coin/Rank.
+    */
+    const rowTop=cl.cy-c.height*.055;
+    const rowBottom=cl.cy+c.height*.060;
+
+    const rowCrop=cropCanvasScaled(
+      c,
+      c.width*.025,
+      rowTop,
+      c.width*.94,
+      rowBottom-rowTop,
+      1.25
+    );
+
+    const cropUrl=rowCrop.toDataURL("image/jpeg",.93);
 
     const needsReview=obviouslyBrokenName(raw,conf,nr.inkScore);
 
@@ -421,8 +462,11 @@ async function analyzeOne(file,fileIndex,total){
       alternatives:nr.alternatives.map(x=>x.cleaned)
     });
 
-    const overall=(fileIndex+0.45+0.55*((j+1)/Math.max(1,coinLines.length)))/total;
-    $("#bar").style.width=`${Math.min(100,Math.round(overall*100))}%`;
+    const overall=
+      (fileIndex+0.42+0.58*((j+1)/Math.max(1,coinLines.length)))/total;
+
+    $("#bar").style.width=
+      `${Math.min(100,Math.round(overall*100))}%`;
   }
 
   URL.revokeObjectURL(url);
