@@ -749,6 +749,71 @@ function chooseCoinConsensus(candidates){
   return candidates.find(c=>c.coin!==null)?.coin ?? null;
 }
 
+
+async function recognizeRealityNameOnly(canvas,centerY){
+  const W=canvas.width,H=canvas.height;
+  const bands=[
+    {top:-.040,bottom:-.012,scale:3.5},
+    {top:-.036,bottom:-.008,scale:3.8},
+    {top:-.044,bottom:-.016,scale:3.2}
+  ];
+  const results=[];
+
+  for(const b of bands){
+    const top=Math.max(0,centerY+H*b.top);
+    const bottom=Math.min(H,centerY+H*b.bottom);
+    const crop=cropCanvasScaled(
+      canvas,W*.145,top,W*.68,Math.max(1,bottom-top),b.scale
+    );
+
+    for(const mode of [0,1,2]){
+      const processed=preprocessName(crop,mode);
+      for(const psm of [7,13]){
+        try{
+          const r=await Tesseract.recognize(processed,"jpn+eng",{
+            tessedit_pageseg_mode:psm
+          });
+          let s=cleanName(r.data.text||"");
+          s=s
+            .replace(/[$¥€£¢]+/gu,"")
+            .replace(/[|｜\\]+/gu,"")
+            .replace(/^[^A-Za-z0-9\u3040-\u30ff\u3400-\u9fff]+/u,"")
+            .replace(/[^A-Za-z0-9\u3040-\u30ff\u3400-\u9fff@!！?？._\-〜～・〇○彡]+$/u,"");
+
+          if(!plausibleName(s)) continue;
+          results.push({text:s,conf:Number(r.data.confidence||0)});
+        }catch(e){}
+      }
+    }
+  }
+
+  if(!results.length) return null;
+
+  const map=new Map();
+  for(const r of results){
+    const old=map.get(r.text);
+    if(!old || r.conf>old.conf) map.set(r.text,r);
+  }
+  const uniq=[...map.values()];
+
+  uniq.forEach(x=>{
+    let support=0;
+    for(const y of uniq){
+      if(x===y) continue;
+      if(similarityQuick(simpleNameKey(x.text),simpleNameKey(y.text))>=.55) support++;
+    }
+    const len=[...x.text].length;
+    let score=x.conf*.45 + support*22;
+    if(len>=1 && len<=34) score+=20;
+    if(len>45) score-=45;
+    if(/[<>_=]{2,}/.test(x.text)) score-=35;
+    if(/メッセージ|サポーター|ギフト|送信先|コイン|Rank/i.test(x.text)) score-=120;
+    x.score=score;
+  });
+
+  uniq.sort((a,b)=>b.score-a.score);
+  return uniq[0];
+}
 async function recognizeRealityPersonBlock(canvas,centerY){
   const W=canvas.width,H=canvas.height;
   const top=Math.max(0,centerY-H*.050);
@@ -817,6 +882,12 @@ async function recognizeRealityPersonBlock(canvas,centerY){
 
   const newVotes=candidates.filter(c=>c.rank===best.rank).map(c=>!!c.isNew);
   if(newVotes.length) best.isNew=newVotes.filter(Boolean).length>newVotes.length/2;
+
+  const nameOnly=await recognizeRealityNameOnly(canvas,centerY);
+  if(nameOnly && plausibleName(nameOnly.text)){
+    best.name=cleanName(nameOnly.text);
+    best.conf=Math.max(best.conf||0,nameOnly.conf||0);
+  }
 
   return {
     best,
