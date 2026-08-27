@@ -3,1712 +3,494 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#fff8f2">
-<title>しゅりり ありがとうメッセージメーカー V9.1.1</title>
+<title>ありがとうメッセージメーカー v10</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
-  --bg:#fff8f2;--card:#fff;--ink:#4a372e;--muted:#90786b;--line:#ecdcd0;
-  --orange:#ff9c35;--soft:#fff0df;--pink:#ff7fb1;--lav:#f1eaff;--ok:#36a269;--warn:#e7a023;--danger:#d95050
+  --bg:#fff9f4; --card:#fff; --ink:#4a382f; --muted:#9a8174;
+  --orange:#ffa43a; --orange2:#ffbf6d; --line:#efd7c7; --warn:#f5be3d;
+  --green:#3c9568; --greenbg:#eaf8f0; --shadow:0 10px 30px rgba(98,69,51,.08);
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;color:var(--ink)}
-.wrap{max-width:820px;margin:auto;padding:14px 12px 110px}
-h1{font-size:22px;margin:4px 0}
-.sub{font-size:13px;color:var(--muted);line-height:1.6}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 5px 18px rgba(90,50,20,.05)}
-.sec{font-size:16px;font-weight:900;margin:0 0 8px}
-.small{font-size:12px;color:var(--muted);line-height:1.55}
-input,select,textarea{width:100%;font:inherit;font-size:16px;border:1px solid #e6d8ce;border-radius:12px;padding:10px;background:#fff;color:var(--ink)}
-textarea{resize:vertical;min-height:120px}
-button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-weight:850;cursor:pointer}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+.wrap{max-width:860px;margin:auto;padding:18px 18px 120px}
+h1{font-size:clamp(28px,5vw,44px);margin:18px 0 8px;font-weight:900}
+.lead{line-height:1.7;color:var(--muted);font-size:17px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:24px;margin:20px 0;box-shadow:var(--shadow)}
+.card h2{font-size:28px;margin:0 0 14px}
+.note{color:var(--muted);line-height:1.75}
+.drop{border:3px dashed #efcc9d;border-radius:24px;padding:26px;background:#fffdfa}
+input[type=file]{width:100%;font-size:18px}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+button{border:0;border-radius:22px;padding:18px 16px;font-weight:900;font-size:20px;cursor:pointer}
 .primary{background:var(--orange);color:#fff}
-.soft{background:var(--soft);color:#8d5517}
-.ghost{background:#f3f0ed;color:#5b4e46}
-.danger{background:#fff0f0;color:var(--danger)}
-.ok{background:#e9f8ef;color:#20794b}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.row>*{flex:1}
-.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:850;background:#f4f1ef;color:#76665c}
-.badge.warn{background:#fff4d8;color:#996214}.badge.ok{background:#eaf8f0;color:#26784d}.badge.new{background:var(--lav);color:#6d4eb4}
-.filebox{border:2px dashed #efc997;border-radius:16px;padding:14px;background:#fffdf9}
-.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-@media(min-width:680px){.gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.shot{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
-.shot img{width:100%;display:block;max-height:260px;object-fit:cover}
-.shot .cap{padding:7px 8px;font-size:11px;color:var(--muted)}
-.shot button{position:absolute;right:6px;top:6px;padding:5px 7px;border-radius:9px;background:rgba(255,255,255,.9)}
-.progress{height:8px;background:#eee8e3;border-radius:99px;overflow:hidden;margin-top:10px}
-.bar{height:100%;width:0;background:linear-gradient(90deg,#ff9c35,#ff7fb1);transition:.2s}
-.status{font-size:13px;color:var(--muted);white-space:pre-wrap;margin-top:8px}
-.person{border:1px solid var(--line);border-radius:15px;padding:10px;margin:8px 0;background:#fff}
-.personhead{display:flex;gap:8px;align-items:center}
-.personhead .main{flex:1;min-width:0}
-.personname{font-weight:900;word-break:break-word}
-.meta{font-size:12px;color:var(--muted);margin-top:3px}
-.detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-.person.open .detail{display:block}
-.crop{width:100%;border-radius:12px;border:1px solid var(--line);background:#fafafa;max-height:210px;object-fit:contain}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-@media(max-width:560px){.grid2{grid-template-columns:1fr}}
-.review{border-color:#f2c865;background:#fffdf7}
-.reviewtitle{display:flex;align-items:center;gap:6px;font-weight:900;color:#8a5a12}
-.change{padding:9px 0;border-bottom:1px solid var(--line)}
-.change:last-child{border-bottom:0}
-.arrow{color:#b49b8b;padding:0 4px}
-.preview{min-height:540px;white-space:pre-wrap;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,"Hiragino Sans",monospace;font-size:14px}
-.empty{padding:16px;text-align:center;color:var(--muted);font-size:13px}
-.sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,248,242,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
-.sticky .inner{max-width:820px;margin:auto;display:flex;gap:8px}.sticky button{flex:1}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
-.modal.show{display:flex}.modal img{max-width:100%;max-height:88vh;border-radius:14px}.modal button{position:absolute;top:18px;right:18px}
-
-.compactinfo{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr;gap:6px;margin-top:8px}
-.compactinfo .mini{border:1px solid var(--line);border-radius:10px;padding:7px 8px;background:#fff;font-size:12px}
-.compactinfo .mini b{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
-@media(max-width:560px){.compactinfo{grid-template-columns:1fr 1fr}}
-
+.secondary{background:#f2efec;color:var(--ink)}
+.smallbtn{font-size:15px;padding:10px 14px;border-radius:14px}
+.progress{height:10px;border-radius:99px;background:#eee9e5;overflow:hidden;margin-top:14px}
+.progress>i{display:block;width:0;height:100%;background:linear-gradient(90deg,var(--orange),#ff7d7d);transition:.2s}
+#preview{width:100%;max-height:520px;object-fit:contain;border-radius:18px;background:#f7f4f2;margin-top:14px;display:none}
+.person{border:1.5px solid var(--line);border-radius:22px;padding:18px;margin:14px 0;background:#fff}
+.person.ok{border-color:#b8dec8}
+.person.warn{border-color:#eabe52;background:#fffdf8}
+.person.zero{opacity:.72}
+.personhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.personname{font-size:22px;font-weight:900;line-height:1.35;word-break:break-word}
+.badge{font-size:13px;font-weight:800;padding:6px 9px;border-radius:999px;background:#f4f0ed;white-space:nowrap}
+.badge.warn{background:#fff0bf;color:#7e5814}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.kv{border:1px solid var(--line);border-radius:16px;padding:10px;min-height:76px}
+.kv b{display:block;color:var(--muted);font-size:13px;margin-bottom:5px}
+.kv span{font-size:17px;font-weight:700}
+.editgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+label{font-weight:800;font-size:14px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:16px;padding:12px 13px;font-size:17px;background:#fff;color:var(--ink)}
+textarea{min-height:380px;white-space:pre-wrap}
+.canvaswrap{position:relative;margin-top:12px;display:none}
+#workCanvas{width:100%;border-radius:18px;background:#fff}
+.legend{font-size:14px;color:var(--muted);margin-top:6px}
+.nickrow{display:grid;grid-template-columns:1.4fr 1fr auto;gap:8px;align-items:center;margin:8px 0}
+.fixbox{border:1.5px solid #d2b1ff;background:#fbf8ff;border-radius:18px;padding:16px;margin-top:14px}
+.fixbox h3{margin:0 0 8px}
+.learnlist{font-size:14px;color:var(--muted)}
+.sticky{position:fixed;left:0;right:0;bottom:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:rgba(255,249,244,.93);backdrop-filter:blur(12px);z-index:20;border-top:1px solid #f0ded1}
+.sticky button{width:min(820px,100%);display:block;margin:auto}
+.hidden{display:none!important}
+.statusline{font-weight:800;margin-top:10px}
+.resultbox{background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:18px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tab{background:#f2efec;color:var(--ink);font-size:15px;padding:10px 13px}
+.tab.active{background:var(--orange);color:#fff}
+@media(max-width:680px){
+  .wrap{padding:10px 10px 120px}
+  .card{padding:18px;border-radius:22px}
+  .card h2{font-size:24px}
+  .grid{grid-template-columns:1fr 1fr}
+  .editgrid{grid-template-columns:1fr}
+  .nickrow{grid-template-columns:1fr 1fr}
+  .nickrow button{grid-column:1/-1}
+}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー V9.1</h1>
-  <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
+  <h1>🐰 ありがとうメッセージメーカー v10</h1>
+  <p class="lead">REALITYの「メッセージの送信先」スクショ専用。<b>人物を先に見つけ、その人の横3行だけ</b>を読みます。①名前 ②コイン ③Rank。その他の文字は原則、読取対象にしません。</p>
 
-  <div class="card">
-    <div class="sec">① スクショを入れる</div>
-    <div class="filebox">
-      <b>📸 「メッセージの送信先」スクショ</b>
-      <input id="files" type="file" accept="image/*" multiple style="margin-top:8px">
-      <div class="small" style="margin-top:6px">入れたスクショは下にそのまま表示。タップすると拡大して確認できます。</div>
+  <section class="card">
+    <h2>① スクショを入れる</h2>
+    <div class="drop">
+      <input id="file" type="file" accept="image/*" multiple>
+      <div class="note">縦長スクショは複数枚OK。重複人物は自動でまとめます。</div>
     </div>
-    <div id="gallery" class="gallery"></div>
-    <div class="row" style="margin-top:10px">
-      <button id="analyze" class="primary">画像を読み取る</button>
-      <button id="clear" class="ghost">クリア</button>
+    <div class="btnrow">
+      <button class="primary" id="readBtn">画像を読み取る</button>
+      <button class="secondary" id="clearBtn">クリア</button>
     </div>
-    <div class="progress"><div id="bar" class="bar"></div></div>
-    <div id="status" class="status">スクショを選んでください。</div>
-  </div>
+    <div class="progress"><i id="bar"></i></div>
+    <div id="status" class="statusline">スクショを選んでください。</div>
+    <img id="preview">
+    <div class="canvaswrap" id="canvaswrap">
+      <canvas id="workCanvas"></canvas>
+      <div class="legend">紫枠＝人物として検出した行。取りこぼしがあれば「人物を追加」でアイコン中心をタップできます。</div>
+    </div>
+  </section>
 
-  <div class="card">
-    <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含め、丸いプロフィールアイコンを検出した人を全員表示します。人物の判定は左側の丸いアイコンだけを基準にします。丸の右横に並ぶ3行を固定で読み、1行目＝名前、2行目＝コイン数、3行目＝Rankとして扱います。3行目に「新規」が付いている場合だけ新規獲得Rankとして扱います。説明文・ヘッダー・ボタン・右側の選択○・Lv.などは読み取り対象外です。0コインの人は確認一覧には残りますが、完成文のギフト欄からは除外します。名前はスクショの表示名をできるだけそのまま読み取り、ニックネームへの変更は送信名欄で手動で行います。「📷画像を見る」では1人分だけ確認できます。</div>
+  <section class="card">
+    <h2>② 人物・3行の確認</h2>
+    <p class="note">丸いアイコンを起点に、右側だけを読みます。<b>名前にコインやRankを混ぜない</b>ため、3行は別々の範囲でOCRします。0コインの人も確認画面には残し、本文だけ除外します。</p>
+    <div class="btnrow">
+      <button class="secondary" id="addPersonBtn">＋ 取りこぼした人物を追加</button>
+      <button class="secondary" id="saveLearnBtn">今回の補正を記憶</button>
+    </div>
     <div id="people"></div>
-  </div>
+  </section>
 
-  <div class="card">
-    <div class="sec">③ ⚠️ 要確認</div>
-    <div class="small">明らかな文字欠け・UI混入など、本当に怪しいものだけ表示します。低い信頼度だけでは要確認にしません。</div>
-    <div id="reviews"></div>
-  </div>
-
-  <div class="card">
-    <div class="sec">④ HP回復リザルト</div>
-    <textarea id="output" class="preview"></textarea>
-    <div class="row" style="margin-top:10px">
-      <button id="reroll" class="soft">🎲 BONUS / STATUS引き直し</button>
-      <button id="copy" class="primary">📋 全文コピー</button>
+  <section class="card">
+    <h2>③ 名前辞書</h2>
+    <p class="note">正式名→ニックネームを登録。次回、同じ人を読み取ったら本文だけ自動でニックネームに変換します。あとからいつでも修正できます。</p>
+    <div class="tabs">
+      <button class="tab active" data-tab="dict">登録一覧</button>
+      <button class="tab" data-tab="learn">認識補正</button>
     </div>
-  </div>
+    <div id="dictPanel"></div>
+    <div id="learnPanel" class="hidden"></div>
+    <div class="btnrow">
+      <button class="secondary" id="exportBtn">辞書を書き出す</button>
+      <button class="secondary" id="importBtn">辞書を読み込む</button>
+    </div>
+    <input id="importFile" class="hidden" type="file" accept=".json,application/json">
+  </section>
 
-  <div class="card">
-    <div class="sec">⑤ 今回の名前変更一覧</div>
-    <div class="small">読み取り名と送信名が違う人だけ表示します。ニックネームを付けた人の確認用です。</div>
-    <div id="changes"></div>
-  </div>
+  <section class="card">
+    <h2>④ HP回復リザルト</h2>
+    <div class="resultbox">
+      <textarea id="result" spellcheck="false"></textarea>
+    </div>
+    <div class="btnrow">
+      <button class="secondary" id="regenBtn">リザルト再生成</button>
+      <button class="secondary" id="copyBtn">本文をコピー</button>
+    </div>
+  </section>
 </div>
 
-<div class="sticky"><div class="inner">
-  <button id="bottomCopy" class="primary">📋 完成文をコピー</button>
-</div></div>
-
-<div id="modal" class="modal">
-  <button id="closeModal" class="ghost">閉じる</button>
-  <img id="modalImg" alt="">
-</div>
+<div class="sticky"><button class="primary" id="copySticky">📋 完成文をコピー</button></div>
 
 <script>
-const $=s=>document.querySelector(s);
-const state={files:[],people:[],bonus:[],status:null};
-const BONUS_NORMAL=[
- ["🍮 ラッキーフード","プリン"],["🎨 ラッキーカラー","みずいろ"],["🎧 ラッキーアイテム","イヤホン"],
- ["🎯 ラッキー行動","好きな曲を1曲聴く"],["⏰ ラッキータイム","22:22"],["🐰 ラッキーひとこと","自分に甘くてヨシ！"]
-];
-const BONUS_FUNNY=[["📍 ラッキースポット","冷蔵庫の前"],["🔊 ラッキー効果音","ﾎﾟﾖﾝｯ"],["🔢 ラッキー数字","14"]];
-const BONUS_RARE=[["✨ SUPER BONUS","なんか知らんけど大吉ｯ！"]];
-const ST_NORMAL=["ごきげんうさぎ","にこにこ状態","明日もいけそう","とてもご機嫌です"];
-const ST_FUNNY=["元気になりすぎました","HPだだ余り","まだしゃべれます","無敵ではないが元気"];
-const EF_NORMAL=["明日のHP ＋1","ごきげん度 ＋5","笑う回数 ＋3","なんとかなる感 ＋8"];
-const EF_FUNNY=["おしゃべり ＋10","話の脱線率 ＋30%","急な早口 ＋50%","語彙力 −2"];
-function pick(a){return a[Math.floor(Math.random()*a.length)]}
-function weighted(a,b,c){const r=Math.random();return r<.70?pick(a):r<.95?pick(b):pick(c)}
-function rollAll(){state.bonus=[0,1,2].map(()=>weighted(BONUS_NORMAL,BONUS_FUNNY,BONUS_RARE));state.status={hp:pick(["MAX！","FULL！","OVER！","999 / 999"]),st:weighted(ST_NORMAL,ST_FUNNY,["今日はめちゃくちゃいい日"]),ef:weighted(EF_NORMAL,EF_FUNNY,["みんなまとめてHP ＋1"])}}
-rollAll();
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const state={
+  images:[], imageIndex:0, people:[], mode:null,
+  corrections:JSON.parse(localStorage.getItem('shuri_v10_corrections')||'[]'),
+  nick:JSON.parse(localStorage.getItem('shuri_v10_nick')||'{}')
+};
 
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function norm(s){
-  return (s||"")
-    .replace(/\r/g,"")
-    .replace(/\n+/g," ")
-    .trim();
+function setStatus(s){ $('#status').textContent=s }
+function setProgress(v){ $('#bar').style.width=Math.max(0,Math.min(100,v))+'%' }
+function norm(s){return (s||'').normalize('NFKC').replace(/[ \t　]+/g,' ').trim()}
+function noSpaces(s){return norm(s).replace(/[ \t　]+/g,'')}
+function digits(s){
+  let t=(s||'').normalize('NFKC').replace(/[OoＯo]/g,'0').replace(/[Il１l]/g,'1').replace(/,/g,'');
+  let m=t.match(/(\d{1,7})\s*(?:コイン|枚)?/);
+  return m?parseInt(m[1],10):null;
 }
-function cropCanvas(c,sx,sy,sw,sh){
-  sx=Math.max(0,Math.floor(sx));sy=Math.max(0,Math.floor(sy));
-  sw=Math.max(1,Math.min(c.width-sx,Math.floor(sw)));sh=Math.max(1,Math.min(c.height-sy,Math.floor(sh)));
-  const o=document.createElement("canvas");o.width=sw;o.height=sh;o.getContext("2d").drawImage(c,sx,sy,sw,sh,0,0,sw,sh);return o;
+function rankOf(s){
+  let t=(s||'').normalize('NFKC');
+  let m=t.match(/Rank\s*\.?\s*([123])/i);
+  return m?parseInt(m[1],10):null;
 }
-function groupLines(words){
-  const arr=(words||[]).filter(w=>w.text&&w.bbox).map(w=>({text:norm(w.text),x0:w.bbox.x0,x1:w.bbox.x1,y0:w.bbox.y0,y1:w.bbox.y1,cy:(w.bbox.y0+w.bbox.y1)/2,conf:w.confidence||0})).filter(x=>x.text);
-  arr.sort((a,b)=>a.cy-b.cy||a.x0-b.x0);
-  const lines=[];
-  for(const w of arr){
-    let l=lines.find(x=>Math.abs(x.cy-w.cy)<18);
-    if(!l){l={cy:w.cy,items:[]};lines.push(l)}
-    l.items.push(w);l.cy=l.items.reduce((s,x)=>s+x.cy,0)/l.items.length;
-  }
-  return lines.map(l=>{
-    l.items.sort((a,b)=>a.x0-b.x0);
-    return {cy:l.cy,x0:Math.min(...l.items.map(x=>x.x0)),x1:Math.max(...l.items.map(x=>x.x1)),y0:Math.min(...l.items.map(x=>x.y0)),y1:Math.max(...l.items.map(x=>x.y1)),text:norm(l.items.map(x=>x.text).join(" ")),conf:l.items.reduce((s,x)=>s+x.conf,0)/l.items.length}
-  }).sort((a,b)=>a.cy-b.cy);
-}
-function coinValue(s){
-  const t=(s||"").normalize("NFKC").replace(/\s+/g,"");
-  if(!/コ.?イ.?[ンソ]|coin/i.test(t))return null;
-  const m=t.match(/([0-9][0-9,]*)/);if(!m)return null;
-  return Number(m[1].replace(/,/g,""));
-}
-
-function stripEmojiAndKaomoji(s){
-  let t=String(s||"");
-
-  // Remove emoji sequences, variation selectors, skin tones and ZWJ.
-  try{
-    t=t
-      .replace(/\p{Extended_Pictographic}/gu,"")
-      .replace(/\p{Emoji_Presentation}/gu,"")
-      .replace(/[\uFE0E\uFE0F\u200D]/gu,"")
-      .replace(/[\u{1F3FB}-\u{1F3FF}]/gu,"");
-  }catch(e){}
-
-  // Remove common symbol characters used in kaomoji/decorations,
-  // while preserving name-friendly punctuation such as @ ! ? . _ - 〜 ～ ・
-  t=t.replace(/[♡♥❤❣❥✧✦★☆♪♫♬♩☻☺☹☀☁☂☃☄☾☽☼☘☕☔☁☂☃☄☮☯☪☸♠♣♦♤♧♢♚♛♜♝♞♟♔♕♖♗♘♙∞※〒〆〄]/gu,"");
-
-  // Remove brackets/arms/eyes that are typically only kaomoji decoration
-  // when they are not attached to letters/numbers.
-  t=t
-    .replace(/[ᕱᕙᕗᕦᕤᕥᕧ૮ა꒰꒱ꪔꪔ̤̮ꪔ̤̥ꪔ̤̫ꪔ̤̱⊂⊃つっ੭ﾉ彡]/gu,"")
-    .replace(/[（）()\[\]{}<>＜＞〈〉《》「」『』【】]/gu,"");
-
-  return t;
-}
+function isNew(s){ return /新規/.test(s||'') }
 function cleanName(s){
-  let t=norm(s);
-
-  // Remove obvious UI fragments.
-  t=t
-    .replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"")
-    .replace(/\s*Rank\s*[1-9]\d*.*$/i,"")
-    .replace(/\s*Lv\.?\s*\d+.*$/i,"");
-
-  // Remove leaked row/ranking prefixes such as "4。" or "3.".
-  t=t.replace(/^\s*[\\\/|｜]*\s*\d{1,3}\s*[\.．。・:：、,，\-\)\]】]*\s*/u,"");
-
-  // Remove stray OCR punctuation at the beginning.
-  t=t.replace(/^\s*[\\\/|｜・。．,，:：]+\s*/u,"");
-
-  // Remove emoji / kaomoji decoration, but keep actual multilingual text.
-  t=stripEmojiAndKaomoji(t);
-
-  // User preference: names contain no OCR-inserted spaces.
-  t=t.replace(/[\s\u3000]+/gu,"");
-
-  // Clean duplicated punctuation produced after emoji removal.
-  t=t
-    .replace(/^[,，、。．・:：;；]+/u,"")
-    .replace(/[,，、。．・:：;；]+$/u,"");
-
-  return t.trim();
+  s=norm(s);
+  s=s.replace(/(?:🎁|♡|♥|❤)?\s*\d{1,3}(?:,\d{3})*\s*コイン.*$/,'');
+  s=s.replace(/Rank\s*\.?\s*[123].*$/i,'');
+  s=s.replace(/^\s*(?:0\/\d+人|ギフトコイン数.*|メッセージ.*送信先).*$/,'');
+  return norm(s);
 }
-function plausibleName(s){
-  s=cleanName(s);
-  if(!s || [...s].length>70) return false;
-
-  // REALITY UI / helper text must never be treated as a user name.
-  if(/メッセージ1?の?送信先|個別メッセージ|サポーターバッジ|ギフトを送|ギフトコイン数|すべて選択|ファイルを選択|画像を読み取る|名前・Rank|読み取り名|送信名|新規獲得|これで確定|AI判断|要確認|HP回復リザルト|完了|候補を抽出|この名前をタップ|元画像を確認|持っているか|送ってくれた方|送れません/i.test(s)) return false;
-
-  if(/^[🎁]?\d[\d,，]*コ.?イ.?[ンソ]$/u.test(s)) return false;
-  if(/^[♡♥]?Rank[1-9]/i.test(s)) return false;
-
-  // Sentence-like UI text is not a nickname.
-  if(/[。]/u.test(s) && [...s].length>12) return false;
-  if(/してください|できません|持っている|送ってくれた方/i.test(s)) return false;
-
-  return true;
+function lev(a,b){
+  a=noSpaces(a);b=noSpaces(b); const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  let p=Array.from({length:n+1},(_,i)=>i), q=new Array(n+1);
+  for(let i=1;i<=m;i++){q[0]=i;for(let j=1;j<=n;j++)q[j]=Math.min(q[j-1]+1,p[j]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));[p,q]=[q,p]}
+  return p[n]
 }
-function nameVisualInkScore(c){
-  const ctx=c.getContext("2d"), W=c.width,H=c.height;
-  const d=ctx.getImageData(0,0,W,H).data;
-  let dark=0,total=0;
-  for(let y=0;y<H;y+=2){
-    for(let x=0;x<W;x+=2){
-      const i=(y*W+x)*4;
-      const lum=.299*d[i]+.587*d[i+1]+.114*d[i+2];
-      if(lum<190) dark++;
-      total++;
-    }
-  }
-  return total?dark/total:0;
+function similarity(a,b){let L=Math.max(noSpaces(a).length,noSpaces(b).length)||1;return 1-lev(a,b)/L}
+function nicknameFor(name){
+  if(state.nick[name]) return state.nick[name];
+  let best=null,bs=0;
+  for(const k of Object.keys(state.nick)){let s=similarity(k,name); if(s>bs){bs=s;best=k}}
+  return bs>=0.88?state.nick[best]:name;
 }
+function persist(){localStorage.setItem('shuri_v10_nick',JSON.stringify(state.nick));localStorage.setItem('shuri_v10_corrections',JSON.stringify(state.corrections))}
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
 
-function obviouslyBrokenName(raw,conf,inkScore=0){
-  const s=cleanName(raw);
-  if(!s) return true;
-
-  // UI leakage or mostly numeric garbage.
-  if(/コ.?イ.?[ンソ]|Rank|Lv\.?|送信先|ギフト/i.test(s)) return true;
-  if(/^[\d０-９.,，。・:：\-]+$/u.test(s)) return true;
-  if(/^\d/u.test(s)) return true;
-
-  const len=[...s].length;
-
-  // Typical catastrophic OCR outputs seen in the screenshots.
-  if(len<=2 && /^[&@#%*+=~on]+$/i.test(s)) return true;
-
-  // If the crop visibly contains text but OCR returned only a tiny fragment,
-  // it is probably truncated.
-  if(inkScore>0.030 && len<=3) return true;
-
-  // Very low confidence + short result is review-worthy.
-  if((conf||0)<28 && len<=5) return true;
-
-  // Common bad partial outputs.
-  if(/^(やっ|はや|on|of|or|in)$/i.test(s)) return true;
-
-  return false;
+async function loadImage(file){
+  return new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=rej;img.src=URL.createObjectURL(file)})
 }
-
-function cropCanvasScaled(c,sx,sy,sw,sh,scale=1){
-  sx=Math.max(0,Math.floor(sx)); sy=Math.max(0,Math.floor(sy));
-  sw=Math.max(1,Math.min(c.width-sx,Math.floor(sw)));
-  sh=Math.max(1,Math.min(c.height-sy,Math.floor(sh)));
-  const o=document.createElement("canvas");
-  o.width=Math.max(1,Math.floor(sw*scale));
-  o.height=Math.max(1,Math.floor(sh*scale));
-  const ctx=o.getContext("2d");
-  ctx.imageSmoothingEnabled=true;
-  ctx.drawImage(c,sx,sy,sw,sh,0,0,o.width,o.height);
-  return o;
+function grayData(ctx,w,h){
+  const d=ctx.getImageData(0,0,w,h).data, g=new Uint8Array(w*h);
+  for(let i=0,j=0;i<d.length;i+=4,j++) g[j]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)|0;
+  return g;
 }
-
-function preprocessName(c,mode=0){
-  const o=document.createElement("canvas");
-  o.width=c.width;o.height=c.height;
-  const ctx=o.getContext("2d");
-  ctx.drawImage(c,0,0);
-  if(mode===0) return o;
-
-  const im=ctx.getImageData(0,0,o.width,o.height);
-  for(let i=0;i<im.data.length;i+=4){
-    const r=im.data[i],g=im.data[i+1],b=im.data[i+2];
-    const lum=.299*r+.587*g+.114*b;
-    let v;
-    if(mode===1) v=lum<190?0:255;
-    else v=lum<165?0:(lum>225?255:Math.round((lum-165)/60*255));
-    im.data[i]=im.data[i+1]=im.data[i+2]=v;
-  }
-  ctx.putImageData(im,0,0);
-  return o;
-}
-
-async function recognizeNameRegion(canvas, coinLine){
-  const W=canvas.width,H=canvas.height;
-
-  /*
-    REALITY layout:
-      NAME
-      COIN
-      Rank
-    Previous version cropped too high and sometimes read the previous user.
-    These bands sit immediately ABOVE the detected coin row.
-  */
-  const configs=[
-    {sx:.145, top:-.034, bottom:-.008, sw:.70, scale:3.2},
-    {sx:.140, top:-.031, bottom:-.005, sw:.73, scale:3.4},
-    {sx:.150, top:-.037, bottom:-.011, sw:.68, scale:3.0}
-  ];
-
-  const candidates=[];
-  let preview=null, previewInk=0;
-
-  for(const cfg of configs){
-    const sy=coinLine.cy + H*cfg.top;
-    const sh=H*(cfg.bottom-cfg.top);
-
-    const raw=cropCanvasScaled(
-      canvas,
-      W*cfg.sx,
-      sy,
-      W*cfg.sw,
-      sh,
-      cfg.scale
-    );
-
-    if(!preview){
-      preview=raw;
-      previewInk=nameVisualInkScore(raw);
-    }
-
-    for(const mode of [0,1,2]){
-      const test=preprocessName(raw,mode);
-
-      for(const psm of [7,6,13]){
-        try{
-          const r=await Tesseract.recognize(
-            test,
-            "jpn+eng",
-            {tessedit_pageseg_mode:psm}
-          );
-
-          const original=norm(r.data.text||"");
-          const cleaned=cleanName(original);
-
-          if(plausibleName(cleaned)){
-            candidates.push({
-              original,
-              cleaned,
-              conf:Number(r.data.confidence||0),
-              len:[...cleaned].length,
-              mode,psm
-            });
-          }
-        }catch(e){}
+function detectRightRadios(img){
+  const scale=Math.min(1,1200/img.width), w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+  const c=document.createElement('canvas'); c.width=w;c.height=h; const x=c.getContext('2d');x.drawImage(img,0,0,w,h);
+  const g=grayData(x,w,h), x0=Math.floor(w*.83), x1=Math.floor(w*.985);
+  let scores=[];
+  const r=Math.max(12,Math.round(w*.018));
+  for(let cy=r;cy<h-r;cy+=3){
+    let best=0;
+    for(let cx=x0+r;cx<x1-r;cx+=3){
+      let ring=0,inner=0,cnt=0,ic=0;
+      for(let k=0;k<24;k++){
+        let a=2*Math.PI*k/24, xx=Math.round(cx+r*Math.cos(a)), yy=Math.round(cy+r*Math.sin(a));
+        ring += 255-g[yy*w+xx]; cnt++;
       }
+      for(let yy=cy-r/2;yy<=cy+r/2;yy+=3) for(let xx=cx-r/2;xx<=cx+r/2;xx+=3){inner += 255-g[(yy|0)*w+(xx|0)];ic++}
+      let s=ring/cnt - inner/ic*0.45;
+      if(s>best)best=s;
     }
+    scores.push([cy,best]);
   }
-
-  const map=new Map();
-  for(const c of candidates){
-    const old=map.get(c.cleaned);
-    if(!old || c.conf>old.conf) map.set(c.cleaned,c);
-  }
-
-  const uniq=[...map.values()];
-
-  uniq.forEach(c=>{
-    let score=c.len*8 + c.conf*.40;
-
-    if(/^[&@#%*+=~]+$/.test(c.cleaned)) score-=100;
-    if(/^(on|of|or|in)$/i.test(c.cleaned)) score-=80;
-    if(c.len<=2) score-=35;
-
-    // Strings that look like app UI are never good name candidates.
-    if(/コ.?イ.?ン|Rank|Lv/i.test(c.cleaned)) score-=150;
-
-    c.score=score;
-  });
-
-  uniq.sort((a,b)=>b.score-a.score);
-
-  return {
-    best:uniq[0]||null,
-    alternatives:uniq.slice(1,4),
-    crop:preview,
-    inkScore:previewInk
-  };
+  let vals=scores.map(x=>x[1]).sort((a,b)=>a-b), thr=Math.max(28,vals[Math.floor(vals.length*.93)]||35);
+  let peaks=[];
+  for(let i=1;i<scores.length-1;i++) if(scores[i][1]>thr && scores[i][1]>=scores[i-1][1] && scores[i][1]>=scores[i+1][1]) peaks.push(scores[i]);
+  let merged=[];
+  for(let [cy,s] of peaks){if(!merged.length||cy-merged.at(-1)[0]>r*2.2)merged.push([cy,s]);else if(s>merged.at(-1)[1])merged[merged.length-1]=[cy,s]}
+  return merged.map(([cy,s])=>({cy:cy/scale,score:s,source:'radio'}));
 }
-
-function nearestFullPageName(lines, coinLine, H){
-  const candidates=lines
-    .filter(l=>{
-      if(l.cy>=coinLine.cy) return false;
-      const dy=coinLine.cy-l.cy;
-      if(dy < H*.010 || dy > H*.045) return false;
-      return plausibleName(l.text);
-    })
-    .sort((a,b)=>b.cy-a.cy);
-
-  if(!candidates.length) return null;
-
-  const l=candidates[0];
-  const cleaned=cleanName(l.text);
-  return {
-    cleaned,
-    conf:Number(l.conf||0),
-    len:[...cleaned].length,
-    source:"full"
-  };
-}
-
-function commonPrefixLen(a,b){
-  a=[...a]; b=[...b];
-  let n=0;
-  while(n<a.length && n<b.length && a[n]===b[n]) n++;
-  return n;
-}
-
-function similarityQuick(a,b){
-  if(!a||!b) return 0;
-  if(a===b) return 1;
-  const A=[...a],B=[...b];
-  const setA=new Set(A), setB=new Set(B);
-  let common=0;
-  for(const ch of setA) if(setB.has(ch)) common++;
-  const denom=Math.max(setA.size,setB.size,1);
-  return common/denom;
-}
-
-function chooseBestName(fullCandidate, regionResult){
-  const pool=[];
-  if(fullCandidate && plausibleName(fullCandidate.cleaned)) pool.push(fullCandidate);
-
-  if(regionResult?.best){
-    pool.push({
-      cleaned:regionResult.best.cleaned,
-      conf:regionResult.best.conf,
-      len:regionResult.best.len,
-      source:"region"
-    });
-  }
-
-  for(const a of (regionResult?.alternatives||[])){
-    pool.push({
-      cleaned:a.cleaned,
-      conf:a.conf,
-      len:a.len,
-      source:"regionAlt"
-    });
-  }
-
-  if(!pool.length) return {best:null, disagreement:true, pool:[]};
-
-  // Score favors readable, complete strings and gives a slight bonus to
-  // the full-page line because it preserves the actual visual line better.
-  for(const c of pool){
-    let score=c.len*7 + c.conf*.42;
-    if(c.source==="full") score+=16;
-    if(/^[&@#%*+=~]+$/u.test(c.cleaned)) score-=120;
-    if(/^(on|of|or|in|TRR)$/i.test(c.cleaned)) score-=100;
-    if(c.len<=2) score-=35;
-    if(/コ.?イ.?ン|Rank|Lv/i.test(c.cleaned)) score-=160;
-    c.score=score;
-  }
-
-  pool.sort((a,b)=>b.score-a.score);
-  const best=pool[0];
-
-  // If two strong candidates disagree heavily, do not silently guess.
-  const strong=pool.filter(c=>c.score>20);
-  let disagreement=false;
-  if(strong.length>=2){
-    const a=strong[0].cleaned,b=strong[1].cleaned;
-    const sim=similarityQuick(a,b);
-    if(sim<.45 && a!==b) disagreement=true;
-  }
-
-  return {best, disagreement, pool};
-}
-function rankInfoNear(lines, coinLine, H){
-  const below=lines
-    .filter(l=>l.cy>coinLine.cy && l.cy-coinLine.cy<H*.075)
-    .sort((a,b)=>a.cy-b.cy);
-  for(const l of below){
-    const compact=(l.text||"").normalize("NFKC").replace(/\s+/g,"");
-    const m=compact.match(/Rank[.:]?\s*([1-9]\d*)/i);
-    if(m){
-      return {rank:Number(m[1]), isNew:/新規/.test(compact), text:l.text};
+function detectLeftAvatars(img){
+  const scale=Math.min(1,1000/img.width), w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data, x0=Math.floor(w*.025),x1=Math.floor(w*.16);
+  let row=[];
+  for(let y=0;y<h;y+=3){
+    let sat=0,edge=0,n=0,prev=0;
+    for(let xx=x0;xx<x1;xx+=3){
+      let i=(y*w+xx)*4,r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+      sat+=(mx-mn); if(n&&Math.abs((r+g+b)-prev)>45)edge++; prev=r+g+b;n++;
     }
+    row.push([y,sat/n + edge*2.3]);
   }
-  return {rank:null,isNew:false,text:""};
+  let sorted=row.map(r=>r[1]).sort((a,b)=>a-b),thr=Math.max(18,sorted[Math.floor(sorted.length*.78)]||20);
+  let groups=[],cur=null;
+  for(const [y,s] of row){
+    if(s>thr){if(!cur)cur=[y,y,0];cur[1]=y;cur[2]+=s}
+    else if(cur){if(cur[1]-cur[0]>Math.max(20,w*.035))groups.push(cur);cur=null}
+  }
+  if(cur)groups.push(cur);
+  return groups.map(g=>({cy:(g[0]+g[1])/2/scale,score:g[2]/Math.max(1,g[1]-g[0]),source:'avatar'}))
+               .filter(p=>p.cy>img.height*.05 && p.cy<img.height*.98);
 }
-
-function blockNameCandidate(lines, coinLine, H){
-  // The coin row is the stable anchor. Everything immediately above it,
-  // until the previous metadata row / a safe vertical limit, belongs to the name.
-  const candidates=lines.filter(l=>{
-    const dy=coinLine.cy-l.cy;
-    return dy>H*.006 && dy<H*.075 && plausibleName(l.text);
-  }).sort((a,b)=>a.cy-b.cy);
-
-  if(!candidates.length) return null;
-
-  // Prefer the closest line. If a long nickname wrapped onto two lines,
-  // join adjacent bold/name-like lines instead of chopping half of it off.
-  const closest=candidates[candidates.length-1];
-  let selected=[closest];
-  for(let i=candidates.length-2;i>=0;i--){
-    const upper=candidates[i];
-    const gap=selected[0].y0-upper.y1;
-    if(gap < H*.010 && coinLine.cy-upper.cy < H*.065) selected.unshift(upper);
-    else break;
+function fuseRows(img){
+  const a=detectLeftAvatars(img), r=detectRightRadios(img);
+  let rows=[];
+  for(const rr of r){
+    let aa=a.reduce((best,x)=>Math.abs(x.cy-rr.cy)<Math.abs((best?.cy??1e9)-rr.cy)?x:best,null);
+    if(aa && Math.abs(aa.cy-rr.cy)<img.width*.075) rows.push({cy:(aa.cy+rr.cy)/2,conf:2});
+    else rows.push({cy:rr.cy,conf:1});
   }
-  const cleaned=cleanName(selected.map(x=>x.text).join(""));
-  return {
-    cleaned,
-    conf:selected.reduce((s,x)=>s+Number(x.conf||0),0)/selected.length,
-    len:[...cleaned].length,
-    source:"block"
-  };
-}
-
-
-function clusterYs(values,minGap=58){
-  const ys=[...new Set(values.map(v=>Math.round(v)).filter(Number.isFinite))].sort((a,b)=>a-b);
-  const groups=[];
-  for(const y of ys){
-    const last=groups[groups.length-1];
-    if(!last || y-last[last.length-1]>minGap) groups.push([y]);
-    else last.push(y);
+  for(const aa of a){
+    if(!rows.some(x=>Math.abs(x.cy-aa.cy)<img.width*.075)) rows.push({cy:aa.cy,conf:1});
   }
-  return groups.map(g=>Math.round(g.reduce((a,b)=>a+b,0)/g.length));
-}
-
-async function findRealityRowCenters(canvas){
-  const W=canvas.width,H=canvas.height;
-  const primary=[];
-
-  // 1) PERSON ANCHOR = right-side selection circle.
-  // Top-edge rows are valid too, so do not discard the upper part of the screenshot.
-  const ctx=canvas.getContext("2d");
-  const x0=Math.floor(W*.86), x1=Math.floor(W*.985);
-  const data=ctx.getImageData(x0,0,x1-x0,H).data;
-  const w=x1-x0;
-
-  const scan=[];
-  for(let y=0;y<H;y+=2){
-    let count=0;
-    for(let x=0;x<w;x+=2){
-      const i=(y*w+x)*4;
-      const r=data[i],g=data[i+1],b=data[i+2];
-      const lum=.299*r+.587*g+.114*b;
-      const chroma=Math.max(r,g,b)-Math.min(r,g,b);
-      if(lum>150 && lum<238 && chroma<20) count++;
-    }
-    scan.push({y,count});
-  }
-
-  const threshold=Math.max(8,Math.floor(w/26));
-  const ys=scan.filter(v=>v.count>=threshold).map(v=>v.y);
-  const groups=[];
-  for(const y of ys){
-    const last=groups[groups.length-1];
-    if(!last || y-last[last.length-1]>8) groups.push([y]);
-    else last.push(y);
-  }
-
-  for(const g of groups){
-    if(g.length<4) continue;
-    const y=Math.round((g[0]+g[g.length-1])/2);
-
-    // Important: a valid person may be partially visible right at the top.
-    if(y>H*.018 && y<H*.992) primary.push(y);
-  }
-
-  // Merge only fragments from the same circle.
-  const centers=[];
-  for(const y of primary.sort((a,b)=>a-b)){
-    if(!centers.length || y-centers[centers.length-1]>48){
-      centers.push(y);
-    }else{
-      centers[centers.length-1]=Math.round((centers[centers.length-1]+y)/2);
-    }
-  }
-
-  // 2) EDGE RESCUE:
-  // When the selection circle is cropped off, rescue a coin line only if there is
-  // a plausible NAME line directly above it. This allows top-edge users such as
-  // the person above "ミルク" without turning the page header into a fake person.
-  try{
-    const r=await Tesseract.recognize(canvas,"jpn+eng",{tessedit_pageseg_mode:11});
-    const lines=groupLines(r.data.words);
-
-    for(const l of lines){
-      const txt=(l.text||"").normalize("NFKC");
-      const m=txt.match(/([0-9][0-9,]*)\s*コ.?イ.?[ンソ]/i);
-      if(!m) continue;
-
-      const predicted=l.cy-H*.022;
-      if(predicted < H*.01 || predicted > H*.995) continue;
-
-      const nameCandidates=lines
-        .filter(n=>{
-          const dy=l.cy-n.cy;
-          return dy>H*.006 && dy<H*.055 && plausibleName(n.text);
-        })
-        .sort((a,b)=>b.cy-a.cy);
-
-      if(!nameCandidates.length) continue;
-
-      const candidateName=cleanName(nameCandidates[0].text);
-      if(!plausibleName(candidateName)) continue;
-
-      const nearEdge = predicted < H*.22 || predicted > H*.90;
-      const noNearby = !centers.some(c=>Math.abs(c-predicted)<78);
-
-      if(nearEdge && noNearby){
-        centers.push(predicted);
-      }
-    }
-  }catch(e){}
-
-  centers.sort((a,b)=>a-b);
-
-  // Final merge.
-  const final=[];
-  for(const y of centers){
-    if(!final.length || y-final[final.length-1]>70){
-      final.push(y);
-    }else{
-      final[final.length-1]=Math.round((final[final.length-1]+y)/2);
-    }
-  }
-
-  return final.filter(y=>y>H*.008 && y<H*.997);
-}
-function parseRealityPersonText(text){
-  const raw=String(text||"").replace(/\r/g,"");
-  const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-
-  let coin=null, rank=null, isNew=false;
-  let coinIndex=-1, rankIndex=-1;
-
-  for(let i=0;i<lines.length;i++){
-    const compact=lines[i].normalize("NFKC").replace(/\s+/g,"");
-    const cm=compact.match(/([0-9][0-9,]*)コ.?イ.?[ンソ]/i);
-    if(cm && coin===null){
-      coin=Number(cm[1].replace(/,/g,""));
-      coinIndex=i;
-    }
-    const rm=compact.match(/Rank[.:]?\s*([1-9]\d*)/i);
-    if(rm && rank===null){
-      rank=Number(rm[1]);
-      isNew=/新規/.test(compact);
-      rankIndex=i;
-    }
-  }
-
-  // Name should be the line immediately above coin. If coin OCR failed,
-  // take the first plausible line and leave coin blank for manual check.
-  let name="";
-  if(coinIndex>0){
-    name=lines[coinIndex-1];
-  }else{
-    name=lines.find(l=>plausibleName(l) && !/コ.?イ.?ン|Rank|Lv\.?|新規/i.test(l)) || "";
-  }
-
-  name=cleanName(name);
-
-  return {name,coin,rank,isNew,lines};
-}
-
-function modeValue(values){
-  const v=values.filter(x=>x!==null && x!==undefined);
-  if(!v.length) return null;
-  const counts=new Map();
-  for(const x of v) counts.set(x,(counts.get(x)||0)+1);
-  return [...counts.entries()].sort((a,b)=>b[1]-a[1] || String(a[0]).length-String(b[0]).length)[0][0];
-}
-
-function chooseCoinConsensus(candidates){
-  const vals=candidates.map(c=>c.coin).filter(v=>v!==null);
-  if(!vals.length) return null;
-
-  const positives=vals.filter(v=>v>0);
-
-  // If any repeated positive reading exists, never let a stray 0 override it.
-  if(positives.length){
-    const pMode=modeValue(positives);
-    const pCount=positives.filter(v=>v===pMode).length;
-    if(pCount>=2) return pMode;
-  }
-
-  // Exact consensus wins.
-  const exact=modeValue(vals);
-  const exactCount=vals.filter(v=>v===exact).length;
-  if(exactCount>=2) return exact;
-
-  // OCR sometimes duplicates a leading digit: 1000 -> 11000.
-  // When candidates differ only by one repeated digit, prefer the shorter form.
-  const sorted=[...new Set(vals)].sort((a,b)=>String(a).length-String(b).length || a-b);
-  for(const small of sorted){
-    const ss=String(small);
-    for(const big of sorted){
-      const bs=String(big);
-      if(bs.length===ss.length+1){
-        for(let i=0;i<bs.length-1;i++){
-          if(bs.slice(0,i)+bs.slice(i+1)===ss && bs[i]===bs[Math.max(0,i-1)]){
-            return small;
-          }
-        }
-      }
-    }
-  }
-
-  // Otherwise prefer the value from the best structured candidate.
-  return candidates.find(c=>c.coin!==null)?.coin ?? null;
-}
-
-
-
-
-function cleanZoneText(s){
-  return String(s||"")
-    .normalize("NFKC")
-    .replace(/\r/g,"")
-    .replace(/[ \t\u3000]+/g," ")
-    .trim();
-}
-
-async function ocrZone(canvas, x, y, w, h, scale, psms){
-  const crop=cropCanvasScaled(canvas,x,y,w,h,scale);
-  const reads=[];
-
-  // Original image first. Thin gray UI text can be damaged by thresholding.
-  for(const psm of psms){
-    try{
-      const r=await Tesseract.recognize(crop,"jpn+eng",{
-        tessedit_pageseg_mode:psm
-      });
-      reads.push({
-        text:cleanZoneText(r.data.text||""),
-        conf:Number(r.data.confidence||0)
-      });
-    }catch(e){}
-  }
-
-  for(const mode of [0,1,2]){
-    const processed=preprocessName(crop,mode);
-    for(const psm of psms){
-      try{
-        const r=await Tesseract.recognize(processed,"jpn+eng",{
-          tessedit_pageseg_mode:psm
-        });
-        reads.push({
-          text:cleanZoneText(r.data.text||""),
-          conf:Number(r.data.confidence||0)
-        });
-      }catch(e){}
-    }
-  }
-  return {crop,reads};
-}
-
-function chooseNameFromReads(reads){
-  const candidates=[];
-  for(const r of reads){
-    let s=cleanName(r.text||"");
-
-    // NAME zone must never contain structured UI text.
-    s=s
-      .replace(/コ.?イ.?ン.*$/i,"")
-      .replace(/Rank.*$/i,"")
-      .replace(/Lv\.?.*$/i,"")
-      .replace(/新規.*$/u,"")
-      .trim();
-
-    if(!plausibleName(s)) continue;
-
-    // Heavy garbage often contains many script switches and random symbols.
-    const weirdSymbols=(s.match(/[&=<>\\|]{1,}/g)||[]).length;
-    const latinChunks=(s.match(/[A-Za-z]{3,}/g)||[]).length;
-    const kanaKanji=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu)||[]).length;
-
-    let score=Math.min(30,(r.conf||0)*.35);
-    if(weirdSymbols>=2) score-=30;
-    if(latinChunks>=2 && kanaKanji>=2) score-=12;
-    const len=[...s].length;
-    const jp=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
-
-    if(len>=1 && len<=34) score+=18;
-    if(jp>0) score+=8;
-    if(len>45) score-=35;
-    if(/メッセージ|送信先|サポーター|ギフト|コイン|Rank|Lv/i.test(s)) score-=120;
-
-    candidates.push({text:s,conf:r.conf||0,score});
-  }
-
-  if(!candidates.length) return {text:"",conf:0,uncertain:true,alternatives:[]};
-
-  // similarity support
-  for(const c of candidates){
-    let support=0;
-    for(const d of candidates){
-      if(c===d) continue;
-      if(nameSimilarityQuick(c.text,d.text)>=.60) support++;
-    }
-    c.score+=support*14;
-    c.support=support;
-  }
-
-  candidates.sort((a,b)=>b.score-a.score);
-  const best=candidates[0];
-  const second=candidates[1];
-
-  const uncertain =
-    !best ||
-    best.score<30 ||
-    best.support===0 ||
-    (second && best.score-second.score<7 && nameSimilarityQuick(best.text,second.text)<.6);
-
-  return {
-    text:best?.text||"",
-    conf:best?.conf||0,
-    uncertain,
-    alternatives:[...new Set(candidates.map(x=>x.text))].slice(0,5)
-  };
-}
-
-function nameSimilarityQuick(a,b){
-  return similarityQuick(simpleNameKey(a||""),simpleNameKey(b||""));
-}
-
-function chooseCoinFromReads(reads){
-  const vals=[];
-
-  for(const r of reads){
-    let t=cleanZoneText(r.text||"");
-
-    // Normalize common OCR confusions around digits/commas.
-    t=t
-      .replace(/[，､]/g,",")
-      .replace(/[OoＯ〇]/g,"0")
-      .replace(/[Ilｌ｜]/g,"1")
-      .replace(/\s+/g,"");
-
-    // Prefer numbers explicitly followed by コイン-like text.
-    const patterns=[
-      /([0-9][0-9,]*)コ.?イ.?[ンソ]/i,
-      /([0-9][0-9,]*)コイン/i,
-      /([0-9][0-9,]*)/
-    ];
-
-    let m=null;
-    for(const p of patterns){
-      m=t.match(p);
-      if(m) break;
-    }
-
-    if(m){
-      const raw=m[1].replace(/,/g,"");
-      const v=Number(raw);
-      if(Number.isFinite(v) && v>=0 && v<=9999999){
-        vals.push({value:v,conf:Number(r.conf||0),text:t});
-      }
-    }
-  }
-
-  if(!vals.length) return {value:null,uncertain:true};
-
-  // Group same values and score by repetition + confidence.
-  const grouped=new Map();
-  for(const x of vals){
-    if(!grouped.has(x.value)) grouped.set(x.value,{count:0,conf:0});
-    const g=grouped.get(x.value);
-    g.count++;
-    g.conf=Math.max(g.conf,x.conf);
-  }
-
-  const ranked=[...grouped.entries()]
-    .map(([value,g])=>({
-      value,
-      score:g.count*30 + Math.min(25,g.conf*.3),
-      count:g.count
-    }))
-    .sort((a,b)=>b.score-a.score);
-
-  let chosen=ranked[0];
-
-  // If one candidate is a strict digit-subsequence of another, prefer the value
-  // that has stronger repetition; otherwise prefer the longer plausible coin number.
-  if(ranked.length>1){
-    const a=ranked[0], b=ranked[1];
-    const sa=String(a.value), sb=String(b.value);
-
-    if(a.count===b.count){
-      if(sa.length<sb.length && sb.includes(sa)) chosen=b;
-      else if(sb.length<sa.length && sa.includes(sb)) chosen=a;
-    }
-  }
-
-  const uncertain =
-    ranked.length>1 &&
-    (chosen.score - ranked[1].score < 8);
-
-  return {value:chosen.value,uncertain};
-}
-function chooseRankFromReads(reads){
-  const vals=[];
-  let newVotes=0;
-  let rankVotes=0;
-
-  for(const r of reads){
-    const t=cleanZoneText(r.text||"");
-    const m=t.match(/Rank\s*[.:]?\s*([1-9]\d*)/i);
-    if(m){
-      vals.push(Number(m[1]));
-      rankVotes++;
-      if(/新規/.test(t)) newVotes++;
-    }
-  }
-
-  if(!vals.length) return {rank:null,isNew:false,uncertain:true};
-
-  const counts=new Map();
-  for(const v of vals) counts.set(v,(counts.get(v)||0)+1);
-  const rank=[...counts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
-
-  return {
-    rank,
-    isNew:newVotes>0 && newVotes>=Math.ceil(rankVotes/2),
-    uncertain:false
-  };
-}
-async function recognizeRealityPersonBlock(canvas,centerY){
-  const W=canvas.width,H=canvas.height;
-
-  // Evidence image shown to the user.
-  const evTop=Math.max(0,centerY-H*.050);
-  const evBottom=Math.min(H,centerY+H*.060);
-  const evidence=cropCanvasScaled(
-    canvas,W*.025,evTop,W*.955,Math.max(1,evBottom-evTop),1.35
-  );
-
-  /*
-    V8.1
-    The selection circle and avatar are vertically centered on the same REALITY row.
-    Read each field relative to that row center.
-
-    NAME:
-      right side of avatar, bold first line only.
-      This band is intentionally close to centerY.
-      Previous versions cropped too high and read unrelated text.
-
-    COIN:
-      immediately below the name.
-
-    RANK:
-      next line below coin.
-  */
-
-  // NAME: use a slightly wider vertical band than V8.1.
-  // This gives REALITY's bold font enough top/bottom margin without including the coin row.
-  const nameTop=Math.max(0,centerY-H*.030);
-  const nameBottom=Math.min(H,centerY+H*.004);
-  const nameZone=await ocrZone(
-    canvas,
-    W*.145,
-    nameTop,
-    W*.690,
-    Math.max(1,nameBottom-nameTop),
-    3.8,
-    [6,7,13]
-  );
-  const namePick=chooseNameFromReads(nameZone.reads);
-
-  // COIN: V8.3 widens this area so the first digit/comma is not clipped.
-  // Read the whole "3,000コイン" style phrase, not just a tiny numeric strip.
-  const coinTop=Math.max(0,centerY-H*.001);
-  const coinBottom=Math.min(H,centerY+H*.033);
-  const coinZone=await ocrZone(
-    canvas,
-    W*.135,
-    coinTop,
-    W*.56,
-    Math.max(1,coinBottom-coinTop),
-    4.0,
-    [6,7,11,13]
-  );
-  const coinPick=chooseCoinFromReads(coinZone.reads);
-
-  // RANK: lower metadata line.
-  const rankTop=Math.max(0,centerY+H*.029);
-  const rankBottom=Math.min(H,centerY+H*.052);
-  const rankZone=await ocrZone(
-    canvas,
-    W*.155,
-    rankTop,
-    W*.53,
-    Math.max(1,rankBottom-rankTop),
-    3.6,
-    [7,13]
-  );
-  const rankPick=chooseRankFromReads(rankZone.reads);
-
-  return {
-    best:{
-      name:namePick.text||"",
-      coin:coinPick.value,
-      rank:rankPick.rank,
-      isNew:rankPick.isNew,
-      conf:namePick.conf||0,
-      nameUncertain:namePick.uncertain,
-      coinUncertain:coinPick.uncertain,
-      rankUncertain:rankPick.uncertain
-    },
-    alternatives:namePick.alternatives||[],
-    cropUrl:evidence.toDataURL("image/jpeg",.95)
-  };
-}
-
-/* ============================================================
-   V9 CORE
-   PERSON = left circular profile avatar only.
-   OCR = one pass per screenshot.
-   Fields = NAME / COIN / CURRENT RANK / NEW RANK only.
-   Everything else is ignored.
-   ============================================================ */
-
-function v9AvatarActivity(canvas){
-  const W=canvas.width, H=canvas.height;
-  const ctx=canvas.getContext("2d");
-
-  // REALITY profile icons live in the far-left strip.
-  const x0=Math.floor(W*.035);
-  const x1=Math.floor(W*.145);
-  const w=Math.max(1,x1-x0);
-  const img=ctx.getImageData(x0,0,w,H).data;
-
-  const rows=[];
-  for(let y=0;y<H;y+=2){
-    let active=0;
-    let vivid=0;
-    let total=0;
-
-    for(let x=0;x<w;x+=2){
-      const i=(y*w+x)*4;
-      const r=img[i], g=img[i+1], b=img[i+2];
-      const max=Math.max(r,g,b), min=Math.min(r,g,b);
-      const chroma=max-min;
-      const lum=.299*r+.587*g+.114*b;
-
-      total++;
-      // Avatar pixels tend to contain either color or dense dark detail.
-      if((chroma>18 && lum<247) || lum<135){
-        active++;
-        if(chroma>28) vivid++;
-      }
-    }
-
-    rows.push({
-      y,
-      ratio: total ? active/total : 0,
-      vivid: total ? vivid/total : 0
-    });
-  }
-  return rows;
-}
-
-function v9FindAvatarCenters(canvas){
-  const H=canvas.height;
-  const scan=v9AvatarActivity(canvas);
-
-  // Sustained activity is required. This rejects the top-left back arrow,
-  // which is mostly white and only has a thin black stroke.
-  const hits=scan.filter(v => v.ratio>.18 || (v.ratio>.11 && v.vivid>.055));
-  const groups=[];
-
-  for(const h of hits){
-    const last=groups[groups.length-1];
-    if(!last || h.y-last[last.length-1].y>8) groups.push([h]);
-    else last.push(h);
-  }
-
-  const centers=[];
-  for(const g of groups){
-    const y0=g[0].y, y1=g[g.length-1].y;
-    const height=y1-y0;
-
-    // Full avatars are roughly 55-110 px high on the screenshots.
-    // Keep partially cropped avatars too, but reject tiny text/noise fragments.
-    if(height<22 || height>145) continue;
-
-    const avg=g.reduce((s,v)=>s+v.ratio,0)/g.length;
-    const vivid=g.reduce((s,v)=>s+v.vivid,0)/g.length;
-
-    if(avg<.13 && vivid<.045) continue;
-
-    const cy=Math.round((y0+y1)/2);
-
-    // Exclude only the extreme screen chrome. Rows near screenshot edges remain valid.
-    if(cy>H*.012 && cy<H*.992) centers.push(cy);
-  }
-
-  // Nearby fragments belong to the same avatar.
-  const merged=[];
-  for(const y of centers.sort((a,b)=>a-b)){
-    if(!merged.length || y-merged[merged.length-1]>88){
-      merged.push(y);
-    }else{
-      merged[merged.length-1]=Math.round((merged[merged.length-1]+y)/2);
-    }
+  rows.sort((a,b)=>a.cy-b.cy);
+  let merged=[];
+  for(const x of rows){
+    if(!merged.length||x.cy-merged.at(-1).cy>img.width*.09)merged.push(x);
+    else if(x.conf>merged.at(-1).conf)merged[merged.length-1]=x;
   }
   return merged;
 }
-
-function v9WordBox(word){
-  const b=word.bbox||{};
-  const x0=Number(b.x0||0), y0=Number(b.y0||0), x1=Number(b.x1||0), y1=Number(b.y1||0);
-  return {x0,y0,x1,y1,cx:(x0+x1)/2,cy:(y0+y1)/2};
+function cropCanvas(img, box){
+  const c=document.createElement('canvas');
+  const sx=Math.max(0,Math.floor(box.x)), sy=Math.max(0,Math.floor(box.y));
+  const sw=Math.max(1,Math.min(img.width-sx,Math.floor(box.w))), sh=Math.max(1,Math.min(img.height-sy,Math.floor(box.h)));
+  const scale=Math.min(2.2,1200/sw);
+  c.width=Math.max(1,Math.round(sw*scale));c.height=Math.max(1,Math.round(sh*scale));
+  const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
+  return c;
 }
-
-function v9TextInBand(words, x0, x1, y0, y1){
-  const selected=(words||[])
-    .map(w=>({w,b:v9WordBox(w)}))
-    .filter(o =>
-      o.b.cx>=x0 && o.b.cx<=x1 &&
-      o.b.cy>=y0 && o.b.cy<=y1 &&
-      String(o.w.text||"").trim()
-    )
-    .sort((a,b)=>a.b.x0-b.b.x0);
-
-  if(!selected.length) return {text:"",conf:0};
-
-  const text=selected.map(o=>String(o.w.text||"").trim()).join("");
-  const conf=selected.reduce((s,o)=>s+Number(o.w.confidence||o.w.conf||0),0)/selected.length;
-  return {text,conf};
+async function ocrCanvas(c, psm=7){
+  const {data}=await Tesseract.recognize(c,'jpn+eng',{
+    logger:m=>{ if(m.status==='recognizing text') setProgress(15+Math.round(m.progress*70)); }
+  });
+  return norm(data.text);
 }
-
-
-function v91ClusterTextLines(words,x0,x1,y0,y1){
-  const items=(words||[])
-    .map(w=>({w,b:v9WordBox(w),text:String(w.text||"").trim()}))
-    .filter(o =>
-      o.text &&
-      o.b.cx>=x0 && o.b.cx<=x1 &&
-      o.b.cy>=y0 && o.b.cy<=y1
-    )
-    .sort((a,b)=>a.b.cy-b.b.cy || a.b.x0-b.b.x0);
-
-  const lines=[];
-  const yJoin=18;
-
-  for(const o of items){
-    let best=null;
-    let bestDist=Infinity;
-    for(const line of lines){
-      const d=Math.abs(o.b.cy-line.cy);
-      if(d<bestDist && d<=yJoin){
-        best=line;
-        bestDist=d;
-      }
-    }
-    if(!best){
-      best={items:[],cy:o.b.cy};
-      lines.push(best);
-    }
-    best.items.push(o);
-    best.cy=best.items.reduce((s,z)=>s+z.b.cy,0)/best.items.length;
-  }
-
-  return lines
-    .map(line=>{
-      line.items.sort((a,b)=>a.b.x0-b.b.x0);
-      const text=line.items.map(o=>o.text).join("");
-      const conf=line.items.reduce((s,o)=>s+Number(o.w.confidence||o.w.conf||0),0)/line.items.length;
-      const xMin=Math.min(...line.items.map(o=>o.b.x0));
-      const xMax=Math.max(...line.items.map(o=>o.b.x1));
-      return {text,conf,cy:line.cy,x0:xMin,x1:xMax};
-    })
-    .sort((a,b)=>a.cy-b.cy);
-}
-
-function v91LooksLikeCoinLine(s){
-  const t=String(s||"").normalize("NFKC").replace(/\s+/g,"");
-  return /[0-9０-９][0-9０-９,，]*.*コ.?イ.?ン/i.test(t) ||
-         /コ.?イ.?ン/i.test(t);
-}
-
-function v91LooksLikeRankLine(s){
-  const t=String(s||"").normalize("NFKC").replace(/\s+/g,"");
-  return /Rank[.:]?[1-9][0-9]*/i.test(t);
-}
-
-function v91ThreeLinesForAvatar(words,W,H,cy){
-  // This box contains ONLY the text column immediately right of one avatar.
-  // We then identify the literal visual sequence:
-  // line 1 = name, line 2 = coin, line 3 = Rank.
-  const x0=W*.145;
-  const x1=W*.79;
-  const lines=v91ClusterTextLines(
-    words,
-    x0,x1,
-    Math.max(0,cy-H*.055),
-    Math.min(H,cy+H*.072)
-  );
-
-  if(!lines.length){
-    return {name:{text:"",conf:0},coin:{text:"",conf:0},rank:{text:"",conf:0},lines:[]};
-  }
-
-  // Prefer an actual "コイン" line as the anchor.
-  let coinIndex=lines.findIndex(l=>v91LooksLikeCoinLine(l.text));
-
-  // If OCR dropped the word コイン, use the line nearest the expected coin baseline.
-  if(coinIndex<0){
-    const expected=cy+H*.010;
-    let bestDist=Infinity;
-    lines.forEach((l,i)=>{
-      const d=Math.abs(l.cy-expected);
-      if(d<bestDist){
-        bestDist=d;
-        coinIndex=i;
-      }
-    });
-  }
-
-  let nameIndex=coinIndex-1;
-  let rankIndex=coinIndex+1;
-
-  // If the adjacent rank line is not Rank, search only BELOW the coin line.
-  if(rankIndex<0 || rankIndex>=lines.length || !v91LooksLikeRankLine(lines[rankIndex].text)){
-    const ri=lines.findIndex((l,i)=>i>coinIndex && v91LooksLikeRankLine(l.text));
-    if(ri>=0) rankIndex=ri;
-  }
-
-  // Name is strictly the single visual line immediately ABOVE the coin line.
-  // Never concatenate the coin line into the name.
-  const name = (nameIndex>=0 && nameIndex<lines.length) ? lines[nameIndex] : {text:"",conf:0};
-  const coin = (coinIndex>=0 && coinIndex<lines.length) ? lines[coinIndex] : {text:"",conf:0};
-  const rank = (rankIndex>=0 && rankIndex<lines.length) ? lines[rankIndex] : {text:"",conf:0};
-
-  return {name,coin,rank,lines};
-}
-
-function v9CleanNameOnly(s){
-  let t=String(s||"").normalize("NFKC");
-
-  // Remove emoji / pictographic decoration, while keeping normal punctuation
-  // that may genuinely be part of a username.
-  try{
-    t=t.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/gu,"");
-  }catch(e){}
-
-  // Names in REALITY are visually continuous; OCR-inserted spaces are removed.
-  t=t.replace(/\s+/g,"").trim();
-
-  // Explicitly reject UI vocabulary if it somehow leaks into the name band.
-  if(/メッセージ|送信先|個別メッセージ|サポーターバッジ|ギフトコイン|すべて選択|コイン数の多い順/i.test(t)){
-    return "";
-  }
-  if(/^(Rank|Lv|新規|コイン)$/i.test(t)) return "";
-  return t;
-}
-
-function v9ParseCoin(s){
-  let t=String(s||"").normalize("NFKC").replace(/\s+/g,"");
-  t=t.replace(/[，､]/g,",")
-     .replace(/[OoＯ〇]/g,"0")
-     .replace(/[Ilｌ｜]/g,"1");
-
-  // Strict rule: accept only a number in the dedicated coin band.
-  // "コイン" is preferred but not mandatory because OCR can drop gray suffix text.
-  let m=t.match(/([0-9][0-9,]*)コ.?イ.?[ンソ]?/i);
-  if(!m) m=t.match(/^([0-9][0-9,]*)/);
-  if(!m) return null;
-
-  const n=Number(m[1].replace(/,/g,""));
-  if(!Number.isFinite(n) || n<0 || n>9999999) return null;
-  return n;
-}
-
-function v9ParseRank(s){
-  const t=String(s||"").normalize("NFKC").replace(/\s+/g,"");
-  const m=t.match(/Rank[.:]?([1-9][0-9]*)/i);
-  if(!m) return {rank:null,isNew:false};
+function boxesFor(img,cy){
+  const W=img.width;
+  const x=W*.155, right=W*.81, row=W*.085;
   return {
-    rank:Number(m[1]),
-    isNew:/新規/.test(t)
-  };
+    name:{x,y:cy-row*.82,w:right-x,h:row*.72},
+    coin:{x,y:cy-row*.06,w:right-x,h:row*.52},
+    rank:{x,y:cy+row*.38,w:right-x,h:row*.52},
+    avatar:{x:W*.02,y:cy-row*.82,w:W*.13,h:row*1.45}
+  }
 }
-
-function v9EvidenceCrop(canvas,cy){
-  const W=canvas.width,H=canvas.height;
-  const top=Math.max(0,cy-H*.052);
-  const bottom=Math.min(H,cy+H*.062);
-  return cropCanvasScaled(canvas,W*.025,top,W*.735,Math.max(1,bottom-top),1.25)
-    .toDataURL("image/jpeg",.94);
+async function readPerson(img,cy,imgIndex,source='auto'){
+  const b=boxesFor(img,cy);
+  const nameRaw=await ocrCanvas(cropCanvas(img,b.name));
+  const coinRaw=await ocrCanvas(cropCanvas(img,b.coin));
+  const rankRaw=await ocrCanvas(cropCanvas(img,b.rank));
+  let name=cleanName(nameRaw), coin=digits(coinRaw), rank=rankOf(rankRaw), isnew=isNew(rankRaw);
+  let issues=[];
+  if(!name||name.length<1)issues.push('名前');
+  if(coin===null)issues.push('コイン');
+  if(rank===null && /Rank/i.test(rankRaw))issues.push('Rank');
+  if(/コイン|Rank/i.test(name))issues.push('名前混入');
+  return {id:uid(),imgIndex,cy,source,nameRaw,coinRaw,rankRaw,name,coin,rank,newRank:isnew?rank:null,issues,confirmed:false}
 }
-
-async function v9ReadScreenshot(canvas){
-  const W=canvas.width,H=canvas.height;
-  const centers=v9FindAvatarCenters(canvas);
-
-  // One OCR pass per screenshot.
-  const ocr=await Tesseract.recognize(canvas,"jpn+eng",{
-    tessedit_pageseg_mode:11
-  });
-  const words=(ocr.data&&ocr.data.words)||[];
-
-  const rows=[];
-
-  for(const cy of centers){
-    const three=v91ThreeLinesForAvatar(words,W,H,cy);
-
-    // ABSOLUTE RULE:
-    // 1st visual line next to avatar = NAME
-    // 2nd visual line = COIN
-    // 3rd visual line = RANK
-    const raw=v9CleanNameOnly(three.name.text);
-    const coin=v9ParseCoin(three.coin.text);
-    const rp=v9ParseRank(three.rank.text);
-
-    const needsReview =
-      !raw ||
-      coin===null ||
-      ((coin||0)>0 && rp.rank===null) ||
-      Number(three.name.conf||0)<30;
-
-    rows.push({
-      raw,
-      display:raw,
-      coin:coin===null?0:coin,
-      coinUnknown:coin===null,
-      rank:rp.rank,
-      isNew:rp.isNew,
-      conf:Number(three.name.conf||0),
-      needsReview,
-      cropUrl:v9EvidenceCrop(canvas,cy),
-      alternatives:[]
+function mergePeople(list){
+  let out=[];
+  for(const p of list){
+    let hit=out.find(q=>{
+      if(p.imgIndex===q.imgIndex && Math.abs(p.cy-q.cy)<35)return true;
+      let s=similarity(p.name,q.name);
+      return s>.9 && (p.coin===q.coin || p.coin==null || q.coin==null);
     });
+    if(!hit)out.push(p);
+    else{
+      if((p.name||'').length>(hit.name||'').length)hit.name=p.name;
+      if(hit.coin==null && p.coin!=null)hit.coin=p.coin;
+      if(hit.rank==null && p.rank!=null)hit.rank=p.rank;
+      if(hit.newRank==null && p.newRank!=null)hit.newRank=p.newRank;
+      hit.issues=[...new Set([...hit.issues,...p.issues])];
+    }
   }
-
-  return rows;
-}
-async function analyzeOne(file,fileIndex,total){
-  const url=URL.createObjectURL(file);
-  const img=new Image();
-  await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url});
-
-  const c=document.createElement("canvas");
-  c.width=img.naturalWidth;
-  c.height=img.naturalHeight;
-  c.getContext("2d").drawImage(img,0,0);
-
-  const rows=await v9ReadScreenshot(c);
-
-  rows.forEach((r,i)=>{
-    r.fileIndex=fileIndex;
-    const overall=(fileIndex+(i+1)/Math.max(1,rows.length))/total;
-    $("#bar").style.width=`${Math.min(100,Math.round(overall*100))}%`;
-  });
-
-  URL.revokeObjectURL(url);
-  return rows;
-}
-function simpleNameKey(s){
-  return cleanName(s||"")
-    .toLowerCase()
-    .replace(/[!！?？._\-〜～・@]/g,"")
-    .replace(/[0-9０-９]/g,"");
-}
-
-function dedupePeopleAcrossScreens(people){
-  const sorted=[...people].sort((a,b)=>(b.coin||0)-(a.coin||0));
-  const out=[];
-
-  for(const p of sorted){
-    const pk=simpleNameKey(p.raw||p.display);
-    let hit=-1;
-
-    for(let i=0;i<out.length;i++){
-      const q=out[i];
-      const qk=simpleNameKey(q.raw||q.display);
-
-      const sameCoin=p.coin===q.coin;
-      const sameRank=(p.rank===q.rank) || !p.rank || !q.rank;
-      const sim=similarityQuick(pk,qk);
-
-      // Overlapping screenshots often produce small OCR differences.
-      if(pk && qk && sameCoin && sameRank && sim>=.48){
-        hit=i;break;
-      }
-    }
-
-    if(hit<0){
-      out.push(p);
-      continue;
-    }
-
-    const q=out[hit];
-
-    const quality=x=>{
-      const n=cleanName(x.raw||"");
-      const len=[...n].length;
-      let s=(x.rank?10:0)+(x.isNew?5:0)+(x.coinUnknown?-8:5)-(x.needsReview?8:0);
-      if(len>0 && len<=35) s+=10;
-      if(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}A-Za-z]/u.test(n)) s+=5;
-      if(/[\\|$¥<>_=]{2,}/.test(n)) s-=15;
-      return s;
-    };
-
-    if(quality(p)>quality(q)){
-      const oldDisplay=q.display;
-      out[hit]=p;
-      if(oldDisplay && oldDisplay!==q.raw) out[hit].display=oldDisplay;
-    }
-
-    out[hit].rank=out[hit].rank||p.rank;
-    out[hit].isNew=out[hit].isNew||p.isNew;
-    out[hit].needsReview=out[hit].needsReview&&p.needsReview;
-  }
-
   return out;
 }
-function renderGallery(){
-  const box=$("#gallery");box.innerHTML="";
-  state.files.forEach((f,i)=>{
-    const d=document.createElement("div");d.className="shot";
-    d.innerHTML=`<img src="${f.url}" data-i="${i}"><div class="cap">${esc(f.name)}</div><button data-i="${i}" class="zoom">🔍</button>`;
-    box.appendChild(d);
-  });
-  box.querySelectorAll(".shot img,.zoom").forEach(el=>el.onclick=()=>{
-    const i=+el.dataset.i;$("#modalImg").src=state.files[i].url;$("#modal").classList.add("show");
-  });
+
+async function analyze(){
+  if(!state.images.length)return;
+  state.people=[]; setProgress(3);
+  for(let i=0;i<state.images.length;i++){
+    const img=state.images[i];
+    setStatus(`画像 ${i+1}/${state.images.length}：人物を探しています…`);
+    let rows=fuseRows(img);
+    // learned row spacing aid
+    for(const c of state.corrections.filter(x=>x.kind==='missed-row')){
+      if(c.heightRatio && Math.abs(img.height/img.width-c.aspect)<.25){
+        const cy=c.cyRatio*img.height;
+        if(!rows.some(r=>Math.abs(r.cy-cy)<img.width*.09))rows.push({cy,conf:0.5});
+      }
+    }
+    rows.sort((a,b)=>a.cy-b.cy);
+    for(let k=0;k<rows.length;k++){
+      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を3行読取中…`);
+      let p=await readPerson(img,rows[k].cy,i);
+      // suppress obvious non-person OCR
+      if(/ギフトコイン数|メッセージ|送信先|すべて選択|サポーター/.test(p.name)) continue;
+      state.people.push(p);
+    }
+  }
+  state.people=mergePeople(state.people);
+  setProgress(100);setStatus(`完了！ ${state.people.length}人を検出しました。`);
+  renderPeople();renderOverlay();generateResult();
 }
 function renderPeople(){
-  const box=$("#people");box.innerHTML="";
-  const okPeople=state.people.filter(p=>!p.needsReview);
-  if(!okPeople.length){box.innerHTML='<div class="empty">確定候補はまだありません。</div>';return}
-  okPeople.forEach(p=>{
-    const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person";
-    d.innerHTML=`
-      <div class="personhead">
-        <div class="main">
-          <div class="personname imageTrigger" data-i="${idx}" style="cursor:pointer">
-            ${esc(p.display||p.raw||"未読取")}
-          </div>
-          <div class="meta">この名前をタップすると元画像を確認できます。</div>
-        </div>
-        <button class="ghost imageBtn" data-i="${idx}" style="flex:0 0 auto">📷画像を見る</button>
+  const el=$('#people');el.innerHTML='';
+  if(!state.people.length){el.innerHTML='<p class="note">まだ人物はいません。</p>';return}
+  state.people.forEach((p,idx)=>{
+    const div=document.createElement('div');
+    div.className='person '+(p.issues.length?'warn':'ok')+(p.coin===0?' zero':'');
+    div.innerHTML=`
+      <div class="personhead"><div class="personname">${escapeHtml(p.name||'未読取')}</div>
+      <span class="badge ${p.issues.length?'warn':''}">${p.coin===0?'0コイン・本文除外':p.issues.length?'要確認':'OK'}</span></div>
+      <div class="grid">
+        <div class="kv"><b>👤 名前</b><span>${escapeHtml(p.name||'未読取')}</span></div>
+        <div class="kv"><b>💰 コイン</b><span>${p.coin==null?'要確認':p.coin+'コイン'}</span></div>
+        <div class="kv"><b>❤️ 現在Rank</b><span>${p.rank?'Rank.'+p.rank:'なし'}</span></div>
+        <div class="kv"><b>🌱 新規</b><span>${p.newRank?'Rank.'+p.newRank:'なし'}</span></div>
       </div>
-
-      <div class="compactinfo">
-        <div class="mini"><b>👤 名前</b>${esc(p.display||p.raw||"未読取")}</div>
-        <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}${!p.coinUnknown&&p.coin===0?`<br><span style="color:#9a7f68;font-size:11px">本文は除外</span>`:""}</div>
-        <div class="mini"><b>❤️ Rank</b>${p.rank?"Rank."+p.rank:"なし"}</div>
-        <div class="mini"><b>🌱 新規</b>${p.isNew&&p.rank?"Rank."+p.rank:"なし"}</div>
+      <div class="editgrid">
+        <label>正式名<input data-i="${idx}" data-k="name" value="${attr(p.name||'')}"></label>
+        <label>本文の名前（ニックネーム）<input data-i="${idx}" data-k="nick" value="${attr(nicknameFor(p.name||''))}"></label>
+        <label>コイン<input type="number" min="0" data-i="${idx}" data-k="coin" value="${p.coin??''}"></label>
+        <label>現在Rank<select data-i="${idx}" data-k="rank">
+          <option value="">なし</option><option value="1"${p.rank===1?' selected':''}>Rank.1</option><option value="2"${p.rank===2?' selected':''}>Rank.2</option><option value="3"${p.rank===3?' selected':''}>Rank.3</option>
+        </select></label>
+        <label>新規獲得<select data-i="${idx}" data-k="newRank">
+          <option value="">なし</option><option value="1"${p.newRank===1?' selected':''}>Rank.1</option><option value="2"${p.newRank===2?' selected':''}>Rank.2</option><option value="3"${p.newRank===3?' selected':''}>Rank.3</option>
+        </select></label>
       </div>
-      <div class="grid2" style="margin-top:8px">
-        <div>
-          <label>🤖 読み取り名</label>
-          <input class="rawName" data-i="${idx}" value="${esc(p.raw||"")}" autocomplete="off">
-        </div>
-        <div>
-          <label>✏️ 送信名（ニックネーム）</label>
-          <input class="displayName" data-i="${idx}" value="${esc(p.display||"")}" autocomplete="off">
-        </div>
-        <div>
-          <label>Rank</label>
-          <select class="rankSel" data-i="${idx}">
-            <option value="">なし</option>
-            ${[1,2,3,4].map(r=>`<option value="${r}" ${p.rank===r?'selected':''}>Rank.${r}</option>`).join("")}
-          </select>
-        </div>
-        <div>
-          <label>新規獲得</label>
-          <select class="newSel" data-i="${idx}">
-            <option value="0" ${!p.isNew?'selected':''}>いいえ</option>
-            <option value="1" ${p.isNew?'selected':''}>はい</option>
-          </select>
-        </div>
+      <div class="btnrow">
+        <button class="secondary smallbtn" data-save="${idx}">この名前を辞書登録</button>
+        <button class="secondary smallbtn" data-del="${idx}">この人物を削除</button>
       </div>`;
-    box.appendChild(d);
+    el.appendChild(div);
   });
-
-  box.querySelectorAll(".rawName").forEach(el=>el.oninput=()=>{
-    const p=state.people[+el.dataset.i];
-    const old=p.raw;
-    p.raw=el.value;
-    if(!p.display || p.display===old) p.display=el.value;
-    renderChanges();generate();
-  });
-  bindEditors(box);
-
-  const showImage=i=>{
-    const p=state.people[i];
-    if(!p?.cropUrl) return;
-    $("#modalImg").src=p.cropUrl;
-    $("#modal").classList.add("show");
-  };
-  box.querySelectorAll(".imageBtn,.imageTrigger").forEach(el=>el.onclick=()=>showImage(+el.dataset.i));
+  el.querySelectorAll('input,select').forEach(x=>x.addEventListener('change',onEdit));
+  el.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>saveNick(+b.dataset.save));
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult()});
 }
-function renderReviews(){
-  const box=$("#reviews");box.innerHTML="";
-  const rev=state.people.filter(p=>p.needsReview);
-  if(!rev.length){box.innerHTML='<div class="empty">要確認なし 🎉</div>';return}
-  rev.forEach(p=>{
-    const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person review";
-    d.innerHTML=`
-      <div class="reviewtitle">⚠️ AI判断が不確か</div>
-      <div class="meta">AI読取候補：${esc(p.raw||"未読取")}${p.alternatives?.length?` / 他候補：${p.alternatives.map(esc).join("・")}`:""}<br>💰 コイン：${p.coinUnknown?"要確認":p.coin+"コイン"}${!p.coinUnknown&&p.coin===0?"（本文は除外）":""}<br>❤️ 現在Rank：${p.rank?"Rank."+p.rank:"要確認"}<br>🌱 新規獲得Rank：${p.isNew&&p.rank?"Rank."+p.rank:"なし"}<br>下の画像を見て修正してください。</div>
-      <img class="crop" src="${p.cropUrl}" style="margin-top:9px">
-      <div class="grid2" style="margin-top:8px">
-        <div>
-          <label>🤖 読み取り名</label>
-          <input class="rawNameReview" data-i="${idx}" value="${esc(p.raw||"")}" autocomplete="off">
-        </div>
-        <div>
-          <label>✏️ 送信名（ニックネーム）</label>
-          <input class="displayName" data-i="${idx}" value="${esc(p.display||"")}" autocomplete="off">
-        </div>
-        <div>
-          <label>Rank</label>
-          <select class="rankSel" data-i="${idx}">
-            <option value="">なし</option>
-            ${[1,2,3,4].map(r=>`<option value="${r}" ${p.rank===r?'selected':''}>Rank.${r}</option>`).join("")}
-          </select>
-        </div>
-        <div>
-          <label>新規獲得</label>
-          <select class="newSel" data-i="${idx}">
-            <option value="0" ${!p.isNew?'selected':''}>いいえ</option>
-            <option value="1" ${p.isNew?'selected':''}>はい</option>
-          </select>
-        </div>
-      </div>
-      <button class="ok confirmBtn" data-i="${idx}" style="margin-top:8px;width:100%">✓ これで確定</button>`;
-    box.appendChild(d);
-  });
-
-  box.querySelectorAll(".rawNameReview").forEach(el=>el.oninput=()=>{
-    const p=state.people[+el.dataset.i];
-    const old=p.raw;
-    p.raw=el.value;
-    if(!p.display || p.display===old) p.display=el.value;
-    renderChanges();generate();
-  });
-  bindEditors(box);
-
-  box.querySelectorAll(".confirmBtn").forEach(b=>b.onclick=()=>{
-    const p=state.people[+b.dataset.i];
-    if(!p.raw.trim()){alert("読み取り名を入力してください");return}
-    if(!p.display.trim()) p.display=p.raw;
-    p.needsReview=false;
-    renderAll();
-  });
+function onEdit(e){
+  const i=+e.target.dataset.i,k=e.target.dataset.k,p=state.people[i];
+  if(k==='coin')p.coin=e.target.value===''?null:+e.target.value;
+  else if(k==='rank'||k==='newRank')p[k]=e.target.value===''?null:+e.target.value;
+  else if(k==='name')p.name=norm(e.target.value);
+  else if(k==='nick')p.tempNick=norm(e.target.value);
+  generateResult();
 }
-function bindEditors(box){
-  box.querySelectorAll(".displayName").forEach(el=>el.oninput=()=>{state.people[+el.dataset.i].display=el.value;renderChanges();generate()});
-  box.querySelectorAll(".rankSel").forEach(el=>el.onchange=()=>{state.people[+el.dataset.i].rank=el.value?Number(el.value):null;generate()});
-  box.querySelectorAll(".newSel").forEach(el=>el.onchange=()=>{state.people[+el.dataset.i].isNew=el.value==="1";generate()});
+function saveNick(i){
+  const p=state.people[i], card=$$('#people .person')[i], inp=card.querySelector('[data-k=nick]');
+  const n=norm(inp.value); if(!p.name||!n)return;
+  state.nick[p.name]=n; persist();renderDict();generateResult();
 }
-function renderChanges(){
-  const box=$("#changes");box.innerHTML="";
-  const arr=state.people.filter(p=>(p.display||"").trim() && (p.display||"").trim()!==(p.raw||"").trim());
-  if(!arr.length){box.innerHTML='<div class="empty">今回の変更はまだありません。</div>';return}
-  arr.forEach(p=>{
-    const d=document.createElement("div");d.className="change";
-    d.innerHTML=`<span>${esc(p.raw||"未読取")}</span><span class="arrow">→</span><b>${esc(p.display)}</b>`;
-    box.appendChild(d);
-  });
-}
-function rollBonus(){state.bonus=[0,1,2].map(()=>weighted(BONUS_NORMAL,BONUS_FUNNY,BONUS_RARE))}
-function generate(){
-  const unresolved=state.people.filter(p=>p.needsReview);
-  if(unresolved.length){
-    const msg=`⚠️ 要確認が ${unresolved.length}人残っています。\n全員を「これで確定」してから完成文を作れます。`;
-    const out=$("#output");
-    if(out) out.value=msg;
-    return msg;
+function renderDict(){
+  const el=$('#dictPanel'), keys=Object.keys(state.nick).sort((a,b)=>a.localeCompare(b,'ja')); el.innerHTML='';
+  if(!keys.length){el.innerHTML='<p class="note">まだ登録はありません。</p>';return}
+  for(const k of keys){
+    const r=document.createElement('div');r.className='nickrow';
+    r.innerHTML=`<input value="${attr(k)}" data-old="${attr(k)}" class="off"><input value="${attr(state.nick[k])}" class="nn"><button class="secondary smallbtn">削除</button>`;
+    const [off,nn,btn]=r.children;
+    off.onchange=()=>{let nk=norm(off.value);if(nk&&nk!==k){state.nick[nk]=state.nick[k];delete state.nick[k];persist();renderDict();generateResult()}};
+    nn.onchange=()=>{state.nick[k]=norm(nn.value);persist();generateResult()};
+    btn.onclick=()=>{delete state.nick[k];persist();renderDict();generateResult()};
+    el.appendChild(r);
   }
-  if(!state.status)rollAll();
-
-  const gift=state.people
-    .filter(p=>!p.needsReview && !p.coinUnknown && (p.coin||0)>0 && (p.display||"").trim())
-    .sort((a,b)=>b.coin-a.coin);
-
-  const top=gift.slice(0,3),rest=gift.slice(3);
-
-  const medals=["🥇","🥈","🥉"];
-  const topText=top.map((p,i)=>{
-    const b=state.bonus[i]||BONUS_NORMAL[0];
-    return `${medals[i]} ${p.display}
-${b[0]}：${b[1]}！`;
-  }).join("\n\n");
-
-  const restText=rest.length
-    ? rest.map(p=>`🎁 ${p.display}`).join("\n")
-    : "";
-
-  const newRanks=state.people.filter(
-    p=>!p.needsReview && p.isNew && p.rank && (p.display||"").trim()
-  );
-
-  let rankText="";
-  if(newRanks.length){
-    rankText="\n━━ 🌱 NEW RANK ━━━\n\n";
-    for(const p of newRanks){
-      rankText+=`✨ ${p.display}　Rank.${p.rank} GET！\n`;
-      rankText+=p.rank===1
-        ? "🐰 なかまになった！\n\n"
-        : "⚡ なかまLEVEL UP！\n\n";
-    }
-    rankText+="仲間になってくれてありがと〜ｯ！🙌\n";
-  }
-
-  const s=state.status;
-
-  $("#output").value=`🎮✨ HP回復リザルト ✨🐰
-
-૮₍ ˶ᵔ ᗜ ᵔ˶ ₎აっ🎁
-ﾋﾟﾛﾘﾝｯ♪　HP＋＋＋！
-
-━━━━ 🏆 TOP3 ━━━━
-
-${topText}
-
-━━ 🎁 ギフト届け隊 ━━
-
-${restText}
-
-🎁⊂૮₍ ˶ᵔ ᗜ ᵔ˶ ₎ა⊃🎁
-ぜ〜んぶ受け取ったｯｯｯ！
-${rankText}
-━━ 📟 今日のしゅり ━━
-
-❤️ HP　■■■■■■■■■■ ${s.hp}
-🐰 ${s.st}
-✨ ${s.ef}
-
-　＼ ✨ QUEST CLEAR！✨ ／
-
-今日もしゅりのHP
-いっぱい回復した〜〜ｯ！
-
-ギフトも応援も
-ぜんぶ受け取りました🎁✨
-
-૮₍ ˶ᵔ ᗜ ᵔ˶ ₎აﾉ♪
-また遊びにきてね〜ｯ！`;
 }
-function renderAll(){renderPeople();renderReviews();renderChanges();generate()}
-$("#files").onchange=e=>{
-  state.files.forEach(f=>URL.revokeObjectURL(f.url));
-  state.files=[...e.target.files].map(f=>({file:f,name:f.name,url:URL.createObjectURL(f)}));
-  renderGallery();$("#status").textContent=`${state.files.length}枚選択しました。`;
+function renderLearn(){
+  const el=$('#learnPanel');el.innerHTML=state.corrections.length?state.corrections.map((c,i)=>`<div class="learnlist">#${i+1} ${c.kind==='missed-row'?'取りこぼし位置':'補正'} ・ ${new Date(c.at).toLocaleString()}</div>`).join(''):'<p class="note">まだ補正履歴はありません。</p>';
+}
+function renderOverlay(){
+  if(!state.images.length)return;
+  const img=state.images[state.imageIndex]; const c=$('#workCanvas'), ctx=c.getContext('2d');
+  c.width=img.width;c.height=img.height;ctx.drawImage(img,0,0);
+  ctx.lineWidth=Math.max(4,img.width*.004);ctx.strokeStyle='#8a4fff';
+  state.people.filter(p=>p.imgIndex===state.imageIndex).forEach(p=>{
+    const b=boxesFor(img,p.cy),y=b.name.y-10,h=(b.rank.y+b.rank.h)-y+10;
+    ctx.strokeRect(img.width*.02,y,img.width*.94,h);
+  });
+  $('#canvaswrap').style.display='block';
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function attr(s){return escapeHtml(s).replace(/"/g,'&quot;')}
+
+const bonuses=[
+ ['🍮 ラッキーフード','プリン！'],['📍 ラッキースポット','冷蔵庫の前！'],['🎧 ラッキーアイテム','イヤホン！'],
+ ['🎯 ラッキー行動','好きな曲を1曲聴く！'],['🔊 ラッキー効果音','ﾎﾟﾖﾝｯ！'],['⏰ ラッキータイム','22:22！'],
+ ['🐰 ラッキーひとこと','自分に甘くてヨシ！！'],['✨ SUPER BONUS','なんか知らんけど大吉ｯ！！']
+];
+const statusPool=[['❤️ HP','■■■■■■■■■■ MAX！'],['🐰','ごきげんうさぎ'],['✨','明日のHP ＋1']];
+function displayName(p){return p.tempNick||nicknameFor(p.name)||p.name||'未読取'}
+function generateResult(){
+  let valid=state.people.filter(p=>Number.isFinite(p.coin)&&p.coin>0&&p.name);
+  valid.sort((a,b)=>b.coin-a.coin);
+  let top=valid.slice(0,3), rest=valid.slice(3);
+  let lines=['🎮✨ HP回復リザルト ✨🐰','','૮₍ ˶ᵔ ᗜ ᵔ˶ ₎აっ🎁','ﾋﾟﾛﾘﾝｯ♪　HP＋＋＋！','','━━━━ 🏆 TOP3 ━━━━',''];
+  ['🥇','🥈','🥉'].forEach((med,i)=>{if(top[i]){let b=bonuses[(i+valid.length)%bonuses.length];lines.push(`${med} ${displayName(top[i])}`,`${b[0]}：${b[1]}`,'')}});
+  lines.push('━━ 🎁 ギフト届け隊 ━━','');
+  rest.forEach(p=>lines.push(`🎁 ${displayName(p)}`));
+  if(rest.length)lines.push('');
+  lines.push('🎁⊂૮₍ ˶ᵔ ᗜ ᵔ˶ ₎ა⊃🎁','ぜ〜んぶ受け取ったｯｯｯ！','');
+  const nr=valid.filter(p=>p.newRank);
+  if(nr.length){
+    lines.push('━━ 🌱 NEW RANK ━━━','');
+    nr.forEach(p=>lines.push(`✨ ${displayName(p)}　Rank.${p.newRank} GET！`,`🐰 なかまになった！`,''));
+    lines.push('仲間になってくれてありがと〜ｯ！🙌','');
+  }
+  lines.push('━━ 📟 今日のしゅり ━━','',`${statusPool[0][0]}　${statusPool[0][1]}`,`${statusPool[1][0]} ${statusPool[1][1]}`,`${statusPool[2][0]} ${statusPool[2][1]}`,'','　＼ ✨ QUEST CLEAR！✨ ／','','今日もしゅりのHP','いっぱい回復した〜〜ｯ！','','ギフトも応援も','ぜんぶ受け取りました🎁✨','','૮₍ ˶ᵔ ᗜ ᵔ˶ ₎აﾉ♪','また遊びにきてね〜ｯ！');
+  $('#result').value=lines.join('\n');
+}
+async function copyResult(){
+  try{await navigator.clipboard.writeText($('#result').value);setStatus('完成文をコピーしました！')}catch(e){$('#result').select();document.execCommand('copy')}
+}
+
+$('#file').onchange=async e=>{
+  state.images=[];
+  for(const f of e.target.files){state.images.push(await loadImage(f))}
+  if(state.images[0]){$('#preview').src=state.images[0].src;$('#preview').style.display='block';state.imageIndex=0;renderOverlay()}
+  setStatus(`${state.images.length}枚選択しました。`);
+}
+$('#readBtn').onclick=analyze;
+$('#clearBtn').onclick=()=>{state.images=[];state.people=[];$('#file').value='';$('#preview').style.display='none';$('#canvaswrap').style.display='none';renderPeople();generateResult();setProgress(0);setStatus('スクショを選んでください。')};
+$('#regenBtn').onclick=generateResult;
+$('#copyBtn').onclick=copyResult;$('#copySticky').onclick=copyResult;
+
+$('#addPersonBtn').onclick=()=>{
+  if(!state.images.length)return alert('先にスクショを入れてください');
+  state.mode='add';setStatus('下の画像で、取りこぼした人の「左の丸いアイコン中心」をタップしてください。');
+  $('#canvaswrap').scrollIntoView({behavior:'smooth',block:'center'});
+}
+$('#workCanvas').onclick=async e=>{
+  if(state.mode!=='add')return;
+  const c=e.currentTarget,r=c.getBoundingClientRect(),cy=(e.clientY-r.top)*c.height/r.height;
+  setStatus('追加した人物の3行を読み取っています…');
+  const p=await readPerson(state.images[state.imageIndex],cy,state.imageIndex,'manual');
+  state.people=mergePeople([...state.people,p]);state.mode=null;renderPeople();renderOverlay();generateResult();setStatus('人物を追加しました。内容を確認してください。');
+}
+$('#saveLearnBtn').onclick=()=>{
+  const manuals=state.people.filter(p=>p.source==='manual');
+  manuals.forEach(p=>state.corrections.push({kind:'missed-row',at:Date.now(),aspect:state.images[p.imgIndex].height/state.images[p.imgIndex].width,cyRatio:p.cy/state.images[p.imgIndex].height,heightRatio:1}));
+  persist();renderLearn();setStatus(`${manuals.length}件の取りこぼし位置を記憶しました。`);
+}
+$$('.tab').forEach(b=>b.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#dictPanel').classList.toggle('hidden',b.dataset.tab!=='dict');$('#learnPanel').classList.toggle('hidden',b.dataset.tab!=='learn')});
+$('#exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify({nick:state.nick,corrections:state.corrections},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shuriri-name-dictionary-v10.json';a.click();URL.revokeObjectURL(a.href);
+}
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=async e=>{
+  try{const j=JSON.parse(await e.target.files[0].text());state.nick=j.nick||{};state.corrections=j.corrections||[];persist();renderDict();renderLearn();generateResult();setStatus('辞書と補正データを読み込みました。')}catch(err){alert('読み込みに失敗しました')}
 };
-$("#analyze").onclick=async()=>{
-  if(!state.files.length){$("#status").textContent="スクショを選んでください。";return}
-  $("#analyze").disabled=true;$("#bar").style.width="0%";state.people=[];
-  try{
-    for(let i=0;i<state.files.length;i++){
-      $("#status").textContent=`${i+1}/${state.files.length}枚目を読み取り中…`;
-      const rows=await analyzeOne(state.files[i].file,i,state.files.length);
-      state.people.push(...rows);renderAll();
-    }
-    state.people=dedupePeopleAcrossScreens(state.people);
-    state.people.sort((a,b)=>(b.coin||0)-(a.coin||0));
-    $("#bar").style.width="100%";$("#status").textContent=`完了！ 重複をまとめて ${state.people.length}人を抽出しました。要確認だけ直してください。`;renderAll();
-  }catch(e){console.error(e);$("#status").textContent="読み取りに失敗しました。\n"+e.message}
-  finally{$("#analyze").disabled=false}
-};
-$("#clear").onclick=()=>{state.people=[];state.files.forEach(f=>URL.revokeObjectURL(f.url));state.files=[];$("#files").value="";$("#gallery").innerHTML="";$("#bar").style.width="0";$("#status").textContent="クリアしました。";renderAll()};
-$("#reroll").onclick=()=>{rollAll();generate()};
-async function copyOut(){try{await navigator.clipboard.writeText($("#output").value);$("#copy").textContent="✅ コピーした！";setTimeout(()=>$("#copy").textContent="📋 全文コピー",900)}catch(e){$("#output").select();document.execCommand("copy")}}
-$("#copy").onclick=copyOut;$("#bottomCopy").onclick=copyOut;
-$("#closeModal").onclick=()=>$("#modal").classList.remove("show");$("#modal").onclick=e=>{if(e.target.id==="modal")$("#modal").classList.remove("show")};
-renderAll();
+renderPeople();renderDict();renderLearn();generateResult();
 </script>
 </body>
 </html>
