@@ -3,8 +3,97 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v13</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<title>ありがとうメッセージメーカー v14</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
+/* v14 learning UI */
+function v14NormalizeName(s){
+  s=cleanName(s||'');
+  const C='\\u3040-\\u30ff\\u3400-\\u9fff々〆ヵヶ';
+  s=s.replace(new RegExp('(['+C+'])\\s+(?=['+C+'])','g'),'$1')
+     .replace(new RegExp('(['+C+'])\\s+(?=[A-Za-z0-9])','g'),'$1')
+     .replace(new RegExp('([A-Za-z0-9])\\s+(?=['+C+'])','g'),'$1')
+     .replace(/\s{2,}/g,' ').trim();
+  return s;
+}
+function v14Alias(name){
+  if(!name)return null;
+  if(state.nick[name])return {official:name,nick:state.nick[name],score:1};
+  let best=null,bs=0;
+  for(const k of Object.keys(state.nick)){const s=similarity(k,name);if(s>bs){bs=s;best=k}}
+  return best&&bs>=.72?{official:best,nick:state.nick[best],score:bs}:null;
+}
+function v14Strip(){
+  const el=document.getElementById('v14Strip'); if(!el)return;
+  el.innerHTML='';
+  state.images.forEach((img,i)=>{
+    const b=document.createElement('button');b.type='button';b.className='v14-thumb';
+    b.innerHTML=`<img src="${img.src}"><small>画像${i+1}・${state.people.filter(p=>p.imgIndex===i).length}人</small>`;
+    b.onclick=()=>window.open(img.src,'_blank');
+    el.appendChild(b);
+  });
+}
+function v14Crop(p){
+  try{
+    const img=state.images[p.imgIndex],W=img.width,row=W*.09;
+    const sx=Math.max(0,W*.015),sy=Math.max(0,p.cy-row*.82),sw=Math.min(W*.82,W-sx),sh=Math.min(row*1.7,img.height-sy);
+    const c=document.createElement('canvas');c.width=Math.round(sw*.72);c.height=Math.round(sh*.72);
+    c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.9);
+  }catch(e){return ''}
+}
+const v14OldMerge=mergePeople;
+mergePeople=function(list){
+  list.forEach(p=>{
+    const original=v14NormalizeName(p.name);
+    p.ocrName=original;p.name=original;
+    const a=v14Alias(original);
+    if(a&&a.score>=.78){p.name=a.official;p.tempNick=a.nick;p.learned=true}
+  });
+  return v14OldMerge(list);
+};
+renderPeople=function(){
+  const el=document.getElementById('people');el.innerHTML='';
+  if(!state.people.length){el.innerHTML='<p class="note">まだ人物はいません。</p>';v14Strip();return}
+  const warns=state.people.filter(p=>p.issues&&p.issues.length).length;
+  el.innerHTML=`<div class="v14-summary"><span class="v14-pill">${state.people.length}人</span><span class="v14-pill ${warns?'warn':''}">要確認 ${warns}</span><span class="v14-pill">0コイン ${state.people.filter(p=>p.coin===0).length}</span></div>`;
+  state.people.forEach((p,i)=>{
+    p.name=v14NormalizeName(p.name);
+    const a=v14Alias(p.name);if(a&&!p.tempNick){p.tempNick=a.nick;if(a.score>=.78){p.name=a.official;p.learned=true}}
+    const d=document.createElement('div');d.className='person '+(p.issues?.length?'warn':'ok')+(p.coin===0?' zero':'');
+    const pic=v14Crop(p);
+    d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
+    ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
+    <div class="editgrid">
+      <label>正式名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
+      <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
+      <label>コイン<input type="number" min="0" data-i="${i}" data-k="coin" value="${p.coin??''}"></label>
+      <label>Rank<select data-i="${i}" data-k="rank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.rank===n?' selected':''}>${n}</option>`).join('')}</select></label>
+      <label>新規<select data-i="${i}" data-k="newRank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.newRank===n?' selected':''}>${n}</option>`).join('')}</select></label>
+    </div><div class="btnrow"><button class="secondary smallbtn" data-save="${i}">✓ この名前を覚える</button><button class="secondary smallbtn" data-del="${i}">削除</button></div>`;
+    el.appendChild(d);
+  });
+  el.querySelectorAll('input,select').forEach(x=>x.addEventListener('change',onEdit));
+  el.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.save,p=state.people[i],card=el.querySelectorAll('.person')[i];
+    const official=v14NormalizeName(card.querySelector('[data-k=name]').value);
+    const nick=v14NormalizeName(card.querySelector('[data-k=nick]').value)||official;
+    if(!official)return;
+    state.nick[official]=nick;
+    if(p.ocrName)state.nick[v14NormalizeName(p.ocrName)]=nick;
+    if(p.nameRaw)state.nick[v14NormalizeName(p.nameRaw)]=nick;
+    p.name=official;p.tempNick=nick;p.learned=true;persist();renderDict();renderPeople();generateResult();
+    setStatus(`「${nick}」を覚えました。`);
+  });
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult();v14Strip()});
+  v14Strip();
+};
+const v14OldOnEdit=onEdit;
+onEdit=function(e){v14OldOnEdit(e);const p=state.people[+e.target.dataset.i];if(e.target.dataset.k==='name')p.name=v14NormalizeName(e.target.value)};
+const v14OldAnalyze=analyze;
+analyze=async function(){await v14OldAnalyze();state.people.forEach(p=>{p.name=v14NormalizeName(p.name)});renderPeople();v14Strip();generateResult()};
+const v14OldFile=document.getElementById('file').onchange;
+document.getElementById('file').onchange=async function(e){await v14OldFile.call(this,e);v14Strip()};
+
+</script>
 <style>
 :root{
   --bg:#fff9f4; --card:#fff; --ink:#4a382f; --muted:#9a8174;
@@ -117,12 +206,35 @@ textarea{min-height:260px}
  .editgrid{grid-template-columns:1fr 1fr}.editgrid label:nth-child(3),.editgrid label:nth-child(4),.editgrid label:nth-child(5){grid-column:auto}
  .personname{font-size:16px}.kv span{font-size:12px}
 }
+
+/* v14 compact */
+body{font-size:14px}.wrap{max-width:920px;padding:8px 8px 92px}
+h1{font-size:22px;margin:8px 2px 4px}.lead{font-size:13px;line-height:1.45;margin:0 2px 8px}
+.card{padding:11px;margin:9px 0;border-radius:15px}.card h2{font-size:18px;margin:0 0 7px}
+.note{font-size:12px;line-height:1.4}.drop{padding:11px;border-radius:13px}
+button{padding:10px 11px;font-size:14px;border-radius:13px}.btnrow{gap:6px;margin-top:7px}
+input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
+#preview,.canvaswrap{display:none!important}.person{padding:8px;margin:6px 0;border-radius:11px}
+.personname{font-size:14px}.badge{font-size:10px;padding:3px 6px}.grid{display:none!important}
+.editgrid{display:grid;grid-template-columns:minmax(120px,1.7fr) minmax(82px,1fr) 70px 62px 62px;gap:4px;margin-top:5px}
+.editgrid label{font-size:9px}.editgrid input,.editgrid select{font-size:11px;padding:6px 5px}
+.person .btnrow{grid-template-columns:1fr auto}.smallbtn{font-size:10px;padding:6px 7px;border-radius:8px}
+#result{min-height:300px;font-size:12px;line-height:1.4}.nickrow{margin:4px 0;gap:4px}
+.sticky{padding:7px 9px calc(7px + env(safe-area-inset-bottom))}.sticky button{padding:11px;font-size:14px}
+.v14-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 1px 7px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.v14-thumb{flex:0 0 100px;scroll-snap-align:start;border:1px solid var(--line);border-radius:10px;padding:4px;background:#fff}
+.v14-thumb img{width:100%;height:112px;object-fit:cover;object-position:top;border-radius:6px;display:block;background:#222}
+.v14-thumb small{display:block;margin-top:3px;font-size:9px;color:var(--muted)}
+.v14-person-preview{width:100%;max-height:56px;object-fit:cover;object-position:left center;border-radius:7px;margin:4px 0 2px;border:1px solid var(--line)}
+.v14-summary{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 6px}.v14-pill{font-size:10px;padding:3px 6px;border-radius:999px;background:#f4f0ed}.v14-pill.warn{background:#fff0bf}
+@media(max-width:680px){.wrap{padding:6px 6px 88px}.card{padding:9px}.editgrid{grid-template-columns:minmax(105px,1.6fr) minmax(78px,1fr) 62px 58px 58px}.v14-thumb{flex-basis:92px}.v14-thumb img{height:104px}}
+
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v13</h1>
-  <p class="lead">REALITYの「メッセージの送信先」専用。<b>左の丸いアイコンだけを人物アンカー</b>にして、右の3行だけ読みます。</p>
+  <h1>🐰 ありがとうメッセージメーカー v14</h1>
+  <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、名前・コイン・Rankだけを下書き。一度直した名前は辞書に覚えて、次回から自動補正します。</p>
 
   <section class="card">
     <h2>① スクショを入れる</h2>
@@ -136,6 +248,7 @@ textarea{min-height:260px}
     </div>
     <div class="progress"><i id="bar"></i></div>
     <div id="status" class="statusline">スクショを選んでください。</div>
+<div id="v14Strip" class="v14-strip"></div>
     <div id="imageRail" aria-label="スクショ確認"></div>
     <img id="preview">
     <div class="manualbox" id="manualbox">
@@ -654,6 +767,95 @@ $('#importFile').onchange=async e=>{
   try{const j=JSON.parse(await e.target.files[0].text());state.nick=j.nick||{};state.corrections=j.corrections||[];persist();renderDict();renderLearn();generateResult();setStatus('辞書と補正データを読み込みました。')}catch(err){alert('読み込みに失敗しました')}
 };
 renderPeople();renderDict();renderLearn();generateResult();
+
+/* v14 learning UI */
+function v14NormalizeName(s){
+  s=cleanName(s||'');
+  const C='\\u3040-\\u30ff\\u3400-\\u9fff々〆ヵヶ';
+  s=s.replace(new RegExp('(['+C+'])\\s+(?=['+C+'])','g'),'$1')
+     .replace(new RegExp('(['+C+'])\\s+(?=[A-Za-z0-9])','g'),'$1')
+     .replace(new RegExp('([A-Za-z0-9])\\s+(?=['+C+'])','g'),'$1')
+     .replace(/\s{2,}/g,' ').trim();
+  return s;
+}
+function v14Alias(name){
+  if(!name)return null;
+  if(state.nick[name])return {official:name,nick:state.nick[name],score:1};
+  let best=null,bs=0;
+  for(const k of Object.keys(state.nick)){const s=similarity(k,name);if(s>bs){bs=s;best=k}}
+  return best&&bs>=.72?{official:best,nick:state.nick[best],score:bs}:null;
+}
+function v14Strip(){
+  const el=document.getElementById('v14Strip'); if(!el)return;
+  el.innerHTML='';
+  state.images.forEach((img,i)=>{
+    const b=document.createElement('button');b.type='button';b.className='v14-thumb';
+    b.innerHTML=`<img src="${img.src}"><small>画像${i+1}・${state.people.filter(p=>p.imgIndex===i).length}人</small>`;
+    b.onclick=()=>window.open(img.src,'_blank');
+    el.appendChild(b);
+  });
+}
+function v14Crop(p){
+  try{
+    const img=state.images[p.imgIndex],W=img.width,row=W*.09;
+    const sx=Math.max(0,W*.015),sy=Math.max(0,p.cy-row*.82),sw=Math.min(W*.82,W-sx),sh=Math.min(row*1.7,img.height-sy);
+    const c=document.createElement('canvas');c.width=Math.round(sw*.72);c.height=Math.round(sh*.72);
+    c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.9);
+  }catch(e){return ''}
+}
+const v14OldMerge=mergePeople;
+mergePeople=function(list){
+  list.forEach(p=>{
+    const original=v14NormalizeName(p.name);
+    p.ocrName=original;p.name=original;
+    const a=v14Alias(original);
+    if(a&&a.score>=.78){p.name=a.official;p.tempNick=a.nick;p.learned=true}
+  });
+  return v14OldMerge(list);
+};
+renderPeople=function(){
+  const el=document.getElementById('people');el.innerHTML='';
+  if(!state.people.length){el.innerHTML='<p class="note">まだ人物はいません。</p>';v14Strip();return}
+  const warns=state.people.filter(p=>p.issues&&p.issues.length).length;
+  el.innerHTML=`<div class="v14-summary"><span class="v14-pill">${state.people.length}人</span><span class="v14-pill ${warns?'warn':''}">要確認 ${warns}</span><span class="v14-pill">0コイン ${state.people.filter(p=>p.coin===0).length}</span></div>`;
+  state.people.forEach((p,i)=>{
+    p.name=v14NormalizeName(p.name);
+    const a=v14Alias(p.name);if(a&&!p.tempNick){p.tempNick=a.nick;if(a.score>=.78){p.name=a.official;p.learned=true}}
+    const d=document.createElement('div');d.className='person '+(p.issues?.length?'warn':'ok')+(p.coin===0?' zero':'');
+    const pic=v14Crop(p);
+    d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
+    ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
+    <div class="editgrid">
+      <label>正式名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
+      <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
+      <label>コイン<input type="number" min="0" data-i="${i}" data-k="coin" value="${p.coin??''}"></label>
+      <label>Rank<select data-i="${i}" data-k="rank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.rank===n?' selected':''}>${n}</option>`).join('')}</select></label>
+      <label>新規<select data-i="${i}" data-k="newRank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.newRank===n?' selected':''}>${n}</option>`).join('')}</select></label>
+    </div><div class="btnrow"><button class="secondary smallbtn" data-save="${i}">✓ この名前を覚える</button><button class="secondary smallbtn" data-del="${i}">削除</button></div>`;
+    el.appendChild(d);
+  });
+  el.querySelectorAll('input,select').forEach(x=>x.addEventListener('change',onEdit));
+  el.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.save,p=state.people[i],card=el.querySelectorAll('.person')[i];
+    const official=v14NormalizeName(card.querySelector('[data-k=name]').value);
+    const nick=v14NormalizeName(card.querySelector('[data-k=nick]').value)||official;
+    if(!official)return;
+    state.nick[official]=nick;
+    if(p.ocrName)state.nick[v14NormalizeName(p.ocrName)]=nick;
+    if(p.nameRaw)state.nick[v14NormalizeName(p.nameRaw)]=nick;
+    p.name=official;p.tempNick=nick;p.learned=true;persist();renderDict();renderPeople();generateResult();
+    setStatus(`「${nick}」を覚えました。`);
+  });
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult();v14Strip()});
+  v14Strip();
+};
+const v14OldOnEdit=onEdit;
+onEdit=function(e){v14OldOnEdit(e);const p=state.people[+e.target.dataset.i];if(e.target.dataset.k==='name')p.name=v14NormalizeName(e.target.value)};
+const v14OldAnalyze=analyze;
+analyze=async function(){await v14OldAnalyze();state.people.forEach(p=>{p.name=v14NormalizeName(p.name)});renderPeople();v14Strip();generateResult()};
+const v14OldFile=document.getElementById('file').onchange;
+document.getElementById('file').onchange=async function(e){await v14OldFile.call(this,e);v14Strip()};
+
 </script>
 </body>
 </html>
