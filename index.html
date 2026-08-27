@@ -67,7 +67,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 <body>
 <div class="wrap">
   <h1>🐰 ありがとうメッセージメーカー</h1>
-  <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前はその場でニックネームへ修正できます。</div>
+  <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
 
   <div class="card">
     <div class="sec">① スクショを入れる</div>
@@ -87,13 +87,13 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">名前をタップすると、AIが読んだ名前・ニックネーム・元画像の該当部分を確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前か「📷画像を見る」をタップすると、その名前を読み取った元画像の該当部分を確認できます。</div>
     <div id="people"></div>
   </div>
 
   <div class="card">
     <div class="sec">③ ⚠️ 要確認</div>
-    <div class="small">AIが自信を持てなかったところだけ表示します。画像を見て名前・Rankを修正して「確定」を押してください。</div>
+    <div class="small">AIが自信を持てなかったところだけ、該当画像を最初から表示します。読み取り名・送信名・Rankを直して「確定」を押してください。</div>
     <div id="reviews"></div>
   </div>
 
@@ -108,7 +108,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">⑤ 今回の名前変更一覧</div>
-    <div class="small">読み取った名前から、送信に使う名前を変更した人だけ表示します。</div>
+    <div class="small">読み取り名と送信名が違う人だけ表示します。ニックネームを付けた人の確認用です。</div>
     <div id="changes"></div>
   </div>
 </div>
@@ -141,7 +141,12 @@ function rollAll(){state.bonus=[0,1,2].map(()=>weighted(BONUS_NORMAL,BONUS_FUNNY
 rollAll();
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function norm(s){return (s||"").replace(/\u3000/g," ").replace(/\s+/g," ").trim()}
+function norm(s){
+  return (s||"")
+    .replace(/\r/g,"")
+    .replace(/\n+/g," ")
+    .trim();
+}
 function cropCanvas(c,sx,sy,sw,sh){
   sx=Math.max(0,Math.floor(sx));sy=Math.max(0,Math.floor(sy));
   sw=Math.max(1,Math.min(c.width-sx,Math.floor(sw)));sh=Math.max(1,Math.min(c.height-sy,Math.floor(sh)));
@@ -168,12 +173,21 @@ function coinValue(s){
   return Number(m[1].replace(/,/g,""));
 }
 function cleanName(s){
-  return norm(s).replace(/\s*\d[\d,]*\s*コ.?イ.?[ンソ].*$/,"").replace(/\s*Rank\s*[1-4].*$/i,"").trim();
+  // Preserve the displayed name as much as possible.
+  // Remove only UI text that clearly belongs to the coin / Rank rows.
+  return norm(s)
+    .replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"")
+    .replace(/\s*Rank\s*[1-4].*$/i,"")
+    .replace(/\s*Lv\.?\s*\d+.*$/i,"")
+    .trim();
 }
 function plausibleName(s){
   s=cleanName(s);
-  if(!s||s.length>50)return false;
-  if(/メッセージ|送信先|コイン|Rank|Lv\.|フォロー|選択/i.test(s))return false;
+  if(!s || [...s].length>80) return false;
+  // Only reject obvious UI lines. Do NOT reject based on language/script.
+  if(/メッセージ\s*1?\s*の?送信先|ギフトコイン数|すべて選択|フォロー(?:する|中)?/i.test(s)) return false;
+  if(/^\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ]\s*$/u.test(s)) return false;
+  if(/^\s*[♡♥]?\s*Rank\s*[1-4]/i.test(s)) return false;
   return true;
 }
 async function analyzeOne(file,fileIndex,total){
@@ -224,49 +238,114 @@ function renderPeople(){
   if(!okPeople.length){box.innerHTML='<div class="empty">確定候補はまだありません。</div>';return}
   okPeople.forEach(p=>{
     const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person";
-    d.innerHTML=`<div class="personhead">
-      <div class="main"><div class="personname">${esc(p.display||p.raw)}</div><div class="meta">AI読取：${esc(p.raw||"未読取")} / Rank.${p.rank||"-"} ${p.isNew?'<span class="badge new">新規</span>':''}</div></div>
-      <span class="badge ok">確認候補</span>
-    </div>
-    <div class="detail">
-      <img class="crop" src="${p.cropUrl}">
-      <div class="grid2" style="margin-top:8px">
-        <div><label>AIが読んだ名前</label><input value="${esc(p.raw)}" disabled></div>
-        <div><label>送信に使う名前</label><input class="displayName" data-i="${idx}" value="${esc(p.display)}"></div>
-        <div><label>Rank</label><select class="rankSel" data-i="${idx}"><option value="">なし</option>${[1,2,3,4].map(r=>`<option value="${r}" ${p.rank===r?'selected':''}>Rank.${r}</option>`).join("")}</select></div>
-        <div><label>新規獲得</label><select class="newSel" data-i="${idx}"><option value="0" ${!p.isNew?'selected':''}>いいえ</option><option value="1" ${p.isNew?'selected':''}>はい</option></select></div>
+    d.innerHTML=`
+      <div class="personhead">
+        <div class="main">
+          <div class="personname imageTrigger" data-i="${idx}" style="cursor:pointer">
+            ${esc(p.display||p.raw||"未読取")}
+          </div>
+          <div class="meta">この名前をタップすると元画像を確認できます。</div>
+        </div>
+        <button class="ghost imageBtn" data-i="${idx}" style="flex:0 0 auto">📷画像を見る</button>
       </div>
-    </div>`;
-    d.querySelector(".personhead").onclick=()=>d.classList.toggle("open");
+
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label>🤖 読み取り名</label>
+          <input class="rawName" data-i="${idx}" value="${esc(p.raw||"")}" autocomplete="off">
+        </div>
+        <div>
+          <label>✏️ 送信名（ニックネーム）</label>
+          <input class="displayName" data-i="${idx}" value="${esc(p.display||"")}" autocomplete="off">
+        </div>
+        <div>
+          <label>Rank</label>
+          <select class="rankSel" data-i="${idx}">
+            <option value="">なし</option>
+            ${[1,2,3,4].map(r=>`<option value="${r}" ${p.rank===r?'selected':''}>Rank.${r}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>新規獲得</label>
+          <select class="newSel" data-i="${idx}">
+            <option value="0" ${!p.isNew?'selected':''}>いいえ</option>
+            <option value="1" ${p.isNew?'selected':''}>はい</option>
+          </select>
+        </div>
+      </div>`;
     box.appendChild(d);
   });
+
+  box.querySelectorAll(".rawName").forEach(el=>el.oninput=()=>{
+    const p=state.people[+el.dataset.i];
+    const old=p.raw;
+    p.raw=el.value;
+    if(!p.display || p.display===old) p.display=el.value;
+    renderChanges();generate();
+  });
   bindEditors(box);
+
+  const showImage=i=>{
+    const p=state.people[i];
+    if(!p?.cropUrl) return;
+    $("#modalImg").src=p.cropUrl;
+    $("#modal").classList.add("show");
+  };
+  box.querySelectorAll(".imageBtn,.imageTrigger").forEach(el=>el.onclick=()=>showImage(+el.dataset.i));
 }
 function renderReviews(){
   const box=$("#reviews");box.innerHTML="";
   const rev=state.people.filter(p=>p.needsReview);
   if(!rev.length){box.innerHTML='<div class="empty">要確認なし 🎉</div>';return}
   rev.forEach(p=>{
-    const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person review open";
-    d.innerHTML=`<div class="reviewtitle">⚠️ AI判断が不確か</div>
-      <div class="meta">信頼度 ${Math.round(p.conf||0)}%</div>
-      <div class="detail" style="display:block">
-        <img class="crop" src="${p.cropUrl}">
-        <div class="grid2" style="margin-top:8px">
-          <div><label>AIが読んだ名前</label><input value="${esc(p.raw||"")}" disabled></div>
-          <div><label>送信に使う名前</label><input class="displayName" data-i="${idx}" value="${esc(p.display||"")}"></div>
-          <div><label>Rank</label><select class="rankSel" data-i="${idx}"><option value="">なし</option>${[1,2,3,4].map(r=>`<option value="${r}" ${p.rank===r?'selected':''}>Rank.${r}</option>`).join("")}</select></div>
-          <div><label>新規獲得</label><select class="newSel" data-i="${idx}"><option value="0" ${!p.isNew?'selected':''}>いいえ</option><option value="1" ${p.isNew?'selected':''}>はい</option></select></div>
+    const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person review";
+    d.innerHTML=`
+      <div class="reviewtitle">⚠️ AI判断が不確か</div>
+      <div class="meta">信頼度 ${Math.round(p.conf||0)}% / 下の画像を見て修正してください。</div>
+      <img class="crop" src="${p.cropUrl}" style="margin-top:9px">
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <label>🤖 読み取り名</label>
+          <input class="rawNameReview" data-i="${idx}" value="${esc(p.raw||"")}" autocomplete="off">
         </div>
-        <button class="ok confirmBtn" data-i="${idx}" style="margin-top:8px;width:100%">✓ これで確定</button>
-      </div>`;
+        <div>
+          <label>✏️ 送信名（ニックネーム）</label>
+          <input class="displayName" data-i="${idx}" value="${esc(p.display||"")}" autocomplete="off">
+        </div>
+        <div>
+          <label>Rank</label>
+          <select class="rankSel" data-i="${idx}">
+            <option value="">なし</option>
+            ${[1,2,3,4].map(r=>`<option value="${r}" ${p.rank===r?'selected':''}>Rank.${r}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>新規獲得</label>
+          <select class="newSel" data-i="${idx}">
+            <option value="0" ${!p.isNew?'selected':''}>いいえ</option>
+            <option value="1" ${p.isNew?'selected':''}>はい</option>
+          </select>
+        </div>
+      </div>
+      <button class="ok confirmBtn" data-i="${idx}" style="margin-top:8px;width:100%">✓ これで確定</button>`;
     box.appendChild(d);
   });
+
+  box.querySelectorAll(".rawNameReview").forEach(el=>el.oninput=()=>{
+    const p=state.people[+el.dataset.i];
+    const old=p.raw;
+    p.raw=el.value;
+    if(!p.display || p.display===old) p.display=el.value;
+    renderChanges();generate();
+  });
   bindEditors(box);
+
   box.querySelectorAll(".confirmBtn").forEach(b=>b.onclick=()=>{
     const p=state.people[+b.dataset.i];
-    if(!p.display.trim()){alert("名前を入力してください");return}
-    p.needsReview=false;renderAll();
+    if(!p.raw.trim()){alert("読み取り名を入力してください");return}
+    if(!p.display.trim()) p.display=p.raw;
+    p.needsReview=false;
+    renderAll();
   });
 }
 function bindEditors(box){
