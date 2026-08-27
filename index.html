@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8f2">
-<title>しゅりり ありがとうメッセージメーカー v3</title>
+<title>しゅりり ありがとうメッセージメーカー v5</title>
 <style>
 :root{
   --bg:#fff8f2;--card:#fff;--ink:#4a372e;--muted:#90786b;--line:#ecdcd0;
@@ -66,7 +66,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v3</h1>
+  <h1>🐰 ありがとうメッセージメーカー v5</h1>
   <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
 
   <div class="card">
@@ -87,7 +87,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前内の空白は自動で詰めます。名前か「📷画像を見る」をタップすると元画像を確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前内の空白は自動で詰めます。名前欄だけを複数パターンで再読取し、短すぎる・欠けている可能性が高い名前だけ要確認に送ります。名前か「📷画像を見る」をタップすると元画像を確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -175,79 +175,256 @@ function coinValue(s){
 function cleanName(s){
   let t=norm(s);
 
-  // Remove obvious UI fragments that leaked into the name line.
+  // Remove UI fragments that sometimes leak into the name OCR.
   t=t
     .replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"")
     .replace(/\s*Rank\s*[1-4].*$/i,"")
     .replace(/\s*Lv\.?\s*\d+.*$/i,"");
 
-  // OCR sometimes prepends row numbers such as "4。", "3.", "2 )".
+  // Remove leaked row/ranking prefixes: 4。 / 3. / 2) etc.
   t=t.replace(/^\s*[\\\/|｜]*\s*\d{1,3}\s*[\.．。・:：、,，\-\)\]】]*\s*/u,"");
 
-  // Remove stray OCR punctuation only at the very beginning.
+  // Remove OCR junk punctuation at the beginning only.
   t=t.replace(/^\s*[\\\/|｜・。．,，:：]+\s*/u,"");
 
-  // User preference: names are packed with no spaces.
-  // Keep every actual character/script/emoji, only remove whitespace.
+  // User preference: remove whitespace inside names.
   t=t.replace(/[\s\u3000]+/gu,"");
 
   return t.trim();
 }
+
 function plausibleName(s){
   s=cleanName(s);
   if(!s || [...s].length>80) return false;
 
-  // Reject only unmistakable UI text. Do not reject by language/script.
+  // Reject only unmistakable app UI.
   if(/メッセージ1?の?送信先|ギフトコイン数|すべて選択|フォロー(?:する|中)?/i.test(s)) return false;
   if(/^[🎁]?\d[\d,，]*コ.?イ.?[ンソ]$/u.test(s)) return false;
   if(/^[♡♥]?Rank[1-4]/i.test(s)) return false;
+
   return true;
 }
-function obviouslyBrokenName(raw,conf){
+
+function nameVisualInkScore(c){
+  const ctx=c.getContext("2d"), W=c.width,H=c.height;
+  const d=ctx.getImageData(0,0,W,H).data;
+  let dark=0,total=0;
+  for(let y=0;y<H;y+=2){
+    for(let x=0;x<W;x+=2){
+      const i=(y*W+x)*4;
+      const lum=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+      if(lum<190) dark++;
+      total++;
+    }
+  }
+  return total?dark/total:0;
+}
+
+function obviouslyBrokenName(raw,conf,inkScore=0){
   const s=cleanName(raw);
   if(!s) return true;
 
-  // UI text or mostly numbers should always be reviewed.
+  // UI leakage or mostly numeric garbage.
   if(/コ.?イ.?[ンソ]|Rank|Lv\.?|送信先|ギフト/i.test(s)) return true;
   if(/^[\d０-９.,，。・:：\-]+$/u.test(s)) return true;
-
-  // Very low-confidence + very short result is where truncation such as
-  // "やっぴ〜" -> "やっ" often occurs. Low confidence alone is NOT enough.
-  if((conf||0)<28 && [...s].length<=3) return true;
-
-  // Suspicious leftover ranking prefix.
   if(/^\d/u.test(s)) return true;
+
+  const len=[...s].length;
+
+  // Typical catastrophic OCR outputs seen in the screenshots.
+  if(len<=2 && /^[&@#%*+=~on]+$/i.test(s)) return true;
+
+  // If the crop visibly contains a fair amount of dark text but OCR returned
+  // only 1-3 characters, the result is probably truncated.
+  if(inkScore>0.045 && len<=3) return true;
+
+  // Extremely low confidence + very short text is review-worthy.
+  if((conf||0)<22 && len<=4) return true;
 
   return false;
 }
+
+function cropCanvasScaled(c,sx,sy,sw,sh,scale=1){
+  sx=Math.max(0,Math.floor(sx)); sy=Math.max(0,Math.floor(sy));
+  sw=Math.max(1,Math.min(c.width-sx,Math.floor(sw)));
+  sh=Math.max(1,Math.min(c.height-sy,Math.floor(sh)));
+  const o=document.createElement("canvas");
+  o.width=Math.max(1,Math.floor(sw*scale));
+  o.height=Math.max(1,Math.floor(sh*scale));
+  const ctx=o.getContext("2d");
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(c,sx,sy,sw,sh,0,0,o.width,o.height);
+  return o;
+}
+
+function preprocessName(c,mode=0){
+  const o=document.createElement("canvas");
+  o.width=c.width;o.height=c.height;
+  const ctx=o.getContext("2d");
+  ctx.drawImage(c,0,0);
+  if(mode===0) return o;
+
+  const im=ctx.getImageData(0,0,o.width,o.height);
+  for(let i=0;i<im.data.length;i+=4){
+    const r=im.data[i],g=im.data[i+1],b=im.data[i+2];
+    const lum=.299*r+.587*g+.114*b;
+    let v;
+    if(mode===1) v=lum<190?0:255;
+    else v=lum<165?0:(lum>225?255:Math.round((lum-165)/60*255));
+    im.data[i]=im.data[i+1]=im.data[i+2]=v;
+  }
+  ctx.putImageData(im,0,0);
+  return o;
+}
+
+async function recognizeNameRegion(canvas, coinLine){
+  const W=canvas.width,H=canvas.height;
+
+  // REALITY layout: avatar at left, name in the middle, coin row directly below.
+  // Crop only the name strip. Use several vertical windows because screenshots
+  // can vary slightly in scaling.
+  const configs=[
+    {sx:.145, sy:-.066, sw:.68, sh:.050, scale:2.8},
+    {sx:.145, sy:-.060, sw:.72, sh:.044, scale:3.1},
+    {sx:.135, sy:-.072, sw:.74, sh:.056, scale:2.5}
+  ];
+
+  const candidates=[];
+  let preview=null, previewInk=0;
+
+  for(const cfg of configs){
+    const raw=cropCanvasScaled(
+      canvas,
+      W*cfg.sx,
+      coinLine.cy + H*cfg.sy,
+      W*cfg.sw,
+      H*cfg.sh,
+      cfg.scale
+    );
+    if(!preview){
+      preview=raw;
+      previewInk=nameVisualInkScore(raw);
+    }
+
+    for(const mode of [0,1,2]){
+      const test=preprocessName(raw,mode);
+      for(const psm of [7,6,13]){
+        try{
+          const r=await Tesseract.recognize(test,"jpn+eng",{tessedit_pageseg_mode:psm});
+          const original=norm(r.data.text||"");
+          const cleaned=cleanName(original);
+          if(plausibleName(cleaned)){
+            candidates.push({
+              original,
+              cleaned,
+              conf:Number(r.data.confidence||0),
+              len:[...cleaned].length,
+              mode,psm
+            });
+          }
+        }catch(e){}
+      }
+    }
+  }
+
+  // Deduplicate identical OCR strings, keeping the best confidence.
+  const map=new Map();
+  for(const c of candidates){
+    const old=map.get(c.cleaned);
+    if(!old || c.conf>old.conf) map.set(c.cleaned,c);
+  }
+  const uniq=[...map.values()];
+
+  // Prefer longer complete strings, but keep confidence relevant.
+  // Strong penalty for obvious garbage.
+  uniq.forEach(c=>{
+    let score=c.len*7 + c.conf*.45;
+    if(/^[&@#%*+=~]+$/.test(c.cleaned)) score-=80;
+    if(c.len<=2) score-=25;
+    c.score=score;
+  });
+  uniq.sort((a,b)=>b.score-a.score);
+
+  return {
+    best:uniq[0]||null,
+    alternatives:uniq.slice(1,4),
+    crop:preview,
+    inkScore:previewInk
+  };
+}
 async function analyzeOne(file,fileIndex,total){
   const url=URL.createObjectURL(file);
-  const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url});
-  const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext("2d").drawImage(img,0,0);
-  const result=await Tesseract.recognize(c,"jpn+eng",{logger:m=>{if(m.status==="recognizing text")$("#bar").style.width=`${Math.round(((fileIndex+(m.progress||0))/total)*100)}%`}});
+  const img=new Image();
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url});
+
+  const c=document.createElement("canvas");
+  c.width=img.naturalWidth;c.height=img.naturalHeight;
+  c.getContext("2d").drawImage(img,0,0);
+
+  // First OCR the whole screenshot only to find coin rows and Rank rows.
+  const result=await Tesseract.recognize(c,"jpn+eng",{
+    logger:m=>{
+      if(m.status==="recognizing text"){
+        const overall=(fileIndex+(m.progress||0)*0.45)/total;
+        $("#bar").style.width=`${Math.round(overall*100)}%`;
+      }
+    }
+  });
+
   const lines=groupLines(result.data.words);
-  const coinLines=lines.map(x=>({...x,coin:coinValue(x.text)})).filter(x=>x.coin!==null);
+  const coinLines=lines
+    .map(x=>({...x,coin:coinValue(x.text)}))
+    .filter(x=>x.coin!==null);
 
   const rows=[];
-  for(const cl of coinLines){
-    const above=lines.filter(l=>l.cy<cl.cy && cl.cy-l.cy<c.height*.085 && plausibleName(l.text)).sort((a,b)=>b.cy-a.cy);
-    const nameLine=above[0]||null;
-    const below=lines.filter(l=>l.cy>cl.cy && l.cy-cl.cy<c.height*.075).sort((a,b)=>a.cy-b.cy);
-    let rank=null,isNew=false,rankText="";
+
+  for(let j=0;j<coinLines.length;j++){
+    const cl=coinLines[j];
+
+    // Dedicated OCR on the NAME STRIP only.
+    const nr=await recognizeNameRegion(c,cl);
+    const raw=nr.best?.cleaned||"";
+    const conf=nr.best?.conf||0;
+
+    // Rank/new flag comes from rows below the coin line.
+    const below=lines
+      .filter(l=>l.cy>cl.cy && l.cy-cl.cy<c.height*.085)
+      .sort((a,b)=>a.cy-b.cy);
+
+    let rank=null,isNew=false,rankLine=null;
     for(const l of below){
       const m=l.text.match(/Rank\s*([1-4])/i);
-      if(m){rank=Number(m[1]);isNew=/新規/.test(l.text);rankText=l.text;break}
+      if(m){
+        rank=Number(m[1]);
+        isNew=/新規/.test(l.text);
+        rankLine=l;
+        break;
+      }
     }
+
+    // Review crop shows exactly the area used to infer this row.
     let cropUrl="";
-    const y0=Math.max(0,(nameLine?nameLine.y0:cl.y0)-18);
-    const y1=Math.min(c.height,(rankText?Math.max(...below.filter(l=>/Rank/i.test(l.text)).map(l=>l.y1)):cl.y1)+24);
-    const cr=cropCanvas(c,c.width*.04,y0,c.width*.92,Math.max(90,y1-y0));
-    cropUrl=cr.toDataURL("image/jpeg",.88);
-    const raw=nameLine?cleanName(nameLine.text):"";
-    const conf=nameLine?nameLine.conf:0;
-    const needsReview=obviouslyBrokenName(raw,conf);
-    rows.push({raw,display:raw,coin:cl.coin,rank,isNew,conf,needsReview,cropUrl,fileIndex});
+    if(nr.crop) cropUrl=nr.crop.toDataURL("image/jpeg",.92);
+
+    const needsReview=obviouslyBrokenName(raw,conf,nr.inkScore);
+
+    rows.push({
+      raw,
+      display:raw,
+      coin:cl.coin,
+      rank,
+      isNew,
+      conf,
+      needsReview,
+      cropUrl,
+      fileIndex,
+      alternatives:nr.alternatives.map(x=>x.cleaned)
+    });
+
+    const overall=(fileIndex+0.45+0.55*((j+1)/Math.max(1,coinLines.length)))/total;
+    $("#bar").style.width=`${Math.min(100,Math.round(overall*100))}%`;
   }
+
   URL.revokeObjectURL(url);
   return rows;
 }
@@ -331,7 +508,7 @@ function renderReviews(){
     const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person review";
     d.innerHTML=`
       <div class="reviewtitle">⚠️ AI判断が不確か</div>
-      <div class="meta">信頼度 ${Math.round(p.conf||0)}% / 下の画像を見て修正してください。</div>
+      <div class="meta">AI読取候補：${esc(p.raw||"未読取")}${p.alternatives?.length?` / 他候補：${p.alternatives.map(esc).join("・")}`:""}<br>下の画像を見て修正してください。</div>
       <img class="crop" src="${p.cropUrl}" style="margin-top:9px">
       <div class="grid2" style="margin-top:8px">
         <div>
@@ -402,59 +579,68 @@ function generate(){
     .sort((a,b)=>b.coin-a.coin);
 
   const top=gift.slice(0,3),rest=gift.slice(3);
-  const medals=["🥇","🥈","🥉"];
 
+  const medals=["🥇","🥈","🥉"];
   const topText=top.map((p,i)=>{
     const b=state.bonus[i]||BONUS_NORMAL[0];
-    return `${medals[i]} ${p.display}\n└ 🍀 ${b[0]}【${b[1]}】`;
-  }).join("\n");
+    return `${medals[i]} ${p.display}
+${b[0]}：${b[1]}！`;
+  }).join("\n\n");
 
   const restText=rest.length
-    ? rest.map(p=>`🎁⌇${p.display}`).join("\n")
-    : "🎁⌇今日はTOP3だけｯ！";
+    ? rest.map(p=>`🎁 ${p.display}`).join("\n")
+    : "";
 
   const newRanks=state.people.filter(
     p=>!p.needsReview && p.isNew && p.rank && (p.display||"").trim()
   );
 
-  const rankBox=newRanks.length
-    ? `╭──────────────╮
-　🌷 NEW RANK GET！
-${newRanks.map(p=>`✨ ${p.display} ▶ Rank.${p.rank} GET！`).join("\n")}
-╰──────────────╯
-`
-    : "";
+  let rankText="";
+  if(newRanks.length){
+    rankText="\n━━ 🌱 NEW RANK ━━━\n\n";
+    for(const p of newRanks){
+      rankText+=`✨ ${p.display}　Rank.${p.rank} GET！\n`;
+      rankText+=p.rank===1
+        ? "🐰 しゅり村の仲間になりました！\n\n"
+        : "⚡ なかまLEVEL UP！\n\n";
+    }
+    rankText+="仲間になってくれてありがと〜ｯ！🙌\n";
+  }
 
   const s=state.status;
 
-  $("#output").value=`╭──────────────╮
-　🐰 HP回復リザルト 🐰
-╰──────────────╯
-╭──────────────╮
-　🎁 GIFT RECEIVED
-　૮₍ ˶ᵔ ᵕ ᵔ˶ ₎აっ🎁 ﾋﾟﾛﾘﾝｯ♪
-　❤️ HP ＋＋＋
-╰──────────────╯
-╭──────────────╮
-　🏆 TODAY'S TOP3
+  $("#output").value=`🎮✨ HP回復リザルト ✨🐰
+
+૮₍ ˶ᵔ ᗜ ᵔ˶ ₎აっ🎁
+ﾋﾟﾛﾘﾝｯ♪　HP＋＋＋！
+
+━━━━ 🏆 TOP3 ━━━━
+
 ${topText}
-╰──────────────╯
-╭──────────────╮
-　🎁 ｷﾞﾌﾄ届け隊のみなさま
+
+━━ 🎁 ギフト届け隊 ━━
+
 ${restText}
-　🎁⊂૮₍ ˶ᵔ ᵕ ᵔ˶ ₎ა⊃🎁
-　ぜ〜んぶ受け取ったｯｯｯ♡
-╰──────────────╯
-${rankBox}╭──────────────╮
-　📟 TODAY'S STATUS
-❤️ HP【■■■■■■■■■■】${s.hp}
-🐰 STATUS【${s.st}】
-✨ EFFECT【${s.ef}】
-╰──────────────╯
+
+🎁⊂૮₍ ˶ᵔ ᗜ ᵔ˶ ₎ა⊃🎁
+ぜ〜んぶ受け取ったｯｯｯ！
+${rankText}
+━━ 📟 今日のしゅり ━━
+
+❤️ HP　■■■■■■■■■■ ${s.hp}
+🐰 ${s.st}
+✨ ${s.ef}
+
 　＼ ✨ QUEST CLEAR！✨ ／
-今日もしゅりのHPを
-回復してくれてありがと〜ｯ！🌼
-　૮₍ ˶ᵔ ᵕ ᵔ˶ ₎ა ♡ また遊ぼうねｯ！`;
+
+今日もしゅりのHP
+いっぱい回復した〜〜ｯ！
+
+ギフトも応援も
+ぜんぶ受け取りました🎁✨
+
+૮₍ ˶ᵔ ᗜ ᵔ˶ ₎აﾉ♪
+また遊びにきてね〜ｯ！`;
 }
 function renderAll(){renderPeople();renderReviews();renderChanges();generate()}
 $("#files").onchange=e=>{
