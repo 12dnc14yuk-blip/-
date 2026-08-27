@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。人物ごとに、太字の名前行・コイン行・Rank行を完全に別々の範囲で読み取ります。名前OCRは名前行以外を見ないため、ヘッダーや説明文を名前として拾いにくくしています。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。人物の右側○と左側アイコンを同じ行の基準にして、アイコン右横の太字1行だけを名前として読みます。コイン・Rankはその下の専用行から別々に読み取ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -795,7 +795,14 @@ function chooseNameFromReads(reads){
 
     if(!plausibleName(s)) continue;
 
+    // Heavy garbage often contains many script switches and random symbols.
+    const weirdSymbols=(s.match(/[&=<>\\|]{1,}/g)||[]).length;
+    const latinChunks=(s.match(/[A-Za-z]{3,}/g)||[]).length;
+    const kanaKanji=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu)||[]).length;
+
     let score=Math.min(30,(r.conf||0)*.35);
+    if(weirdSymbols>=2) score-=30;
+    if(latinChunks>=2 && kanaKanji>=2) score-=12;
     const len=[...s].length;
     const jp=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
 
@@ -910,59 +917,68 @@ function chooseRankFromReads(reads){
 async function recognizeRealityPersonBlock(canvas,centerY){
   const W=canvas.width,H=canvas.height;
 
-  // Evidence image shown to the user. Wider than OCR zones.
-  const evTop=Math.max(0,centerY-H*.055);
-  const evBottom=Math.min(H,centerY+H*.070);
+  // Evidence image shown to the user.
+  const evTop=Math.max(0,centerY-H*.050);
+  const evBottom=Math.min(H,centerY+H*.060);
   const evidence=cropCanvasScaled(
     canvas,W*.025,evTop,W*.955,Math.max(1,evBottom-evTop),1.35
   );
 
   /*
-    IMPORTANT:
-    Each field is OCRed from its own dedicated zone.
-    Name OCR never sees coin/rank/header text.
-    Coin OCR never sees the name.
-    Rank OCR never sees name/coin.
+    V8.1
+    The selection circle and avatar are vertically centered on the same REALITY row.
+    Read each field relative to that row center.
+
+    NAME:
+      right side of avatar, bold first line only.
+      This band is intentionally close to centerY.
+      Previous versions cropped too high and read unrelated text.
+
+    COIN:
+      immediately below the name.
+
+    RANK:
+      next line below coin.
   */
 
-  // Bold name line
-  const nameTop=Math.max(0,centerY-H*.046);
-  const nameBottom=Math.max(nameTop+1,Math.min(H,centerY-H*.016));
+  // NAME: avatar sits on left; bold name begins just to its right.
+  const nameTop=Math.max(0,centerY-H*.020);
+  const nameBottom=Math.min(H,centerY+H*.002);
   const nameZone=await ocrZone(
     canvas,
     W*.155,
     nameTop,
-    W*.67,
-    nameBottom-nameTop,
-    3.4,
+    W*.675,
+    Math.max(1,nameBottom-nameTop),
+    4.2,
     [7,13]
   );
   const namePick=chooseNameFromReads(nameZone.reads);
 
-  // Coin line just below name
-  const coinTop=Math.max(0,centerY-H*.008);
-  const coinBottom=Math.min(H,centerY+H*.020);
+  // COIN: narrow line directly under the bold name.
+  const coinTop=Math.max(0,centerY+H*.004);
+  const coinBottom=Math.min(H,centerY+H*.027);
   const coinZone=await ocrZone(
     canvas,
     W*.155,
     coinTop,
-    W*.45,
+    W*.44,
     Math.max(1,coinBottom-coinTop),
-    3.2,
+    3.8,
     [7,13]
   );
   const coinPick=chooseCoinFromReads(coinZone.reads);
 
-  // Rank line below coin. If row has no Rank, this zone may remain blank.
-  const rankTop=Math.max(0,centerY+H*.022);
+  // RANK: lower metadata line.
+  const rankTop=Math.max(0,centerY+H*.029);
   const rankBottom=Math.min(H,centerY+H*.052);
   const rankZone=await ocrZone(
     canvas,
     W*.155,
     rankTop,
-    W*.55,
+    W*.53,
     Math.max(1,rankBottom-rankTop),
-    3.0,
+    3.6,
     [7,13]
   );
   const rankPick=chooseRankFromReads(rankZone.reads);
