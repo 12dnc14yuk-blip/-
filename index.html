@@ -561,63 +561,85 @@ function clusterYs(values,minGap=58){
 }
 
 async function findRealityRowCenters(canvas){
-  /*
-    人物検出を1方式に依存しない。
-    A) 右端の選択○
-    B) 全体OCRの「○○コイン」
-    C) Rank行
-    のY座標をまとめ、同じ人物の候補をクラスタリングする。
-    画面端で○が切れていても、コイン/Rankが見えていれば人物として残る。
-  */
   const W=canvas.width,H=canvas.height;
-  const centers=[];
+  const primary=[];
 
-  // A: gray selection circles on the right.
+  // PRIMARY: right-side selection circles.
   const ctx=canvas.getContext("2d");
-  const x0=Math.floor(W*.845), x1=Math.floor(W*.985);
-  const d=ctx.getImageData(x0,0,x1-x0,H).data;
+  const x0=Math.floor(W*.84), x1=Math.floor(W*.99);
+  const data=ctx.getImageData(x0,0,x1-x0,H).data;
   const w=x1-x0;
-  const scores=[];
+  const scan=[];
+
   for(let y=0;y<H;y+=2){
-    let mid=0;
+    let count=0;
     for(let x=0;x<w;x+=3){
       const i=(y*w+x)*4;
-      const r=d[i],g=d[i+1],b=d[i+2];
+      const r=data[i],g=data[i+1],b=data[i+2];
       const lum=.299*r+.587*g+.114*b;
-      if(lum>145 && lum<235 && Math.max(r,g,b)-Math.min(r,g,b)<22) mid++;
+      if(lum>145 && lum<240 && Math.max(r,g,b)-Math.min(r,g,b)<24) count++;
     }
-    scores.push({y,score:mid});
+    scan.push({y,count});
   }
-  const threshold=Math.max(5,Math.floor(w/35));
-  const ys=scores.filter(v=>v.score>=threshold).map(v=>v.y);
+
+  const threshold=Math.max(5,Math.floor(w/38));
+  const ys=scan.filter(v=>v.count>=threshold).map(v=>v.y);
   const groups=[];
   for(const y of ys){
     const last=groups[groups.length-1];
-    if(!last || y-last[last.length-1]>10) groups.push([y]);
+    if(!last || y-last[last.length-1]>12) groups.push([y]);
     else last.push(y);
   }
+
   for(const g of groups.filter(g=>g.length>=3)){
     const y=Math.round((g[0]+g[g.length-1])/2);
-    if(y>H*.18 && y<H*.985) centers.push(y);
+    if(y>H*.15 && y<H*.995) primary.push(y);
   }
 
-  // B/C: OCR anchors as fallback, especially for partially visible rows.
+  // Merge circle fragments first.
+  const centers=[];
+  for(const y of primary.sort((a,b)=>a-b)){
+    if(!centers.length || y-centers[centers.length-1]>95) centers.push(y);
+    else centers[centers.length-1]=Math.round((centers[centers.length-1]+y)/2);
+  }
+
+  // FALLBACK: coin / Rank OCR only if no circle center is already nearby.
   try{
     const r=await Tesseract.recognize(canvas,"jpn+eng",{tessedit_pageseg_mode:11});
     const lines=groupLines(r.data.words);
+    const fallback=[];
+
     for(const l of lines){
       const txt=(l.text||"").normalize("NFKC");
+      let y=null;
       if(/[0-9][0-9,]*\s*コ.?イ.?[ンソ]/i.test(txt)){
-        // coin line lies slightly below the row's visual center
-        centers.push(l.cy-H*.012);
+        y=l.cy-H*.012;
       }else if(/Rank\s*[1-9]/i.test(txt)){
-        // Rank line lies below the row's visual center
-        centers.push(l.cy-H*.035);
+        y=l.cy-H*.034;
       }
+      if(y!==null && y>H*.12 && y<H*.995){
+        // Only create a new person if there isn't already one close by.
+        if(!centers.some(c=>Math.abs(c-y)<105)) fallback.push(y);
+      }
+    }
+
+    for(const y of fallback.sort((a,b)=>a-b)){
+      if(!centers.some(c=>Math.abs(c-y)<105)) centers.push(y);
     }
   }catch(e){}
 
-  return clusterYs(centers,58).filter(y=>y>H*.18 && y<H*.985);
+  // Edge rescue: if a partial row is visible near the top or bottom and OCR
+  // finds coin/rank there, keep it even if the circle is cropped off.
+  centers.sort((a,b)=>a-b);
+
+  // Final merge: same-person anchors can differ by ~60–90px.
+  const final=[];
+  for(const y of centers){
+    if(!final.length || y-final[final.length-1]>115) final.push(y);
+    else final[final.length-1]=Math.round((final[final.length-1]+y)/2);
+  }
+
+  return final.filter(y=>y>H*.10 && y<H*.995);
 }
 function parseRealityPersonText(text){
   const raw=String(text||"").replace(/\r/g,"");
@@ -689,15 +711,27 @@ async function recognizeRealityPersonBlock(canvas,centerY){
     }
   }
 
-  // Score complete structured reads highest.
+  // Score structured, human-looking names highest.
   candidates.forEach(c=>{
     let score=0;
-    if(c.name) score+=35;
-    if(c.coin!==null) score+=35;
-    if(c.rank!==null) score+=20;
+    const name=cleanName(c.name||"");
+    const len=[...name].length;
+    const jp=(name.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
+    const weird=(name.match(/[\\|$¥<>_=]{2,}/g)||[]).length;
+
+    if(name) score+=38;
+    if(c.coin!==null) score+=34;
+    if(c.rank!==null) score+=18;
     score+=Math.min(10,c.conf*.12);
-    if(c.name && [...c.name].length>50) score-=40;
-    if(c.name && /コ.?イ.?ン|Rank|Lv/i.test(c.name)) score-=70;
+
+    if(len>45) score-=35;
+    if(len>0 && len<=30) score+=8;
+    if(jp>0) score+=8;
+    if(weird>0) score-=35;
+    if(/コ.?イ.?ン|Rank|Lv/i.test(name)) score-=80;
+    if(/^[A-Z]{2,5}$/i.test(name) && c.conf<35) score-=25;
+
+    c.name=name;
     c.score=score;
   });
   candidates.sort((a,b)=>b.score-a.score);
@@ -775,6 +809,7 @@ function simpleNameKey(s){
 function dedupePeopleAcrossScreens(people){
   const sorted=[...people].sort((a,b)=>(b.coin||0)-(a.coin||0));
   const out=[];
+
   for(const p of sorted){
     const pk=simpleNameKey(p.raw||p.display);
     let hit=-1;
@@ -783,34 +818,46 @@ function dedupePeopleAcrossScreens(people){
       const q=out[i];
       const qk=simpleNameKey(q.raw||q.display);
 
-      // Same coin + highly similar name is almost certainly the same person
-      // duplicated by overlapping screenshots.
-      const sameCoin=(p.coin===q.coin);
+      const sameCoin=p.coin===q.coin;
+      const sameRank=(p.rank===q.rank) || !p.rank || !q.rank;
       const sim=similarityQuick(pk,qk);
-      if(pk && qk && sameCoin && sim>=.62){
+
+      // Overlapping screenshots often produce small OCR differences.
+      if(pk && qk && sameCoin && sameRank && sim>=.48){
         hit=i;break;
       }
     }
 
     if(hit<0){
       out.push(p);
-    }else{
-      const q=out[hit];
-      // Keep the more useful OCR result / metadata.
-      const pScore=(p.raw?.length||0)+(p.rank?8:0)+(p.isNew?4:0)-(p.needsReview?5:0);
-      const qScore=(q.raw?.length||0)+(q.rank?8:0)+(q.isNew?4:0)-(q.needsReview?5:0);
-      if(pScore>qScore){
-        p.display=q.display && q.display!==q.raw ? q.display : p.display;
-        out[hit]=p;
-      }
-      out[hit].rank=out[hit].rank||p.rank;
-      out[hit].isNew=out[hit].isNew||p.isNew;
-      out[hit].needsReview=out[hit].needsReview&&p.needsReview;
+      continue;
     }
+
+    const q=out[hit];
+
+    const quality=x=>{
+      const n=cleanName(x.raw||"");
+      const len=[...n].length;
+      let s=(x.rank?10:0)+(x.isNew?5:0)+(x.coinUnknown?-8:5)-(x.needsReview?8:0);
+      if(len>0 && len<=35) s+=10;
+      if(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}A-Za-z]/u.test(n)) s+=5;
+      if(/[\\|$¥<>_=]{2,}/.test(n)) s-=15;
+      return s;
+    };
+
+    if(quality(p)>quality(q)){
+      const oldDisplay=q.display;
+      out[hit]=p;
+      if(oldDisplay && oldDisplay!==q.raw) out[hit].display=oldDisplay;
+    }
+
+    out[hit].rank=out[hit].rank||p.rank;
+    out[hit].isNew=out[hit].isNew||p.isNew;
+    out[hit].needsReview=out[hit].needsReview&&p.needsReview;
   }
+
   return out;
 }
-
 function renderGallery(){
   const box=$("#gallery");box.innerHTML="";
   state.files.forEach((f,i)=>{
@@ -841,12 +888,6 @@ function renderPeople(){
 
       <div class="compactinfo">
         <div class="mini"><b>👤 名前</b>${esc(p.display||p.raw||"未読取")}</div>
-        <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}</div>
-        <div class="mini"><b>❤️ Rank</b>${p.rank?"Rank."+p.rank:"なし"}</div>
-        <div class="mini"><b>🌱 新規</b>${p.isNew&&p.rank?"Rank."+p.rank:"なし"}</div>
-      </div>
-      <div class="compactinfo">
-        <div class="mini"><b>👤 読取</b>${esc(p.raw||"未読取")}</div>
         <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}</div>
         <div class="mini"><b>❤️ Rank</b>${p.rank?"Rank."+p.rank:"なし"}</div>
         <div class="mini"><b>🌱 新規</b>${p.isNew&&p.rank?"Rank."+p.rank:"なし"}</div>
