@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8f2">
-<title>しゅりり ありがとうメッセージメーカー</title>
+<title>しゅりり ありがとうメッセージメーカー v3</title>
 <style>
 :root{
   --bg:#fff8f2;--card:#fff;--ink:#4a372e;--muted:#90786b;--line:#ecdcd0;
@@ -66,7 +66,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー</h1>
+  <h1>🐰 ありがとうメッセージメーカー v3</h1>
   <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
 
   <div class="card">
@@ -87,13 +87,13 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前か「📷画像を見る」をタップすると、その名前を読み取った元画像の該当部分を確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前内の空白は自動で詰めます。名前か「📷画像を見る」をタップすると元画像を確認できます。</div>
     <div id="people"></div>
   </div>
 
   <div class="card">
     <div class="sec">③ ⚠️ 要確認</div>
-    <div class="small">AIが自信を持てなかったところだけ、該当画像を最初から表示します。読み取り名・送信名・Rankを直して「確定」を押してください。</div>
+    <div class="small">明らかな文字欠け・UI混入など、本当に怪しいものだけ表示します。低い信頼度だけでは要確認にしません。</div>
     <div id="reviews"></div>
   </div>
 
@@ -173,22 +173,52 @@ function coinValue(s){
   return Number(m[1].replace(/,/g,""));
 }
 function cleanName(s){
-  // Preserve the displayed name as much as possible.
-  // Remove only UI text that clearly belongs to the coin / Rank rows.
-  return norm(s)
+  let t=norm(s);
+
+  // Remove obvious UI fragments that leaked into the name line.
+  t=t
     .replace(/\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ].*$/u,"")
     .replace(/\s*Rank\s*[1-4].*$/i,"")
-    .replace(/\s*Lv\.?\s*\d+.*$/i,"")
-    .trim();
+    .replace(/\s*Lv\.?\s*\d+.*$/i,"");
+
+  // OCR sometimes prepends row numbers such as "4。", "3.", "2 )".
+  t=t.replace(/^\s*[\\\/|｜]*\s*\d{1,3}\s*[\.．。・:：、,，\-\)\]】]*\s*/u,"");
+
+  // Remove stray OCR punctuation only at the very beginning.
+  t=t.replace(/^\s*[\\\/|｜・。．,，:：]+\s*/u,"");
+
+  // User preference: names are packed with no spaces.
+  // Keep every actual character/script/emoji, only remove whitespace.
+  t=t.replace(/[\s\u3000]+/gu,"");
+
+  return t.trim();
 }
 function plausibleName(s){
   s=cleanName(s);
   if(!s || [...s].length>80) return false;
-  // Only reject obvious UI lines. Do NOT reject based on language/script.
-  if(/メッセージ\s*1?\s*の?送信先|ギフトコイン数|すべて選択|フォロー(?:する|中)?/i.test(s)) return false;
-  if(/^\s*[🎁]?\s*\d[\d,，]*\s*コ\s*イ\s*[ンソ]\s*$/u.test(s)) return false;
-  if(/^\s*[♡♥]?\s*Rank\s*[1-4]/i.test(s)) return false;
+
+  // Reject only unmistakable UI text. Do not reject by language/script.
+  if(/メッセージ1?の?送信先|ギフトコイン数|すべて選択|フォロー(?:する|中)?/i.test(s)) return false;
+  if(/^[🎁]?\d[\d,，]*コ.?イ.?[ンソ]$/u.test(s)) return false;
+  if(/^[♡♥]?Rank[1-4]/i.test(s)) return false;
   return true;
+}
+function obviouslyBrokenName(raw,conf){
+  const s=cleanName(raw);
+  if(!s) return true;
+
+  // UI text or mostly numbers should always be reviewed.
+  if(/コ.?イ.?[ンソ]|Rank|Lv\.?|送信先|ギフト/i.test(s)) return true;
+  if(/^[\d０-９.,，。・:：\-]+$/u.test(s)) return true;
+
+  // Very low-confidence + very short result is where truncation such as
+  // "やっぴ〜" -> "やっ" often occurs. Low confidence alone is NOT enough.
+  if((conf||0)<28 && [...s].length<=3) return true;
+
+  // Suspicious leftover ranking prefix.
+  if(/^\d/u.test(s)) return true;
+
+  return false;
 }
 async function analyzeOne(file,fileIndex,total){
   const url=URL.createObjectURL(file);
@@ -215,7 +245,7 @@ async function analyzeOne(file,fileIndex,total){
     cropUrl=cr.toDataURL("image/jpeg",.88);
     const raw=nameLine?cleanName(nameLine.text):"";
     const conf=nameLine?nameLine.conf:0;
-    const needsReview=!raw || conf<55;
+    const needsReview=obviouslyBrokenName(raw,conf);
     rows.push({raw,display:raw,coin:cl.coin,rank,isNew,conf,needsReview,cropUrl,fileIndex});
   }
   URL.revokeObjectURL(url);
@@ -366,70 +396,65 @@ function renderChanges(){
 function rollBonus(){state.bonus=[0,1,2].map(()=>weighted(BONUS_NORMAL,BONUS_FUNNY,BONUS_RARE))}
 function generate(){
   if(!state.status)rollAll();
-  const gift=state.people.filter(p=>!p.needsReview && (p.coin||0)>0 && (p.display||"").trim()).sort((a,b)=>b.coin-a.coin);
+
+  const gift=state.people
+    .filter(p=>!p.needsReview && (p.coin||0)>0 && (p.display||"").trim())
+    .sort((a,b)=>b.coin-a.coin);
+
   const top=gift.slice(0,3),rest=gift.slice(3);
   const medals=["🥇","🥈","🥉"];
-  let topText=top.map((p,i)=>{
+
+  const topText=top.map((p,i)=>{
     const b=state.bonus[i]||BONUS_NORMAL[0];
-    return `${medals[i]} ${p.display}\n　└ 🍀 BONUS GET！\n　　 ${b[0]}\n　　 【 ${b[1]} 】`;
-  }).join("\n\n");
-  const restText=rest.length?rest.map(p=>`🎁⌇${p.display}`).join("\n"):"（4位以下なし）";
-  const newRanks=state.people.filter(p=>!p.needsReview&&p.isNew&&p.rank&&(p.display||"").trim());
-  const rankText=newRanks.length?newRanks.map(p=>`✨ ${p.display}　▶ Rank.${p.rank} GET！`).join("\n"):"（NEW RANKなし）";
+    return `${medals[i]} ${p.display}\n└ 🍀 ${b[0]}【${b[1]}】`;
+  }).join("\n");
+
+  const restText=rest.length
+    ? rest.map(p=>`🎁⌇${p.display}`).join("\n")
+    : "🎁⌇今日はTOP3だけｯ！";
+
+  const newRanks=state.people.filter(
+    p=>!p.needsReview && p.isNew && p.rank && (p.display||"").trim()
+  );
+
+  const rankBox=newRanks.length
+    ? `╭──────────────╮
+　🌷 NEW RANK GET！
+${newRanks.map(p=>`✨ ${p.display} ▶ Rank.${p.rank} GET！`).join("\n")}
+╰──────────────╯
+`
+    : "";
+
   const s=state.status;
+
   $("#output").value=`╭──────────────╮
 　🐰 HP回復リザルト 🐰
 ╰──────────────╯
-
 ╭──────────────╮
 　🎁 GIFT RECEIVED
-
-　 ૮₍ ˶ᵔ ᵕ ᵔ˶ ₎აっ🎁
-　　　ﾋﾟﾛﾘﾝｯ♪
-　　❤️ HP ＋＋＋
+　૮₍ ˶ᵔ ᵕ ᵔ˶ ₎აっ🎁 ﾋﾟﾛﾘﾝｯ♪
+　❤️ HP ＋＋＋
 ╰──────────────╯
-
 ╭──────────────╮
 　🏆 TODAY'S TOP3
-
 ${topText}
 ╰──────────────╯
-
 ╭──────────────╮
 　🎁 ｷﾞﾌﾄ届け隊のみなさま
-
 ${restText}
-
 　🎁⊂૮₍ ˶ᵔ ᵕ ᵔ˶ ₎ა⊃🎁
 　ぜ〜んぶ受け取ったｯｯｯ♡
 ╰──────────────╯
-
-╭──────────────╮
-　🌷 NEW RANK GET！
-
-${rankText}
-╰──────────────╯
-
-╭──────────────╮
+${rankBox}╭──────────────╮
 　📟 TODAY'S STATUS
-
-❤️ HP
-【■■■■■■■■■■】${s.hp}
-
-🐰 STATUS
-【 ${s.st} 】
-
-✨ EFFECT
-【 ${s.ef} 】
+❤️ HP【■■■■■■■■■■】${s.hp}
+🐰 STATUS【${s.st}】
+✨ EFFECT【${s.ef}】
 ╰──────────────╯
-
-　　＼ ✨ QUEST CLEAR！✨ ／
-
-　今日もしゅりのHPを
+　＼ ✨ QUEST CLEAR！✨ ／
+今日もしゅりのHPを
 回復してくれてありがと〜ｯ！🌼
-
-　 ૮₍ ˶ᵔ ᵕ ᵔ˶ ₎ა ♡
-　　 また遊ぼうねｯ！`;
+　૮₍ ˶ᵔ ᵕ ᵔ˶ ₎ა ♡ また遊ぼうねｯ！`;
 }
 function renderAll(){renderPeople();renderReviews();renderChanges();generate()}
 $("#files").onchange=e=>{
