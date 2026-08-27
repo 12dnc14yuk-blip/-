@@ -63,7 +63,7 @@ renderPeople=function(){
     d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
     ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
     <div class="editgrid">
-      <label>正式名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
+      <label>認識名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
       <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
       <label>コイン<input type="number" min="0" data-i="${i}" data-k="coin" value="${p.coin??''}"></label>
       <label>Rank<select data-i="${i}" data-k="rank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.rank===n?' selected':''}>${n}</option>`).join('')}</select></label>
@@ -229,6 +229,19 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 .v14-summary{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 6px}.v14-pill{font-size:10px;padding:3px 6px;border-radius:999px;background:#f4f0ed}.v14-pill.warn{background:#fff0bf}
 @media(max-width:680px){.wrap{padding:6px 6px 88px}.card{padding:9px}.editgrid{grid-template-columns:minmax(105px,1.6fr) minmax(78px,1fr) 62px 58px 58px}.v14-thumb{flex-basis:92px}.v14-thumb img{height:104px}}
 
+
+.dictDetails{border:1px solid var(--line);border-radius:14px;background:#fff;margin:10px 0;overflow:hidden}
+.dictDetails>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;font-weight:900;cursor:pointer;background:#faf8f6}
+.dictDetails>summary::-webkit-details-marker{display:none}
+.dictDetails>summary:after{content:"＋";font-size:18px;color:var(--muted);margin-left:auto}
+.dictDetails[open]>summary:after{content:"−"}
+.miniCount{font-size:12px;font-weight:800;color:#826e61;background:#eee9e5;border-radius:99px;padding:4px 8px;margin-left:6px}
+.dictTools{padding:10px 10px 4px}
+#dictSearch{height:42px;padding:9px 12px;margin:0 0 8px;font-size:14px}
+.dictHead{display:grid;grid-template-columns:1.4fr 1fr auto;gap:8px;padding:0 2px 4px;color:var(--muted);font-size:11px;font-weight:800}
+#dictPanel{padding:0 10px 10px;max-height:55vh;overflow:auto}
+#learnPanel{padding:10px;max-height:45vh;overflow:auto}
+@media(max-width:560px){.dictHead{grid-template-columns:1fr 1fr 52px}.nickrow{grid-template-columns:1fr 1fr 52px!important}.nickrow button{grid-column:auto!important;padding:8px 4px;font-size:11px}}
 </style>
 </head>
 <body>
@@ -269,13 +282,19 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 
   <section class="card">
     <h2>③ 名前辞書</h2>
-    <p class="note">正式名→ニックネームを登録。次回、同じ人を読み取ったら本文だけ自動でニックネームに変換します。あとからいつでも修正できます。</p>
-    <div class="tabs">
-      <button class="tab active" data-tab="dict">登録一覧</button>
-      <button class="tab" data-tab="learn">認識補正</button>
-    </div>
-    <div id="dictPanel"></div>
-    <div id="learnPanel" class="hidden"></div>
+    <p class="note">認識名→本文名（ニックネーム）を登録。次回、同じ人を読み取ったら本文だけ自動変換します。</p>
+    <details class="dictDetails" id="dictDetails">
+      <summary>📖 登録した名前を見る <span id="dictCount" class="miniCount">0件</span></summary>
+      <div class="dictTools">
+        <input id="dictSearch" type="search" placeholder="🔎 認識名・ニックネームを検索" autocomplete="off">
+        <div class="dictHead"><span>認識名</span><span>本文名（ニックネーム）</span><span></span></div>
+      </div>
+      <div id="dictPanel"></div>
+    </details>
+    <details class="dictDetails" id="learnDetails">
+      <summary>🧠 認識補正を見る <span id="learnCount" class="miniCount">0件</span></summary>
+      <div id="learnPanel"></div>
+    </details>
     <div class="btnrow">
       <button class="secondary" id="exportBtn">辞書を書き出す</button>
       <button class="secondary" id="importBtn">辞書を読み込む</button>
@@ -622,7 +641,7 @@ function renderPeople(){
         <div class="kv"><b>🌱 新規</b><span>${p.newRank?'Rank.'+p.newRank:'なし'}</span></div>
       </div>
       <div class="editgrid">
-        <label>正式名<input data-i="${idx}" data-k="name" value="${attr(p.name||'')}"></label>
+        <label>認識名<input data-i="${idx}" data-k="name" value="${attr(p.name||'')}"></label>
         <label>本文の名前（ニックネーム）<input data-i="${idx}" data-k="nick" value="${attr(nicknameFor(p.name||''))}"></label>
         <label>コイン<input type="number" min="0" data-i="${idx}" data-k="coin" value="${p.coin??''}"></label>
         <label>現在Rank<select data-i="${idx}" data-k="rank">
@@ -656,11 +675,16 @@ function saveNick(i){
   state.nick[p.name]=n; persist();renderDict();generateResult();
 }
 function renderDict(){
-  const el=$('#dictPanel'), keys=Object.keys(state.nick).sort((a,b)=>a.localeCompare(b,'ja')); el.innerHTML='';
-  if(!keys.length){el.innerHTML='<p class="note">まだ登録はありません。</p>';return}
+  const el=$('#dictPanel'), allKeys=Object.keys(state.nick).sort((a,b)=>a.localeCompare(b,'ja'));
+  const q=norm(($('#dictSearch')?.value||'')).toLocaleLowerCase('ja');
+  const keys=q ? allKeys.filter(k=>k.toLocaleLowerCase('ja').includes(q) || String(state.nick[k]||'').toLocaleLowerCase('ja').includes(q)) : allKeys;
+  if($('#dictCount')) $('#dictCount').textContent=allKeys.length+'件';
+  el.innerHTML='';
+  if(!allKeys.length){el.innerHTML='<p class="note">まだ登録はありません。</p>';return}
+  if(!keys.length){el.innerHTML='<p class="note">検索に一致する名前はありません。</p>';return}
   for(const k of keys){
     const r=document.createElement('div');r.className='nickrow';
-    r.innerHTML=`<input value="${attr(k)}" data-old="${attr(k)}" class="off"><input value="${attr(state.nick[k])}" class="nn"><button class="secondary smallbtn">削除</button>`;
+    r.innerHTML=`<input aria-label="認識名" value="${attr(k)}" data-old="${attr(k)}" class="off"><input aria-label="本文名（ニックネーム）" value="${attr(state.nick[k])}" class="nn"><button class="secondary smallbtn">削除</button>`;
     const [off,nn,btn]=r.children;
     off.onchange=()=>{let nk=norm(off.value);if(nk&&nk!==k){state.nick[nk]=state.nick[k];delete state.nick[k];persist();renderDict();generateResult()}};
     nn.onchange=()=>{state.nick[k]=norm(nn.value);persist();generateResult()};
@@ -669,7 +693,7 @@ function renderDict(){
   }
 }
 function renderLearn(){
-  const el=$('#learnPanel');el.innerHTML=state.corrections.length?state.corrections.map((c,i)=>`<div class="learnlist">#${i+1} ${c.kind==='missed-row'?'取りこぼし位置':'補正'} ・ ${new Date(c.at).toLocaleString()}</div>`).join(''):'<p class="note">まだ補正履歴はありません。</p>';
+  const el=$('#learnPanel'); if($('#learnCount')) $('#learnCount').textContent=state.corrections.length+'件'; el.innerHTML=state.corrections.length?state.corrections.map((c,i)=>`<div class="learnlist">#${i+1} ${c.kind==='missed-row'?'取りこぼし位置':'補正'} ・ ${new Date(c.at).toLocaleString()}</div>`).join(''):'<p class="note">まだ補正履歴はありません。</p>';
 }
 function renderOverlay(){
   if(!state.images.length)return;
@@ -757,7 +781,7 @@ $('#saveLearnBtn').onclick=()=>{
   manuals.forEach(p=>state.corrections.push({kind:'missed-row',at:Date.now(),aspect:state.images[p.imgIndex].height/state.images[p.imgIndex].width,cyRatio:p.cy/state.images[p.imgIndex].height,heightRatio:1}));
   persist();renderLearn();setStatus(`${manuals.length}件の取りこぼし位置を記憶しました。`);
 }
-$$('.tab').forEach(b=>b.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#dictPanel').classList.toggle('hidden',b.dataset.tab!=='dict');$('#learnPanel').classList.toggle('hidden',b.dataset.tab!=='learn')});
+$('#dictSearch')?.addEventListener('input',renderDict);
 $('#exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify({nick:state.nick,corrections:state.corrections},null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shuriri-name-dictionary-v13.json';a.click();URL.revokeObjectURL(a.href);
@@ -826,7 +850,7 @@ renderPeople=function(){
     d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
     ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
     <div class="editgrid">
-      <label>正式名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
+      <label>認識名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
       <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
       <label>コイン<input type="number" min="0" data-i="${i}" data-k="coin" value="${p.coin??''}"></label>
       <label>Rank<select data-i="${i}" data-k="rank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.rank===n?' selected':''}>${n}</option>`).join('')}</select></label>
