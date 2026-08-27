@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v11</title>
+<title>ありがとうメッセージメーカー v12</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
@@ -69,12 +69,51 @@ textarea{min-height:380px;white-space:pre-wrap}
   .nickrow{grid-template-columns:1fr 1fr}
   .nickrow button{grid-column:1/-1}
 }
+
+/* v12 compact UI */
+.wrap{max-width:760px;padding:10px 10px 96px}
+h1{font-size:24px;margin:10px 0 4px}
+.lead{font-size:13px;line-height:1.5;margin:0 0 10px}
+.card{border-radius:18px;padding:14px;margin:12px 0;box-shadow:none}
+.card h2{font-size:20px;margin:0 0 8px}
+.note{font-size:12px;line-height:1.5}
+.drop{padding:14px;border-radius:16px}
+input[type=file]{font-size:14px}
+.btnrow{gap:8px;margin-top:10px}
+button{border-radius:14px;padding:12px 10px;font-size:15px}
+.smallbtn{font-size:12px;padding:8px 10px;border-radius:10px}
+.person{border-radius:16px;padding:12px;margin:8px 0}
+.personhead{align-items:center}
+.personname{font-size:17px}
+.badge{font-size:11px;padding:4px 7px}
+.grid{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.kv{border-radius:12px;padding:7px;min-height:58px}
+.kv b{font-size:10px;margin-bottom:3px}
+.kv span{font-size:13px}
+.editgrid{grid-template-columns:1.2fr 1.2fr .7fr .8fr .8fr;gap:6px;margin-top:8px}
+label{font-size:10px}
+input,select,textarea{border-radius:11px;padding:9px 10px;font-size:13px}
+textarea{min-height:260px}
+.personshot{width:100%;height:82px;object-fit:cover;border:1px solid var(--line);border-radius:12px;margin-top:8px;background:#111}
+.manualbox{display:none;margin-top:10px}
+.manualbox.show{display:block}
+#workCanvas{border-radius:12px;max-height:360px;object-fit:contain}
+.legend{font-size:11px}
+.sticky{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.sticky button{font-size:16px;padding:13px}
+#preview{display:none!important}
+@media(max-width:680px){
+ .wrap{padding:8px 8px 92px}.card{padding:12px}.card h2{font-size:18px}
+ .grid{grid-template-columns:repeat(4,1fr)}
+ .editgrid{grid-template-columns:1fr 1fr}.editgrid label:nth-child(3),.editgrid label:nth-child(4),.editgrid label:nth-child(5){grid-column:auto}
+ .personname{font-size:16px}.kv span{font-size:12px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v11</h1>
-  <p class="lead">REALITYの「メッセージの送信先」スクショ専用。<b>人物を先に見つけ、その人の横3行だけ</b>を読みます。①名前 ②コイン ③Rank。その他の文字は原則、読取対象にしません。</p>
+  <h1>🐰 ありがとうメッセージメーカー v12</h1>
+  <p class="lead">REALITYの「メッセージの送信先」専用。<b>左の丸いアイコンだけを人物アンカー</b>にして、右の3行だけ読みます。</p>
 
   <section class="card">
     <h2>① スクショを入れる</h2>
@@ -89,15 +128,15 @@ textarea{min-height:380px;white-space:pre-wrap}
     <div class="progress"><i id="bar"></i></div>
     <div id="status" class="statusline">スクショを選んでください。</div>
     <img id="preview">
-    <div class="canvaswrap" id="canvaswrap">
+    <div class="manualbox" id="manualbox">
       <canvas id="workCanvas"></canvas>
-      <div class="legend">紫枠＝左の丸いアイコン／円周を人物アンカーとして検出した行。取りこぼしがあれば「人物を追加」でアイコン中心をタップできます。</div>
+      <div class="legend">取りこぼした人の左アイコン中央をタップ。</div>
     </div>
   </section>
 
   <section class="card">
     <h2>② 人物・3行の確認</h2>
-    <p class="note">左側の丸いアイコン（真っ黒でも残る細い円周を含む）を起点に、右側だけを読みます。<b>名前にコインやRankを混ぜない</b>ため、3行は別々の範囲でOCRします。0コインの人も確認画面には残し、本文だけ除外します。</p>
+    <p class="note">左の丸いアイコンだけを人物として採用。右側の1行目＝名前、2行目＝コイン、3行目＝Rankとして別々に読みます。0コインは確認だけ残し、本文から除外。</p>
     <div class="btnrow">
       <button class="secondary" id="addPersonBtn">＋ 取りこぼした人物を追加</button>
       <button class="secondary" id="saveLearnBtn">今回の補正を記憶</button>
@@ -139,8 +178,8 @@ textarea{min-height:380px;white-space:pre-wrap}
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={
   images:[], imageIndex:0, people:[], mode:null,
-  corrections:JSON.parse(localStorage.getItem('shuri_v10_corrections')||'[]'),
-  nick:JSON.parse(localStorage.getItem('shuri_v10_nick')||'{}')
+  corrections:JSON.parse(localStorage.getItem('shuri_v12_corrections')||'[]'),
+  nick:JSON.parse(localStorage.getItem('shuri_v12_nick')||'{}')
 };
 
 function setStatus(s){ $('#status').textContent=s }
@@ -179,7 +218,7 @@ function nicknameFor(name){
   for(const k of Object.keys(state.nick)){let s=similarity(k,name); if(s>bs){bs=s;best=k}}
   return bs>=0.88?state.nick[best]:name;
 }
-function persist(){localStorage.setItem('shuri_v10_nick',JSON.stringify(state.nick));localStorage.setItem('shuri_v10_corrections',JSON.stringify(state.corrections))}
+function persist(){localStorage.setItem('shuri_v12_nick',JSON.stringify(state.nick));localStorage.setItem('shuri_v12_corrections',JSON.stringify(state.corrections))}
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
 
 async function loadImage(file){
@@ -307,23 +346,14 @@ function detectLeftAvatars(img){
   return out;
 }
 function fuseRows(img){
-  const a=detectLeftAvatars(img), r=detectRightRadios(img);
-  let rows=[];
-  for(const rr of r){
-    let aa=a.reduce((best,x)=>Math.abs(x.cy-rr.cy)<Math.abs((best?.cy??1e9)-rr.cy)?x:best,null);
-    if(aa && Math.abs(aa.cy-rr.cy)<img.width*.075) rows.push({cy:(aa.cy+rr.cy)/2,conf:2});
-    else rows.push({cy:rr.cy,conf:1});
+  // v12: 右の選択丸は完全に使わない。左の丸いアイコンだけを人物アンカーにする。
+  const a=detectLeftAvatars(img).sort((x,y)=>x.cy-y.cy);
+  let out=[];
+  for(const p of a){
+    if(!out.length || p.cy-out.at(-1).cy>img.width*.075) out.push({cy:p.cy,conf:2,source:p.source});
+    else if(p.score>(out.at(-1).score||0)) out[out.length-1]={cy:p.cy,conf:2,source:p.source,score:p.score};
   }
-  for(const aa of a){
-    if(!rows.some(x=>Math.abs(x.cy-aa.cy)<img.width*.075)) rows.push({cy:aa.cy,conf:1});
-  }
-  rows.sort((a,b)=>a.cy-b.cy);
-  let merged=[];
-  for(const x of rows){
-    if(!merged.length||x.cy-merged.at(-1).cy>img.width*.09)merged.push(x);
-    else if(x.conf>merged.at(-1).conf)merged[merged.length-1]=x;
-  }
-  return merged;
+  return out;
 }
 function cropCanvas(img, box){
   const c=document.createElement('canvas');
@@ -342,12 +372,12 @@ async function ocrCanvas(c, psm=7){
 }
 function boxesFor(img,cy){
   const W=img.width;
-  const x=W*.155, right=W*.81, row=W*.085;
+  const x=W*.165, right=W*.82, unit=W*.082;
   return {
-    name:{x,y:cy-row*.82,w:right-x,h:row*.72},
-    coin:{x,y:cy-row*.06,w:right-x,h:row*.52},
-    rank:{x,y:cy+row*.38,w:right-x,h:row*.52},
-    avatar:{x:W*.02,y:cy-row*.82,w:W*.13,h:row*1.45}
+    name:{x,y:cy-unit*.70,w:right-x,h:unit*.50},
+    coin:{x,y:cy-unit*.12,w:right-x,h:unit*.42},
+    rank:{x,y:cy+unit*.34,w:right-x,h:unit*.44},
+    shot:{x:W*.02,y:cy-unit*.90,w:W*.80,h:unit*1.72}
   }
 }
 async function readPerson(img,cy,imgIndex,source='auto'){
@@ -419,6 +449,7 @@ function renderPeople(){
     div.innerHTML=`
       <div class="personhead"><div class="personname">${escapeHtml(p.name||'未読取')}</div>
       <span class="badge ${p.issues.length?'warn':''}">${p.coin===0?'0コイン・本文除外':p.issues.length?'要確認':'OK'}</span></div>
+      ${state.images[p.imgIndex]?`<img class="personshot" src="${personShotData(p)}">`:''}
       <div class="grid">
         <div class="kv"><b>👤 名前</b><span>${escapeHtml(p.name||'未読取')}</span></div>
         <div class="kv"><b>💰 コイン</b><span>${p.coin==null?'要確認':p.coin+'コイン'}</span></div>
@@ -477,17 +508,17 @@ function renderLearn(){
 }
 function renderOverlay(){
   if(!state.images.length)return;
-  const img=state.images[state.imageIndex]; const c=$('#workCanvas'), ctx=c.getContext('2d');
+  const img=state.images[state.imageIndex], c=$('#workCanvas'), ctx=c.getContext('2d');
   c.width=img.width;c.height=img.height;ctx.drawImage(img,0,0);
-  ctx.lineWidth=Math.max(4,img.width*.004);ctx.strokeStyle='#8a4fff';
-  state.people.filter(p=>p.imgIndex===state.imageIndex).forEach(p=>{
-    const b=boxesFor(img,p.cy),y=b.name.y-10,h=(b.rank.y+b.rank.h)-y+10;
-    ctx.strokeRect(img.width*.02,y,img.width*.94,h);
-  });
-  $('#canvaswrap').style.display='block';
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function attr(s){return escapeHtml(s).replace(/"/g,'&quot;')}
+function personShotData(p){
+  const img=state.images[p.imgIndex]; if(!img)return '';
+  const c=cropCanvas(img,boxesFor(img,p.cy).shot);
+  return c.toDataURL('image/jpeg',.82);
+}
+
 
 const bonuses=[
  ['🍮 ラッキーフード','プリン！'],['📍 ラッキースポット','冷蔵庫の前！'],['🎧 ラッキーアイテム','イヤホン！'],
@@ -522,25 +553,25 @@ async function copyResult(){
 $('#file').onchange=async e=>{
   state.images=[];
   for(const f of e.target.files){state.images.push(await loadImage(f))}
-  if(state.images[0]){$('#preview').src=state.images[0].src;$('#preview').style.display='block';state.imageIndex=0;renderOverlay()}
+  if(state.images[0]){state.imageIndex=0}
   setStatus(`${state.images.length}枚選択しました。`);
 }
 $('#readBtn').onclick=analyze;
-$('#clearBtn').onclick=()=>{state.images=[];state.people=[];$('#file').value='';$('#preview').style.display='none';$('#canvaswrap').style.display='none';renderPeople();generateResult();setProgress(0);setStatus('スクショを選んでください。')};
+$('#clearBtn').onclick=()=>{state.images=[];state.people=[];$('#file').value='';$('#preview').style.display='none';$('#manualbox').classList.remove('show');renderPeople();generateResult();setProgress(0);setStatus('スクショを選んでください。')};
 $('#regenBtn').onclick=generateResult;
 $('#copyBtn').onclick=copyResult;$('#copySticky').onclick=copyResult;
 
 $('#addPersonBtn').onclick=()=>{
   if(!state.images.length)return alert('先にスクショを入れてください');
   state.mode='add';setStatus('下の画像で、取りこぼした人の「左の丸いアイコン中心」をタップしてください。');
-  $('#canvaswrap').scrollIntoView({behavior:'smooth',block:'center'});
+  $('#manualbox').classList.add('show'); renderOverlay(); $('#manualbox').scrollIntoView({behavior:'smooth',block:'center'});
 }
 $('#workCanvas').onclick=async e=>{
   if(state.mode!=='add')return;
   const c=e.currentTarget,r=c.getBoundingClientRect(),cy=(e.clientY-r.top)*c.height/r.height;
   setStatus('追加した人物の3行を読み取っています…');
   const p=await readPerson(state.images[state.imageIndex],cy,state.imageIndex,'manual');
-  state.people=mergePeople([...state.people,p]);state.mode=null;renderPeople();renderOverlay();generateResult();setStatus('人物を追加しました。内容を確認してください。');
+  state.people=mergePeople([...state.people,p]);state.mode=null;$('#manualbox').classList.remove('show');renderPeople();generateResult();setStatus('人物を追加しました。内容を確認してください。');
 }
 $('#saveLearnBtn').onclick=()=>{
   const manuals=state.people.filter(p=>p.source==='manual');
@@ -550,7 +581,7 @@ $('#saveLearnBtn').onclick=()=>{
 $$('.tab').forEach(b=>b.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#dictPanel').classList.toggle('hidden',b.dataset.tab!=='dict');$('#learnPanel').classList.toggle('hidden',b.dataset.tab!=='learn')});
 $('#exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify({nick:state.nick,corrections:state.corrections},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shuriri-name-dictionary-v10.json';a.click();URL.revokeObjectURL(a.href);
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shuriri-name-dictionary-v12.json';a.click();URL.revokeObjectURL(a.href);
 }
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{
