@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8f2">
-<title>しゅりり ありがとうメッセージメーカー v6</title>
+<title>しゅりり ありがとうメッセージメーカー v7</title>
 <style>
 :root{
   --bg:#fff8f2;--card:#fff;--ink:#4a372e;--muted:#90786b;--line:#ecdcd0;
@@ -66,7 +66,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v6</h1>
+  <h1>🐰 ありがとうメッセージメーカー v7</h1>
   <div class="sub">スクショを見ながら、AIが読めたところは自動、怪しいところだけ「要確認」に出します。名前は日本語・英語・韓国語・中国語・絵文字・記号をできるだけ画面どおり残し、送信用の呼び名だけ別欄で変更できます。</div>
 
   <div class="card">
@@ -87,7 +87,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。名前内の空白は自動で詰めます。コイン行のすぐ上にある名前欄だけを複数パターンで再読取します。「📷画像を見る」では、その人のアイコン・名前・コイン・Rankまで含む1行分を確認できます。</div>
+    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。各カードで、太字の名前・コイン数・現在Rank・新規獲得Rankをまとめて確認できます。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -292,9 +292,9 @@ async function recognizeNameRegion(canvas, coinLine){
     These bands sit immediately ABOVE the detected coin row.
   */
   const configs=[
-    {sx:.145, top:-.046, bottom:-.010, sw:.70, scale:3.0},
-    {sx:.140, top:-.042, bottom:-.006, sw:.72, scale:3.2},
-    {sx:.150, top:-.050, bottom:-.014, sw:.68, scale:2.8}
+    {sx:.145, top:-.034, bottom:-.008, sw:.70, scale:3.2},
+    {sx:.140, top:-.031, bottom:-.005, sw:.73, scale:3.4},
+    {sx:.150, top:-.037, bottom:-.011, sw:.68, scale:3.0}
   ];
 
   const candidates=[];
@@ -376,6 +376,140 @@ async function recognizeNameRegion(canvas, coinLine){
     inkScore:previewInk
   };
 }
+
+function nearestFullPageName(lines, coinLine, H){
+  const candidates=lines
+    .filter(l=>{
+      if(l.cy>=coinLine.cy) return false;
+      const dy=coinLine.cy-l.cy;
+      if(dy < H*.010 || dy > H*.045) return false;
+      return plausibleName(l.text);
+    })
+    .sort((a,b)=>b.cy-a.cy);
+
+  if(!candidates.length) return null;
+
+  const l=candidates[0];
+  const cleaned=cleanName(l.text);
+  return {
+    cleaned,
+    conf:Number(l.conf||0),
+    len:[...cleaned].length,
+    source:"full"
+  };
+}
+
+function commonPrefixLen(a,b){
+  a=[...a]; b=[...b];
+  let n=0;
+  while(n<a.length && n<b.length && a[n]===b[n]) n++;
+  return n;
+}
+
+function similarityQuick(a,b){
+  if(!a||!b) return 0;
+  if(a===b) return 1;
+  const A=[...a],B=[...b];
+  const setA=new Set(A), setB=new Set(B);
+  let common=0;
+  for(const ch of setA) if(setB.has(ch)) common++;
+  const denom=Math.max(setA.size,setB.size,1);
+  return common/denom;
+}
+
+function chooseBestName(fullCandidate, regionResult){
+  const pool=[];
+  if(fullCandidate && plausibleName(fullCandidate.cleaned)) pool.push(fullCandidate);
+
+  if(regionResult?.best){
+    pool.push({
+      cleaned:regionResult.best.cleaned,
+      conf:regionResult.best.conf,
+      len:regionResult.best.len,
+      source:"region"
+    });
+  }
+
+  for(const a of (regionResult?.alternatives||[])){
+    pool.push({
+      cleaned:a.cleaned,
+      conf:a.conf,
+      len:a.len,
+      source:"regionAlt"
+    });
+  }
+
+  if(!pool.length) return {best:null, disagreement:true, pool:[]};
+
+  // Score favors readable, complete strings and gives a slight bonus to
+  // the full-page line because it preserves the actual visual line better.
+  for(const c of pool){
+    let score=c.len*7 + c.conf*.42;
+    if(c.source==="full") score+=16;
+    if(/^[&@#%*+=~]+$/u.test(c.cleaned)) score-=120;
+    if(/^(on|of|or|in|TRR)$/i.test(c.cleaned)) score-=100;
+    if(c.len<=2) score-=35;
+    if(/コ.?イ.?ン|Rank|Lv/i.test(c.cleaned)) score-=160;
+    c.score=score;
+  }
+
+  pool.sort((a,b)=>b.score-a.score);
+  const best=pool[0];
+
+  // If two strong candidates disagree heavily, do not silently guess.
+  const strong=pool.filter(c=>c.score>20);
+  let disagreement=false;
+  if(strong.length>=2){
+    const a=strong[0].cleaned,b=strong[1].cleaned;
+    const sim=similarityQuick(a,b);
+    if(sim<.45 && a!==b) disagreement=true;
+  }
+
+  return {best, disagreement, pool};
+}
+function rankInfoNear(lines, coinLine, H){
+  const below=lines
+    .filter(l=>l.cy>coinLine.cy && l.cy-coinLine.cy<H*.075)
+    .sort((a,b)=>a.cy-b.cy);
+  for(const l of below){
+    const compact=(l.text||"").normalize("NFKC").replace(/\s+/g,"");
+    const m=compact.match(/Rank[.:]?\s*([1-9]\d*)/i);
+    if(m){
+      return {rank:Number(m[1]), isNew:/新規/.test(compact), text:l.text};
+    }
+  }
+  return {rank:null,isNew:false,text:""};
+}
+
+function blockNameCandidate(lines, coinLine, H){
+  // The coin row is the stable anchor. Everything immediately above it,
+  // until the previous metadata row / a safe vertical limit, belongs to the name.
+  const candidates=lines.filter(l=>{
+    const dy=coinLine.cy-l.cy;
+    return dy>H*.006 && dy<H*.075 && plausibleName(l.text);
+  }).sort((a,b)=>a.cy-b.cy);
+
+  if(!candidates.length) return null;
+
+  // Prefer the closest line. If a long nickname wrapped onto two lines,
+  // join adjacent bold/name-like lines instead of chopping half of it off.
+  const closest=candidates[candidates.length-1];
+  let selected=[closest];
+  for(let i=candidates.length-2;i>=0;i--){
+    const upper=candidates[i];
+    const gap=selected[0].y0-upper.y1;
+    if(gap < H*.010 && coinLine.cy-upper.cy < H*.065) selected.unshift(upper);
+    else break;
+  }
+  const cleaned=cleanName(selected.map(x=>x.text).join(""));
+  return {
+    cleaned,
+    conf:selected.reduce((s,x)=>s+Number(x.conf||0),0)/selected.length,
+    len:[...cleaned].length,
+    source:"block"
+  };
+}
+
 async function analyzeOne(file,fileIndex,total){
   const url=URL.createObjectURL(file);
   const img=new Image();
@@ -386,72 +520,59 @@ async function analyzeOne(file,fileIndex,total){
   c.height=img.naturalHeight;
   c.getContext("2d").drawImage(img,0,0);
 
-  // Whole screenshot OCR is used only to locate COIN and Rank rows.
+  // First read the whole screenshot. Coin rows are used as structural anchors:
+  // NAME (bold) -> COIN -> CURRENT RANK / NEW.
   const result=await Tesseract.recognize(c,"jpn+eng",{
     logger:m=>{
       if(m.status==="recognizing text"){
-        const overall=(fileIndex+(m.progress||0)*0.42)/total;
+        const overall=(fileIndex+(m.progress||0)*0.55)/total;
         $("#bar").style.width=`${Math.round(overall*100)}%`;
       }
     }
   });
 
   const lines=groupLines(result.data.words);
-
-  const coinLines=lines
-    .map(x=>({...x,coin:coinValue(x.text)}))
-    .filter(x=>x.coin!==null);
-
+  const coinLines=lines.map(x=>({...x,coin:coinValue(x.text)})).filter(x=>x.coin!==null);
   const rows=[];
 
   for(let j=0;j<coinLines.length;j++){
     const cl=coinLines[j];
 
-    // Dedicated name OCR from the strip immediately above this coin line.
-    const nr=await recognizeNameRegion(c,cl);
+    // Use the whole 3-line person block first. Dedicated name OCR is only a fallback/second opinion.
+    const blockCandidate=blockNameCandidate(lines,cl,c.height);
+    const fullCandidate=nearestFullPageName(lines,cl,c.height);
+    const region=await recognizeNameRegion(c,cl);
+    const chosen=chooseBestName(blockCandidate||fullCandidate,region);
 
-    const raw=nr.best?.cleaned||"";
-    const conf=nr.best?.conf||0;
+    let raw=chosen.best?.cleaned || blockCandidate?.cleaned || fullCandidate?.cleaned || "";
+    raw=cleanName(raw).replace(/\s+/g,""); // requested: remove OCR-inserted spaces in names
+    const conf=chosen.best?.conf || blockCandidate?.conf || 0;
 
-    // Read Rank/new status under THIS coin row.
-    const below=lines
-      .filter(l=>l.cy>cl.cy && l.cy-cl.cy<c.height*.070)
-      .sort((a,b)=>a.cy-b.cy);
+    const ri=rankInfoNear(lines,cl,c.height);
+    const rank=ri.rank, isNew=ri.isNew;
 
-    let rank=null,isNew=false;
-    for(const l of below){
-      const m=l.text.match(/Rank\s*([1-4])/i);
-      if(m){
-        rank=Number(m[1]);
-        isNew=/新規/.test(l.text);
-        break;
-      }
-    }
-
-    /*
-      Confirmation image:
-      show the whole person's visible row, not only the OCR strip.
-      This makes it easy to compare avatar/name/coin/Rank.
-    */
-    const rowTop=cl.cy-c.height*.055;
-    const rowBottom=cl.cy+c.height*.060;
-
+    // Confirmation image deliberately includes ALL evidence:
+    // bold name + coin + current rank/new marker. More generous than v7.
+    const rowTop=Math.max(0, cl.cy-c.height*.075);
+    const rowBottom=Math.min(c.height, cl.cy+c.height*.075);
     const rowCrop=cropCanvasScaled(
-      c,
-      c.width*.025,
-      rowTop,
-      c.width*.94,
-      rowBottom-rowTop,
-      1.25
+      c, c.width*.015, rowTop, c.width*.965, rowBottom-rowTop, 1.35
     );
+    const cropUrl=rowCrop.toDataURL("image/jpeg",.95);
 
-    const cropUrl=rowCrop.toDataURL("image/jpeg",.93);
+    const ink=region?.inkScore||0;
+    const broken=obviouslyBrokenName(raw,conf,ink);
+    // Missing coin cannot happen here because coin is the anchor.
+    // Missing rank is review-worthy only when the screenshot visibly should contain metadata.
+    const needsReview=broken || chosen.disagreement || rank===null;
 
-    const needsReview=obviouslyBrokenName(raw,conf,nr.inkScore);
+    const alternatives=chosen.pool
+      .map(x=>cleanName(x.cleaned).replace(/\s+/g,""))
+      .filter((x,i,a)=>x && x!==raw && a.indexOf(x)===i)
+      .slice(0,4);
 
     rows.push({
-      raw,
-      display:raw,
+      raw, display:raw,
       coin:cl.coin,
       rank,
       isNew,
@@ -459,19 +580,17 @@ async function analyzeOne(file,fileIndex,total){
       needsReview,
       cropUrl,
       fileIndex,
-      alternatives:nr.alternatives.map(x=>x.cleaned)
+      alternatives
     });
 
-    const overall=
-      (fileIndex+0.42+0.58*((j+1)/Math.max(1,coinLines.length)))/total;
-
-    $("#bar").style.width=
-      `${Math.min(100,Math.round(overall*100))}%`;
+    const overall=(fileIndex+.55+.45*((j+1)/Math.max(1,coinLines.length)))/total;
+    $("#bar").style.width=`${Math.min(100,Math.round(overall*100))}%`;
   }
 
   URL.revokeObjectURL(url);
   return rows;
 }
+
 function renderGallery(){
   const box=$("#gallery");box.innerHTML="";
   state.files.forEach((f,i)=>{
