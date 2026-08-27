@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。人物の右側○と左側アイコンを同じ行の基準にして、アイコン右横の太字1行だけを名前として読みます。コイン・Rankはその下の専用行から別々に読み取ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。人物の右側○と左側アイコンを同じ行の基準にして名前を読みます。V8.2では名前欄だけ上下に少し余白を戻し、太字が欠けにくい範囲で読み取ります。コイン・Rankは専用行から別々に読み取ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -941,17 +941,18 @@ async function recognizeRealityPersonBlock(canvas,centerY){
       next line below coin.
   */
 
-  // NAME: avatar sits on left; bold name begins just to its right.
-  const nameTop=Math.max(0,centerY-H*.020);
-  const nameBottom=Math.min(H,centerY+H*.002);
+  // NAME: use a slightly wider vertical band than V8.1.
+  // This gives REALITY's bold font enough top/bottom margin without including the coin row.
+  const nameTop=Math.max(0,centerY-H*.030);
+  const nameBottom=Math.min(H,centerY+H*.004);
   const nameZone=await ocrZone(
     canvas,
-    W*.155,
+    W*.145,
     nameTop,
-    W*.675,
+    W*.690,
     Math.max(1,nameBottom-nameTop),
-    4.2,
-    [7,13]
+    3.8,
+    [6,7,13]
   );
   const namePick=chooseNameFromReads(nameZone.reads);
 
