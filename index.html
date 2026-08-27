@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンから画面に映っている人物を先に全員検出するので、名前やコインのOCR失敗だけで人物が消えないようにします。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定し、その人の名前・コイン・Rankだけを同じ行から読みます。画面端で○が切れている場合だけコイン行から救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -236,7 +236,7 @@ function plausibleName(s){
   if(!s || [...s].length>70) return false;
 
   // REALITY UI / helper text must never be treated as a user name.
-  if(/メッセージ1?の?送信先|個別メッセージ|サポーターバッジ|ギフトを送|ギフトコイン数|すべて選択|ファイルを選択|画像を読み取る|名前・Rank|読み取り名|送信名|新規獲得|これで確定|AI判断|要確認|HP回復リザルト|完了|候補を抽出/i.test(s)) return false;
+  if(/メッセージ1?の?送信先|個別メッセージ|サポーターバッジ|ギフトを送|ギフトコイン数|すべて選択|ファイルを選択|画像を読み取る|名前・Rank|読み取り名|送信名|新規獲得|これで確定|AI判断|要確認|HP回復リザルト|完了|候補を抽出|この名前をタップ|元画像を確認|持っているか|送ってくれた方|送れません/i.test(s)) return false;
 
   if(/^[🎁]?\d[\d,，]*コ.?イ.?[ンソ]$/u.test(s)) return false;
   if(/^[♡♥]?Rank[1-9]/i.test(s)) return false;
@@ -568,82 +568,88 @@ async function findRealityRowCenters(canvas){
   const W=canvas.width,H=canvas.height;
   const primary=[];
 
-  // PRIMARY: right-side selection circles.
+  // 1) PERSON ANCHOR = right-side selection circle.
   const ctx=canvas.getContext("2d");
-  const x0=Math.floor(W*.84), x1=Math.floor(W*.99);
+  const x0=Math.floor(W*.86), x1=Math.floor(W*.985);
   const data=ctx.getImageData(x0,0,x1-x0,H).data;
   const w=x1-x0;
-  const scan=[];
 
+  const scan=[];
   for(let y=0;y<H;y+=2){
     let count=0;
-    for(let x=0;x<w;x+=3){
+    for(let x=0;x<w;x+=2){
       const i=(y*w+x)*4;
       const r=data[i],g=data[i+1],b=data[i+2];
       const lum=.299*r+.587*g+.114*b;
-      if(lum>145 && lum<240 && Math.max(r,g,b)-Math.min(r,g,b)<24) count++;
+      const chroma=Math.max(r,g,b)-Math.min(r,g,b);
+      if(lum>150 && lum<238 && chroma<20) count++;
     }
     scan.push({y,count});
   }
 
-  const threshold=Math.max(5,Math.floor(w/38));
+  const threshold=Math.max(8,Math.floor(w/26));
   const ys=scan.filter(v=>v.count>=threshold).map(v=>v.y);
   const groups=[];
   for(const y of ys){
     const last=groups[groups.length-1];
-    if(!last || y-last[last.length-1]>12) groups.push([y]);
+    if(!last || y-last[last.length-1]>8) groups.push([y]);
     else last.push(y);
   }
 
-  for(const g of groups.filter(g=>g.length>=3)){
+  for(const g of groups){
+    if(g.length<4) continue;
     const y=Math.round((g[0]+g[g.length-1])/2);
-    if(y>H*.15 && y<H*.995) primary.push(y);
+    if(y>H*.18 && y<H*.985) primary.push(y);
   }
 
-  // Merge circle fragments first.
+  // Merge only fragments that are clearly from the SAME circle.
   const centers=[];
   for(const y of primary.sort((a,b)=>a-b)){
-    if(!centers.length || y-centers[centers.length-1]>95) centers.push(y);
-    else centers[centers.length-1]=Math.round((centers[centers.length-1]+y)/2);
+    if(!centers.length || y-centers[centers.length-1]>48){
+      centers.push(y);
+    }else{
+      centers[centers.length-1]=Math.round((centers[centers.length-1]+y)/2);
+    }
   }
 
-  // FALLBACK: coin / Rank OCR only if no circle center is already nearby.
+  // 2) EDGE RESCUE ONLY:
+  // If the row is partially cut at top/bottom and the circle is off-screen,
+  // a coin line may rescue it. Do not use headers or Rank lines to invent rows.
   try{
     const r=await Tesseract.recognize(canvas,"jpn+eng",{tessedit_pageseg_mode:11});
     const lines=groupLines(r.data.words);
-    const fallback=[];
 
     for(const l of lines){
       const txt=(l.text||"").normalize("NFKC");
-      let y=null;
-      if(/[0-9][0-9,]*\s*コ.?イ.?[ンソ]/i.test(txt)){
-        y=l.cy-H*.012;
-      }else if(/Rank\s*[1-9]/i.test(txt)){
-        y=l.cy-H*.034;
-      }
-      if(y!==null && y>H*.12 && y<H*.995){
-        // Only create a new person if there isn't already one close by.
-        if(!centers.some(c=>Math.abs(c-y)<105)) fallback.push(y);
-      }
-    }
+      const m=txt.match(/([0-9][0-9,]*)\s*コ.?イ.?[ンソ]/i);
+      if(!m) continue;
 
-    for(const y of fallback.sort((a,b)=>a-b)){
-      if(!centers.some(c=>Math.abs(c-y)<105)) centers.push(y);
+      // Ignore UI/header regions. Actual person coin lines are in list rows.
+      if(l.cy < H*.18) continue;
+
+      const predicted=l.cy-H*.022;
+
+      // Only rescue rows very near screen edges OR where there is a big gap
+      // between detected circles. This prevents headers from becoming people.
+      const nearEdge = predicted < H*.24 || predicted > H*.88;
+      const noNearby = !centers.some(c=>Math.abs(c-predicted)<78);
+
+      if(nearEdge && noNearby){
+        centers.push(predicted);
+      }
     }
   }catch(e){}
 
-  // Edge rescue: if a partial row is visible near the top or bottom and OCR
-  // finds coin/rank there, keep it even if the circle is cropped off.
   centers.sort((a,b)=>a-b);
 
-  // Final merge: same-person anchors can differ by ~60–90px.
+  // Final strict merge: distinct REALITY rows are much farther apart than 70px.
   const final=[];
   for(const y of centers){
-    if(!final.length || y-final[final.length-1]>115) final.push(y);
+    if(!final.length || y-final[final.length-1]>70) final.push(y);
     else final[final.length-1]=Math.round((final[final.length-1]+y)/2);
   }
 
-  return final.filter(y=>y>H*.10 && y<H*.995);
+  return final.filter(y=>y>H*.14 && y<H*.995);
 }
 function parseRealityPersonText(text){
   const raw=String(text||"").replace(/\r/g,"");
@@ -693,6 +699,15 @@ function chooseCoinConsensus(candidates){
   const vals=candidates.map(c=>c.coin).filter(v=>v!==null);
   if(!vals.length) return null;
 
+  const positives=vals.filter(v=>v>0);
+
+  // If any repeated positive reading exists, never let a stray 0 override it.
+  if(positives.length){
+    const pMode=modeValue(positives);
+    const pCount=positives.filter(v=>v===pMode).length;
+    if(pCount>=2) return pMode;
+  }
+
   // Exact consensus wins.
   const exact=modeValue(vals);
   const exactCount=vals.filter(v=>v===exact).length;
@@ -721,15 +736,15 @@ function chooseCoinConsensus(candidates){
 
 async function recognizeRealityPersonBlock(canvas,centerY){
   const W=canvas.width,H=canvas.height;
-  const top=Math.max(0,centerY-H*.060);
-  const bottom=Math.min(H,centerY+H*.075);
+  const top=Math.max(0,centerY-H*.050);
+  const bottom=Math.min(H,centerY+H*.068);
 
   const evidence=cropCanvasScaled(
     canvas,W*.025,top,W*.955,bottom-top,1.35
   );
 
   const textCrop=cropCanvasScaled(
-    canvas,W*.135,top,W*.70,bottom-top,2.6
+    canvas,W*.145,top,W*.67,bottom-top,2.8
   );
 
   const candidates=[];
