@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v10</title>
+<title>ありがとうメッセージメーカー v11</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
@@ -73,7 +73,7 @@ textarea{min-height:380px;white-space:pre-wrap}
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v10</h1>
+  <h1>🐰 ありがとうメッセージメーカー v11</h1>
   <p class="lead">REALITYの「メッセージの送信先」スクショ専用。<b>人物を先に見つけ、その人の横3行だけ</b>を読みます。①名前 ②コイン ③Rank。その他の文字は原則、読取対象にしません。</p>
 
   <section class="card">
@@ -91,13 +91,13 @@ textarea{min-height:380px;white-space:pre-wrap}
     <img id="preview">
     <div class="canvaswrap" id="canvaswrap">
       <canvas id="workCanvas"></canvas>
-      <div class="legend">紫枠＝人物として検出した行。取りこぼしがあれば「人物を追加」でアイコン中心をタップできます。</div>
+      <div class="legend">紫枠＝左の丸いアイコン／円周を人物アンカーとして検出した行。取りこぼしがあれば「人物を追加」でアイコン中心をタップできます。</div>
     </div>
   </section>
 
   <section class="card">
     <h2>② 人物・3行の確認</h2>
-    <p class="note">丸いアイコンを起点に、右側だけを読みます。<b>名前にコインやRankを混ぜない</b>ため、3行は別々の範囲でOCRします。0コインの人も確認画面には残し、本文だけ除外します。</p>
+    <p class="note">左側の丸いアイコン（真っ黒でも残る細い円周を含む）を起点に、右側だけを読みます。<b>名前にコインやRankを混ぜない</b>ため、3行は別々の範囲でOCRします。0コインの人も確認画面には残し、本文だけ除外します。</p>
     <div class="btnrow">
       <button class="secondary" id="addPersonBtn">＋ 取りこぼした人物を追加</button>
       <button class="secondary" id="saveLearnBtn">今回の補正を記憶</button>
@@ -217,6 +217,57 @@ function detectRightRadios(img){
   for(let [cy,s] of peaks){if(!merged.length||cy-merged.at(-1)[0]>r*2.2)merged.push([cy,s]);else if(s>merged.at(-1)[1])merged[merged.length-1]=[cy,s]}
   return merged.map(([cy,s])=>({cy:cy/scale,score:s,source:'radio'}));
 }
+// 左アイコンの「中身」ではなく、円そのものも人物アンカーとして検出する。
+// ダークモードでアイコン画像が真っ黒でも、細いグレーの円周が残るため拾える。
+function detectLeftAvatarCircles(img){
+  const scale=Math.min(1,1200/img.width), w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(img,0,0,w,h);
+  const g=grayData(x,w,h);
+  const cx0=Math.floor(w*.050), cx1=Math.floor(w*.135);
+  const radii=[w*.038,w*.043,w*.048,w*.053].map(v=>Math.max(10,Math.round(v)));
+  const sampleN=40, scores=[];
+  for(let cy=Math.round(w*.045);cy<h-Math.round(w*.045);cy+=4){
+    let best=0;
+    for(let cx=cx0;cx<=cx1;cx+=4){
+      for(const r of radii){
+        if(cx-r-3<0||cx+r+3>=w||cy-r-3<0||cy+r+3>=h)continue;
+        let sum=0,strong=0,valid=0;
+        for(let k=0;k<sampleN;k++){
+          const a=2*Math.PI*k/sampleN, ca=Math.cos(a), sa=Math.sin(a);
+          const p=(rr)=>g[Math.round(cy+rr*sa)*w+Math.round(cx+rr*ca)];
+          const mid=p(r), inn=p(Math.max(1,r-2.2)), out=p(r+2.2);
+          // 円周1本が内外より明るい/暗いときに強く反応。
+          // 黒アイコン＋灰色円周、白アイコン＋薄い輪郭の両方を拾う。
+          const ring=Math.abs(mid-(inn+out)/2);
+          const border=Math.max(Math.abs(mid-inn),Math.abs(mid-out));
+          const e=ring*.72+border*.28;
+          sum+=e; if(e>11)strong++; valid++;
+        }
+        if(valid){
+          const consistency=strong/valid;
+          // 円周の多くで弱くても連続したエッジがあるものを優先。
+          const s=sum/valid + consistency*24;
+          if(s>best)best=s;
+        }
+      }
+    }
+    scores.push([cy,best]);
+  }
+  if(!scores.length)return[];
+  const vals=scores.map(v=>v[1]).sort((a,b)=>a-b);
+  const thr=Math.max(10,vals[Math.floor(vals.length*.86)]||10);
+  let peaks=[];
+  for(let i=1;i<scores.length-1;i++)
+    if(scores[i][1]>=thr && scores[i][1]>=scores[i-1][1] && scores[i][1]>=scores[i+1][1])peaks.push(scores[i]);
+  let merged=[];
+  const minGap=Math.max(34,w*.070);
+  for(const [cy,s] of peaks){
+    if(!merged.length||cy-merged.at(-1)[0]>minGap)merged.push([cy,s]);
+    else if(s>merged.at(-1)[1])merged[merged.length-1]=[cy,s];
+  }
+  return merged.map(([cy,s])=>({cy:cy/scale,score:s,source:'avatar-circle'}))
+               .filter(p=>p.cy>img.height*.05 && p.cy<img.height*.985);
+}
 function detectLeftAvatars(img){
   const scale=Math.min(1,1000/img.width), w=Math.round(img.width*scale), h=Math.round(img.height*scale);
   const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(img,0,0,w,h);
@@ -225,8 +276,8 @@ function detectLeftAvatars(img){
   for(let y=0;y<h;y+=3){
     let sat=0,edge=0,n=0,prev=0;
     for(let xx=x0;xx<x1;xx+=3){
-      let i=(y*w+xx)*4,r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);
-      sat+=(mx-mn); if(n&&Math.abs((r+g+b)-prev)>45)edge++; prev=r+g+b;n++;
+      let i=(y*w+xx)*4,r=d[i],gg=d[i+1],b=d[i+2],mx=Math.max(r,gg,b),mn=Math.min(r,gg,b);
+      sat+=(mx-mn); if(n&&Math.abs((r+gg+b)-prev)>45)edge++; prev=r+gg+b;n++;
     }
     row.push([y,sat/n + edge*2.3]);
   }
@@ -237,8 +288,23 @@ function detectLeftAvatars(img){
     else if(cur){if(cur[1]-cur[0]>Math.max(20,w*.035))groups.push(cur);cur=null}
   }
   if(cur)groups.push(cur);
-  return groups.map(g=>({cy:(g[0]+g[1])/2/scale,score:g[2]/Math.max(1,g[1]-g[0]),source:'avatar'}))
+  const texture=groups.map(g=>({cy:(g[0]+g[1])/2/scale,score:g[2]/Math.max(1,g[1]-g[0]),source:'avatar-texture'}))
                .filter(p=>p.cy>img.height*.05 && p.cy<img.height*.98);
+  const circles=detectLeftAvatarCircles(img);
+  // 円周検出を優先しつつ、従来の色・中身検出も保険として残す。
+  const all=[...circles,...texture].sort((a,b)=>a.cy-b.cy);
+  let out=[];
+  const near=img.width*.055;
+  for(const p of all){
+    const hit=out.find(q=>Math.abs(q.cy-p.cy)<near);
+    if(!hit)out.push({...p});
+    else{
+      if(p.source==='avatar-circle' || (hit.source!=='avatar-circle' && p.score>hit.score)){
+        hit.cy=(hit.cy+p.cy)/2; hit.score=Math.max(hit.score,p.score); hit.source=p.source;
+      }
+    }
+  }
+  return out;
 }
 function fuseRows(img){
   const a=detectLeftAvatars(img), r=detectRightRadios(img);
