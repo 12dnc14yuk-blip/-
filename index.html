@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧で「読み取り名」と「送信名」を直接修正できます。各カードで、太字の名前・コイン数・現在Rank・新規獲得Rankをまとめて確認できます。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンから画面に映っている人物を先に全員検出するので、名前やコインのOCR失敗だけで人物が消えないようにします。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンから画面に映っている人物を先に全員検出するので、名前やコインのOCR失敗だけで人物が消えないようにします。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -233,16 +233,20 @@ function cleanName(s){
 }
 function plausibleName(s){
   s=cleanName(s);
-  if(!s || [...s].length>80) return false;
+  if(!s || [...s].length>70) return false;
 
-  // Reject only unmistakable app UI.
-  if(/メッセージ1?の?送信先|ギフトコイン数|すべて選択|フォロー(?:する|中)?/i.test(s)) return false;
+  // REALITY UI / helper text must never be treated as a user name.
+  if(/メッセージ1?の?送信先|個別メッセージ|サポーターバッジ|ギフトを送|ギフトコイン数|すべて選択|ファイルを選択|画像を読み取る|名前・Rank|読み取り名|送信名|新規獲得|これで確定|AI判断|要確認|HP回復リザルト|完了|候補を抽出/i.test(s)) return false;
+
   if(/^[🎁]?\d[\d,，]*コ.?イ.?[ンソ]$/u.test(s)) return false;
-  if(/^[♡♥]?Rank[1-4]/i.test(s)) return false;
+  if(/^[♡♥]?Rank[1-9]/i.test(s)) return false;
+
+  // Sentence-like UI text is not a nickname.
+  if(/[。]/u.test(s) && [...s].length>12) return false;
+  if(/してください|できません|持っている|送ってくれた方/i.test(s)) return false;
 
   return true;
 }
-
 function nameVisualInkScore(c){
   const ctx=c.getContext("2d"), W=c.width,H=c.height;
   const d=ctx.getImageData(0,0,W,H).data;
@@ -677,33 +681,71 @@ function parseRealityPersonText(text){
   return {name,coin,rank,isNew,lines};
 }
 
+function modeValue(values){
+  const v=values.filter(x=>x!==null && x!==undefined);
+  if(!v.length) return null;
+  const counts=new Map();
+  for(const x of v) counts.set(x,(counts.get(x)||0)+1);
+  return [...counts.entries()].sort((a,b)=>b[1]-a[1] || String(a[0]).length-String(b[0]).length)[0][0];
+}
+
+function chooseCoinConsensus(candidates){
+  const vals=candidates.map(c=>c.coin).filter(v=>v!==null);
+  if(!vals.length) return null;
+
+  // Exact consensus wins.
+  const exact=modeValue(vals);
+  const exactCount=vals.filter(v=>v===exact).length;
+  if(exactCount>=2) return exact;
+
+  // OCR sometimes duplicates a leading digit: 1000 -> 11000.
+  // When candidates differ only by one repeated digit, prefer the shorter form.
+  const sorted=[...new Set(vals)].sort((a,b)=>String(a).length-String(b).length || a-b);
+  for(const small of sorted){
+    const ss=String(small);
+    for(const big of sorted){
+      const bs=String(big);
+      if(bs.length===ss.length+1){
+        for(let i=0;i<bs.length-1;i++){
+          if(bs.slice(0,i)+bs.slice(i+1)===ss && bs[i]===bs[Math.max(0,i-1)]){
+            return small;
+          }
+        }
+      }
+    }
+  }
+
+  // Otherwise prefer the value from the best structured candidate.
+  return candidates.find(c=>c.coin!==null)?.coin ?? null;
+}
+
 async function recognizeRealityPersonBlock(canvas,centerY){
   const W=canvas.width,H=canvas.height;
-
-  // Full evidence card: avatar + bold name + coin + Rank.
-  const top=Math.max(0,centerY-H*.055);
-  const bottom=Math.min(H,centerY+H*.070);
+  const top=Math.max(0,centerY-H*.060);
+  const bottom=Math.min(H,centerY+H*.075);
 
   const evidence=cropCanvasScaled(
     canvas,W*.025,top,W*.955,bottom-top,1.35
   );
 
-  // OCR crop excludes avatar and right-side circle to focus on text.
   const textCrop=cropCanvasScaled(
-    canvas,W*.135,top,W*.70,bottom-top,2.5
+    canvas,W*.135,top,W*.70,bottom-top,2.6
   );
 
   const candidates=[];
   for(const mode of [0,1,2]){
     const processed=preprocessName(textCrop,mode);
-    for(const psm of [6,11]){
+    for(const psm of [6,11,12]){
       try{
         const r=await Tesseract.recognize(processed,"jpn+eng",{
           tessedit_pageseg_mode:psm
         });
         const parsed=parseRealityPersonText(r.data.text||"");
+        const nm=cleanName(parsed.name||"");
+
         candidates.push({
           ...parsed,
+          name:nm,
           conf:Number(r.data.confidence||0),
           source:`block-${mode}-${psm}`
         });
@@ -711,33 +753,43 @@ async function recognizeRealityPersonBlock(canvas,centerY){
     }
   }
 
-  // Score structured, human-looking names highest.
   candidates.forEach(c=>{
     let score=0;
-    const name=cleanName(c.name||"");
+    const name=c.name||"";
     const len=[...name].length;
     const jp=(name.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
     const weird=(name.match(/[\\|$¥<>_=]{2,}/g)||[]).length;
 
-    if(name) score+=38;
-    if(c.coin!==null) score+=34;
+    if(plausibleName(name)) score+=42;
+    else score-=90;
+
+    if(c.coin!==null) score+=30;
     if(c.rank!==null) score+=18;
     score+=Math.min(10,c.conf*.12);
 
-    if(len>45) score-=35;
-    if(len>0 && len<=30) score+=8;
+    if(len>0 && len<=34) score+=8;
     if(jp>0) score+=8;
-    if(weird>0) score-=35;
+    if(len>45) score-=30;
+    if(weird>0) score-=30;
     if(/コ.?イ.?ン|Rank|Lv/i.test(name)) score-=80;
-    if(/^[A-Z]{2,5}$/i.test(name) && c.conf<35) score-=25;
 
-    c.name=name;
     c.score=score;
   });
+
   candidates.sort((a,b)=>b.score-a.score);
 
+  const best=candidates[0]||{name:"",coin:null,rank:null,isNew:false,conf:0};
+  best.coin=chooseCoinConsensus(candidates);
+
+  // Rank and new-status also use consensus when possible.
+  const rankMode=modeValue(candidates.map(c=>c.rank));
+  if(rankMode!==null) best.rank=rankMode;
+
+  const newVotes=candidates.filter(c=>c.rank===best.rank).map(c=>!!c.isNew);
+  if(newVotes.length) best.isNew=newVotes.filter(Boolean).length>newVotes.length/2;
+
   return {
-    best:candidates[0]||{name:"",coin:null,rank:null,isNew:false,conf:0},
+    best,
     alternatives:candidates.slice(1,4),
     cropUrl:evidence.toDataURL("image/jpeg",.95)
   };
@@ -778,10 +830,14 @@ async function analyzeOne(file,fileIndex,total){
       .filter((x,i,a)=>x && x!==raw && a.indexOf(x)===i)
       .slice(0,4);
 
+    const normalizedCoin=coin===null?0:coin;
+
+    // Keep EVERY detected person in the confirmation list, including 0 coin.
+    // Publication filtering happens only when the final thank-you text is generated.
     rows.push({
       raw,
       display:raw,
-      coin:coin===null?0:coin,
+      coin:normalizedCoin,
       coinUnknown:coin===null,
       rank,
       isNew,
@@ -888,7 +944,7 @@ function renderPeople(){
 
       <div class="compactinfo">
         <div class="mini"><b>👤 名前</b>${esc(p.display||p.raw||"未読取")}</div>
-        <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}</div>
+        <div class="mini"><b>💰 コイン</b>${p.coinUnknown?"要確認":p.coin+"枚"}${!p.coinUnknown&&p.coin===0?`<br><span style="color:#9a7f68;font-size:11px">本文は除外</span>`:""}</div>
         <div class="mini"><b>❤️ Rank</b>${p.rank?"Rank."+p.rank:"なし"}</div>
         <div class="mini"><b>🌱 新規</b>${p.isNew&&p.rank?"Rank."+p.rank:"なし"}</div>
       </div>
@@ -944,7 +1000,7 @@ function renderReviews(){
     const idx=state.people.indexOf(p),d=document.createElement("div");d.className="person review";
     d.innerHTML=`
       <div class="reviewtitle">⚠️ AI判断が不確か</div>
-      <div class="meta">AI読取候補：${esc(p.raw||"未読取")}${p.alternatives?.length?` / 他候補：${p.alternatives.map(esc).join("・")}`:""}<br>💰 コイン：${p.coinUnknown?"要確認":p.coin+"コイン"} / ❤️ 現在Rank：${p.rank?"Rank."+p.rank:"要確認"} / 🌱 新規獲得：${p.isNew&&p.rank?"Rank."+p.rank:"なし"}<br>下の画像を見て修正してください。</div>
+      <div class="meta">AI読取候補：${esc(p.raw||"未読取")}${p.alternatives?.length?` / 他候補：${p.alternatives.map(esc).join("・")}`:""}<br>💰 コイン：${p.coinUnknown?"要確認":p.coin+"コイン"}${!p.coinUnknown&&p.coin===0?"（本文は除外）":""}<br>❤️ 現在Rank：${p.rank?"Rank."+p.rank:"要確認"}<br>🌱 新規獲得Rank：${p.isNew&&p.rank?"Rank."+p.rank:"なし"}<br>下の画像を見て修正してください。</div>
       <img class="crop" src="${p.cropUrl}" style="margin-top:9px">
       <div class="grid2" style="margin-top:8px">
         <div>
@@ -1011,7 +1067,7 @@ function generate(){
   if(!state.status)rollAll();
 
   const gift=state.people
-    .filter(p=>!p.needsReview && (p.coin||0)>0 && (p.display||"").trim())
+    .filter(p=>!p.needsReview && !p.coinUnknown && (p.coin||0)>0 && (p.display||"").trim())
     .sort((a,b)=>b.coin-a.coin);
 
   const top=gift.slice(0,3),rest=gift.slice(3);
