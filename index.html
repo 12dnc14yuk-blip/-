@@ -93,7 +93,7 @@ button,.btn{border:0;border-radius:13px;padding:11px 13px;font-size:14px;font-we
 
   <div class="card">
     <div class="sec">② 名前・Rankの確認</div>
-    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。候補同士が大きく食い違う人だけ要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
+    <div class="small">一覧には0コインの人も含めて、検出した人を全員表示します。各カードに、名前・コイン数・現在Rank・新規獲得Rankをまとめて表示し、0コインの人だけ完成文では自動除外します。名前は絵文字・顔文字を除いて文字部分だけ抽出します。右側の○選択ボタンを人物の中心として固定します。スクショ上端・下端に一部だけ映っている人も対象にし、○が切れている場合は『コイン行＋その直上の名前』が確認できた時だけ救済します。名前内の空白は自動で詰めます。全体OCRと名前欄専用OCRを比較し、より良い候補を採用します。名前は元画像・白黒・強調版を複数回読み、近い候補が一致した時だけ自動採用します。候補がバラバラな人は必ず要確認へ送ります。「📷画像を見る」では1人分だけ確認できます。</div>
     <div id="people"></div>
   </div>
 
@@ -750,69 +750,137 @@ function chooseCoinConsensus(candidates){
 }
 
 
-async function recognizeRealityNameOnly(canvas,centerY){
+
+function nameSimilarity(a,b){
+  a=simpleNameKey(a||"");
+  b=simpleNameKey(b||"");
+  if(!a || !b) return 0;
+  return similarityQuick(a,b);
+}
+
+function sanitizeNameCandidate(s){
+  s=cleanName(s||"");
+  if(!s) return "";
+
+  // Remove obvious UI leaks and OCR garbage at the edges.
+  s=s
+    .replace(/メッセージ.*$/u,"")
+    .replace(/サポーターバッジ.*$/u,"")
+    .replace(/ギフトコイン.*$/u,"")
+    .replace(/コイン.*$/u,"")
+    .replace(/Rank.*$/iu,"")
+    .replace(/Lv\.?.*$/iu,"");
+
+  return cleanName(s);
+}
+
+function scoreNameCandidate(item, all){
+  const s=item.text||"";
+  if(!plausibleName(s)) return -999;
+
+  let score=0;
+  const len=[...s].length;
+  const jp=(s.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー〜～]/gu)||[]).length;
+  const weird=(s.match(/[<>_=\\|]{2,}/g)||[]).length;
+
+  // OCR confidence matters, but agreement matters more.
+  score += Math.min(30,(item.conf||0)*.35);
+
+  let support=0;
+  for(const other of all){
+    if(other===item) continue;
+    const sim=nameSimilarity(s,other.text);
+    if(sim>=.80) support+=2;
+    else if(sim>=.58) support+=1;
+  }
+  score += support*18;
+
+  if(len>=1 && len<=34) score+=16;
+  if(jp>0) score+=8;
+  if(len>45) score-=35;
+  if(weird>0) score-=30;
+
+  // UI/sentence-like strings are strongly penalized.
+  if(/メッセージ|送信先|サポーター|ギフト|コイン|Rank|Lv\.?|してください|送れません|持っている/i.test(s)) score-=120;
+  if(/[。]/u.test(s) && len>14) score-=25;
+
+  // Very short ASCII-only hallucinations are suspicious unless highly supported.
+  if(/^[A-Za-z]{1,5}$/.test(s) && support===0) score-=20;
+
+  return score;
+}
+
+async function recognizeRealityNameConsensus(canvas,centerY){
   const W=canvas.width,H=canvas.height;
-  const bands=[
-    {top:-.040,bottom:-.012,scale:3.5},
-    {top:-.036,bottom:-.008,scale:3.8},
-    {top:-.044,bottom:-.016,scale:3.2}
-  ];
-  const results=[];
 
-  for(const b of bands){
-    const top=Math.max(0,centerY+H*b.top);
-    const bottom=Math.min(H,centerY+H*b.bottom);
-    const crop=cropCanvasScaled(
-      canvas,W*.145,top,W*.68,Math.max(1,bottom-top),b.scale
-    );
+  // Use a slightly wider crop than the previous "thin-line" experiment.
+  // This preserves the actual bold glyphs while still excluding most neighboring rows.
+  const top=Math.max(0,centerY-H*.052);
+  const bottom=Math.min(H,centerY-H*.004);
 
-    for(const mode of [0,1,2]){
-      const processed=preprocessName(crop,mode);
-      for(const psm of [7,13]){
-        try{
-          const r=await Tesseract.recognize(processed,"jpn+eng",{
-            tessedit_pageseg_mode:psm
-          });
-          let s=cleanName(r.data.text||"");
-          s=s
-            .replace(/[$¥€£¢]+/gu,"")
-            .replace(/[|｜\\]+/gu,"")
-            .replace(/^[^A-Za-z0-9\u3040-\u30ff\u3400-\u9fff]+/u,"")
-            .replace(/[^A-Za-z0-9\u3040-\u30ff\u3400-\u9fff@!！?？._\-〜～・〇○彡]+$/u,"");
+  const base=cropCanvasScaled(
+    canvas,
+    W*.135,
+    top,
+    W*.705,
+    Math.max(1,bottom-top),
+    3.0
+  );
 
-          if(!plausibleName(s)) continue;
-          results.push({text:s,conf:Number(r.data.confidence||0)});
-        }catch(e){}
-      }
+  const reads=[];
+
+  // 1) Original color-ish crop
+  for(const psm of [6,7,11]){
+    try{
+      const r=await Tesseract.recognize(base,"jpn+eng",{tessedit_pageseg_mode:psm});
+      const s=sanitizeNameCandidate(r.data.text||"");
+      if(s) reads.push({text:s,conf:Number(r.data.confidence||0),mode:"orig"});
+    }catch(e){}
+  }
+
+  // 2) Preprocessed variants
+  for(const mode of [0,1,2]){
+    const processed=preprocessName(base,mode);
+    for(const psm of [6,7,11]){
+      try{
+        const r=await Tesseract.recognize(processed,"jpn+eng",{tessedit_pageseg_mode:psm});
+        const s=sanitizeNameCandidate(r.data.text||"");
+        if(s) reads.push({text:s,conf:Number(r.data.confidence||0),mode:`prep${mode}`});
+      }catch(e){}
     }
   }
 
-  if(!results.length) return null;
+  if(!reads.length){
+    return {best:null, uncertain:true, reads:[]};
+  }
 
+  // Exact dedupe: keep max confidence per string.
   const map=new Map();
-  for(const r of results){
-    const old=map.get(r.text);
-    if(!old || r.conf>old.conf) map.set(r.text,r);
+  for(const x of reads){
+    const old=map.get(x.text);
+    if(!old || x.conf>old.conf) map.set(x.text,x);
   }
   const uniq=[...map.values()];
 
-  uniq.forEach(x=>{
-    let support=0;
-    for(const y of uniq){
-      if(x===y) continue;
-      if(similarityQuick(simpleNameKey(x.text),simpleNameKey(y.text))>=.55) support++;
-    }
-    const len=[...x.text].length;
-    let score=x.conf*.45 + support*22;
-    if(len>=1 && len<=34) score+=20;
-    if(len>45) score-=45;
-    if(/[<>_=]{2,}/.test(x.text)) score-=35;
-    if(/メッセージ|サポーター|ギフト|送信先|コイン|Rank/i.test(x.text)) score-=120;
-    x.score=score;
-  });
-
+  uniq.forEach(x=>x.score=scoreNameCandidate(x,uniq));
   uniq.sort((a,b)=>b.score-a.score);
-  return uniq[0];
+
+  const best=uniq[0];
+  const second=uniq[1];
+
+  // Require some agreement. A lone wild OCR result should not auto-confirm.
+  let supportCount=0;
+  for(const x of uniq.slice(1)){
+    if(nameSimilarity(best.text,x.text)>=.58) supportCount++;
+  }
+
+  const uncertain =
+    !best ||
+    best.score<34 ||
+    supportCount===0 ||
+    (second && best.score-second.score<8 && nameSimilarity(best.text,second.text)<.58);
+
+  return {best, uncertain, reads:uniq.slice(0,5)};
 }
 async function recognizeRealityPersonBlock(canvas,centerY){
   const W=canvas.width,H=canvas.height;
@@ -882,14 +950,7 @@ async function recognizeRealityPersonBlock(canvas,centerY){
 
   const newVotes=candidates.filter(c=>c.rank===best.rank).map(c=>!!c.isNew);
   if(newVotes.length) best.isNew=newVotes.filter(Boolean).length>newVotes.length/2;
-
-  const nameOnly=await recognizeRealityNameOnly(canvas,centerY);
-  if(nameOnly && plausibleName(nameOnly.text)){
-    best.name=cleanName(nameOnly.text);
-    best.conf=Math.max(best.conf||0,nameOnly.conf||0);
-  }
-
-  return {
+return {
     best,
     alternatives:candidates.slice(1,4),
     cropUrl:evidence.toDataURL("image/jpeg",.95)
@@ -922,6 +983,7 @@ async function analyzeOne(file,fileIndex,total){
     // Missing structured fields are sent to 要確認.
     const needsReview=
       !raw ||
+      !!b.nameUncertain ||
       coin===null ||
       (coin!==null && coin>0 && rank===null) ||
       obviouslyBrokenName(raw,b.conf||0,0);
@@ -1165,6 +1227,13 @@ function renderChanges(){
 }
 function rollBonus(){state.bonus=[0,1,2].map(()=>weighted(BONUS_NORMAL,BONUS_FUNNY,BONUS_RARE))}
 function generate(){
+  const unresolved=state.people.filter(p=>p.needsReview);
+  if(unresolved.length){
+    const msg=`⚠️ 要確認が ${unresolved.length}人残っています。\n全員を「これで確定」してから完成文を作れます。`;
+    const out=$("#output");
+    if(out) out.value=msg;
+    return msg;
+  }
   if(!state.status)rollAll();
 
   const gift=state.people
