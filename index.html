@@ -1144,36 +1144,90 @@ document.getElementById('file').onchange=async function(e){await v14OldFile.call
     sCtx.drawImage(img,x,y,w,h);
     sCtx.restore();
   }
+
+  function drawByWidth(img,x,y,targetW,alpha=1){
+    if(!img||!img.complete||!img.naturalWidth||!img.naturalHeight)return;
+    const targetH=targetW*(img.naturalHeight/img.naturalWidth);
+    sCtx.save();
+    sCtx.globalAlpha=alpha;
+    sCtx.drawImage(img,x,y,targetW,targetH);
+    sCtx.restore();
+  }
+
+  function drawByWidthFromBottomRight(img,w,h,right,bottom,targetW,alpha=1){
+    if(!img||!img.complete||!img.naturalWidth||!img.naturalHeight)return;
+    const targetH=targetW*(img.naturalHeight/img.naturalWidth);
+    const x=w-right-targetW;
+    const y=h-bottom-targetH;
+    sCtx.save();
+    sCtx.globalAlpha=alpha;
+    sCtx.drawImage(img,x,y,targetW,targetH);
+    sCtx.restore();
+  }
+
   function drawSummerTint(w,h){
     sCtx.save();
-    // Soft summer sky / sunlight tint while keeping text zones pale and readable.
-    const g=sCtx.createLinearGradient(0,h*.28,w,h*.82);
-    g.addColorStop(0,'rgba(119,211,255,.18)');
-    g.addColorStop(.45,'rgba(255,245,181,.16)');
-    g.addColorStop(1,'rgba(255,183,211,.14)');
-    sCtx.fillStyle=g;
+
+    const sky=sCtx.createLinearGradient(w*.08,h*.28,w*.92,h*.78);
+    sky.addColorStop(0,'rgba(145,225,255,.27)');
+    sky.addColorStop(.40,'rgba(255,247,180,.22)');
+    sky.addColorStop(.72,'rgba(255,220,230,.16)');
+    sky.addColorStop(1,'rgba(255,190,218,.12)');
+    sCtx.fillStyle=sky;
     sCtx.beginPath();
     sCtx.roundRect(w*.07,h*.285,w*.86,h*.59,Math.max(18,w*.035));
     sCtx.fill();
 
-    const glow=sCtx.createRadialGradient(w*.35,h*.42,0,w*.35,h*.42,w*.55);
-    glow.addColorStop(0,'rgba(255,235,151,.19)');
-    glow.addColorStop(1,'rgba(255,255,255,0)');
-    sCtx.fillStyle=glow;
+    const sun=sCtx.createRadialGradient(w*.30,h*.40,0,w*.30,h*.40,w*.42);
+    sun.addColorStop(0,'rgba(255,239,138,.30)');
+    sun.addColorStop(.48,'rgba(255,245,195,.15)');
+    sun.addColorStop(1,'rgba(255,255,255,0)');
+    sCtx.fillStyle=sun;
     sCtx.fillRect(w*.07,h*.285,w*.86,h*.59);
+
+    const sea=sCtx.createLinearGradient(0,h*.70,w,h*.86);
+    sea.addColorStop(0,'rgba(159,230,255,.10)');
+    sea.addColorStop(.55,'rgba(208,244,255,.14)');
+    sea.addColorStop(1,'rgba(255,224,235,.08)');
+    sCtx.fillStyle=sea;
+    sCtx.beginPath();
+    sCtx.roundRect(w*.09,h*.68,w*.82,h*.19,Math.max(16,w*.03));
+    sCtx.fill();
+
     sCtx.restore();
   }
+
   function drawSeasonLayers(w,h){
     const season=activeSeason();
     if(season==='summer'){
       drawSummerTint(w,h);
-      // Seasonal decorations: placed only around safe outer areas.
-      drawLayer(sLayerImages.summer_furin,w*.76,h*.27,w*.20,h*.30,.93);
-      drawLayer(sLayerImages.summer_sunflower,w*.03,h*.64,w*.27,h*.24,.92);
-      drawLayer(sLayerImages.summer_shell,w*.70,h*.71,w*.25,h*.22,.90);
+
+      drawByWidth(
+        sLayerImages.summer_furin,
+        w*.79,h*.27,
+        w*.115,
+        .94
+      );
+
+      drawByWidth(
+        sLayerImages.summer_sunflower,
+        w*.035,h*.655,
+        w*.235,
+        .94
+      );
+
+      drawByWidthFromBottomRight(
+        sLayerImages.summer_shell,
+        w,h,
+        w*.045,h*.045,
+        w*.205,
+        .93
+      );
     }
     const st=$s('#sSeasonStatus');
-    if(st)st.textContent=season==='summer'?'☀️ 季節アレンジ：夏（背景＋小物を自動配置）':'✨ 季節アレンジ：なし';
+    if(st)st.textContent=season==='summer'
+      ?'☀️ 季節アレンジ：夏（夏色背景＋小物を比率維持で自動配置）'
+      :'✨ 季節アレンジ：なし';
   }
   
   function layout(){return {monthX:+$s('#sMonthX').value,monthY:+$s('#sMonthY').value,nameX:+$s('#sNameX').value,nameY:+$s('#sNameY').value,msgX:+$s('#sMsgX').value,msgY:+$s('#sMsgY').value,msgW:+$s('#sMsgW').value,msgH:+$s('#sMsgH').value}}
