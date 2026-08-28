@@ -420,7 +420,7 @@ body.supporterMode #supporterView{display:block}
         <label>名前 X<input id="sNameX" type="range" min="0" max="1" step=".005" value=".64"></label>
         <label>名前 Y<input id="sNameY" type="range" min="0" max="1" step=".005" value=".485"></label>
         <label>本文 X<input id="sMsgX" type="range" min="0" max="1" step=".005" value=".635"></label>
-        <label>本文 Y<input id="sMsgY" type="range" min="0" max="1" step=".005" value=".545"></label>
+        <label>本文 Y<input id="sMsgY" type="range" min="0" max="1" step=".005" value=".615"></label>
         <label>本文幅<input id="sMsgW" type="range" min=".25" max=".62" step=".005" value=".43"></label>
         <label>本文高さ<input id="sMsgH" type="range" min=".18" max=".50" step=".005" value=".27"></label>
       </div>
@@ -1107,8 +1107,61 @@ document.getElementById('file').onchange=async function(e){await v14OldFile.call
   const FONT="'Hiragino Maru Gothic ProN','Yu Gothic','Hiragino Sans',sans-serif";
   function fitSingle(text,maxW,maxS,minS,w=800){let s=maxS;while(s>minS){sCtx.font=`${w} ${s}px ${FONT}`;if(sCtx.measureText(text).width<=maxW)break;s-=2}return s}
   function wrapText(text,maxW,size){sCtx.font=`700 ${size}px ${FONT}`;const lines=[];let line='';for(const ch of [...(text||'')]){if(ch==='\n'){lines.push(line);line='';continue}const t=line+ch;if(sCtx.measureText(t).width>maxW&&line){lines.push(line);line=ch}else line=t}if(line||!lines.length)lines.push(line);return lines}
-  function fitPara(text,maxW,maxH){for(let s=66;s>=28;s-=2){const lines=wrapText(text,maxW,s),lh=s*1.32;if(lines.length*lh<=maxH)return{size:s,lines,lh}}return{size:28,lines:wrapText(text,maxW,28),lh:36}}
-  function renderPreview(p=sPeople[sCurrent]){if(!sTemplate.complete)return;sCanvas.width=sTemplate.naturalWidth||1024;sCanvas.height=sTemplate.naturalHeight||1536;sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);sCtx.drawImage(sTemplate,0,0,sCanvas.width,sCanvas.height);cover();if(!p){$s('#sWho').textContent='対象者なし';return}const L=layout(),w=sCanvas.width,h=sCanvas.height,month=monthLabel(currentMonth());sCtx.textAlign='center';sCtx.textBaseline='middle';sCtx.fillStyle='#e745cf';sCtx.font=`700 ${fitSingle(month,w*.15,44,22,700)}px ${FONT}`;sCtx.fillText(month,w*L.monthX,h*L.monthY);sCtx.fillStyle='#181818';sCtx.font=`800 ${fitSingle(p.name,w*.34,58,28)}px ${FONT}`;sCtx.fillText(p.name,w*L.nameX,h*L.nameY);const para=fitPara(p.msg||'',w*L.msgW,h*L.msgH);sCtx.fillStyle='#625b78';sCtx.font=`700 ${para.size}px ${FONT}`;const sy=h*L.msgY-(para.lines.length-1)*para.lh/2;para.lines.forEach((line,i)=>sCtx.fillText(line,w*L.msgX,sy+i*para.lh));$s('#sWho').textContent=(sCurrent+1)+'/'+sPeople.length+' '+p.name;}
+  function nameMaxSize(text){
+    const len=[...(text||'')].length;
+    if(len<=4)return 44;
+    if(len<=6)return 40;
+    if(len<=8)return 36;
+    return 34;
+  }
+  function fitName(text,maxW){
+    const maxS=nameMaxSize(text);
+    return fitSingle(text,maxW,maxS,22,800);
+  }
+  function paraStartSize(text){
+    const len=[...(text||'')].length;
+    if(len<=8)return 34;
+    if(len<=16)return 32;
+    if(len<=26)return 30;
+    if(len<=38)return 27;
+    return 24;
+  }
+  function fitPara(text,maxW,maxH){
+    let start=paraStartSize(text);
+    for(let s=start;s>=20;s-=2){
+      const lines=wrapText(text,maxW,s),lh=s*1.28;
+      if(lines.length*lh<=maxH)return{size:s,lines,lh};
+    }
+    return{size:20,lines:wrapText(text,maxW,20),lh:26};
+  }
+  function renderPreview(p=sPeople[sCurrent]){
+    if(!sTemplate.complete)return;
+    sCanvas.width=sTemplate.naturalWidth||1024;
+    sCanvas.height=sTemplate.naturalHeight||1536;
+    sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);
+    sCtx.drawImage(sTemplate,0,0,sCanvas.width,sCanvas.height);
+    cover();
+    if(!p){$s('#sWho').textContent='対象者なし';return}
+    const L=layout(),w=sCanvas.width,h=sCanvas.height,month=monthLabel(currentMonth());
+    sCtx.textAlign='center';
+    sCtx.textBaseline='middle';
+    sCtx.fillStyle='#e745cf';
+    sCtx.font=`700 ${fitSingle(month,w*.15,40,22,700)}px ${FONT}`;
+    sCtx.fillText(month,w*L.monthX,h*L.monthY);
+    sCtx.fillStyle='#181818';
+    sCtx.font=`800 ${fitName(p.name,w*.30)}px ${FONT}`;
+    sCtx.fillText(p.name,w*L.nameX,h*L.nameY);
+    const bodyTop=h*(L.nameY+0.065);
+    const bodyBottom=Math.min(h*.735, bodyTop+h*L.msgH);
+    const bodyH=Math.max(60, bodyBottom-bodyTop);
+    const para=fitPara(p.msg||'',w*L.msgW,bodyH);
+    sCtx.fillStyle='#625b78';
+    sCtx.font=`700 ${para.size}px ${FONT}`;
+    const contentH=(para.lines.length-1)*para.lh;
+    const sy=bodyTop + Math.max(para.size*.55,(bodyH-contentH)/2);
+    para.lines.forEach((line,i)=>sCtx.fillText(line,w*L.msgX,sy+i*para.lh));
+    $s('#sWho').textContent=(sCurrent+1)+'/'+sPeople.length+' '+p.name;
+  }
   $s('#sTemplateFile').onchange=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{sUsingSample=false;sTemplate.src=r.result;try{localStorage.setItem(TEMPLATE_KEY,r.result)}catch(err){}};r.readAsDataURL(f)};
   $s('#sDownloadOne').onclick=()=>{if(!sPeople.length)return;const p=sPeople[sCurrent],a=document.createElement('a');renderPreview(p);a.href=sCanvas.toDataURL('image/png');a.download=currentMonth()+'_'+safe(p.name)+'.png';a.click()};
   $s('#sDownloadAll').onclick=async()=>{if(!sPeople.length)return alert('対象者がいません');if(typeof JSZip==='undefined')return alert('ZIP機能を読み込めませんでした');const zip=new JSZip();$s('#sSaveStatus').textContent='作成中…';for(let i=0;i<sPeople.length;i++){const p=sPeople[i];renderPreview(p);const blob=await(await fetch(sCanvas.toDataURL('image/png'))).blob();zip.file(String(i+1).padStart(2,'0')+'_'+safe(p.name)+'.png',blob)}const out=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(out);a.download='supporter_'+currentMonth()+'.zip';a.click();$s('#sSaveStatus').textContent=sPeople.length+'人分保存しました';renderPreview()};
