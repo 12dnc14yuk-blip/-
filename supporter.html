@@ -58,6 +58,21 @@ input[type=range]{padding:0}
 hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 @media(max-width:720px){.grid2,.settingsGrid,.summaryGrid{grid-template-columns:1fr}}
 </style>
+
+<style id="supporter-v3-ui">
+.seasonModeRow{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.seasonModeBtn{
+  appearance:none;border:1px solid var(--line);background:#fff;color:#8a5e77;
+  border-radius:999px;padding:8px 12px;font-weight:900;font-size:12px
+}
+.seasonModeBtn.active{background:linear-gradient(135deg,#ed70c6,#ff9cda);color:#fff;border-color:#ed70c6}
+.bgSwatch{
+  width:100%;height:42px;border-radius:13px;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#6f5a67
+}
+.inlineNote{font-size:11px;color:var(--muted);line-height:1.55;margin-top:6px}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -140,8 +155,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     <div class="grid2" style="margin-bottom:10px">
       <label>一言フォント
         <select id="msgWeight">
-          <option value="400">Regular</option>
-          <option value="600" selected>SemiBold</option>
+          <option value="400" selected>Regular</option>
+          <option value="600">SemiBold</option>
           <option value="700">Bold</option>
           <option value="800">ExtraBold</option>
         </select>
@@ -151,6 +166,22 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
       </label>
     </div>
     <div class="hint">ハート内には見えない文字枠があります。短い一言は大きく、長い一言は改行＋縮小して枠内に収めます。</div>
+
+    <div style="margin:12px 0 10px">
+      <label>背景カラー</label>
+      <div class="seasonModeRow" id="seasonModeRow">
+        <button type="button" class="seasonModeBtn active" data-season="auto">自動</button>
+        <button type="button" class="seasonModeBtn" data-season="spring">春</button>
+        <button type="button" class="seasonModeBtn" data-season="summer">夏</button>
+        <button type="button" class="seasonModeBtn" data-season="autumn">秋</button>
+        <button type="button" class="seasonModeBtn" data-season="winter">冬</button>
+      </div>
+      <div class="btnrow">
+        <button type="button" class="secondary" id="shuffleBgBtn">🎨 背景シャッフル</button>
+      </div>
+      <div id="bgSwatch" class="bgSwatch">季節カラー</div>
+    </div>
+
     <canvas id="canvas" width="1024" height="1536"></canvas>
 
     <div class="btnrow">
@@ -167,6 +198,11 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
           <label><input id="showBunny" type="checkbox" checked> うさぎ＋花</label>
           <label><input id="showSparkles" type="checkbox" checked> キラキラ</label>
         </div>
+        <div class="settingsGrid" style="margin-top:10px">
+          <div><label>女の子 上下</label><input id="characterY" type="range" min="-.08" max=".12" step=".002" value=".030"></div>
+          <div><label>うさぎ 上下</label><input id="bunnyY" type="range" min="-.08" max=".12" step=".002" value=".025"></div>
+        </div>
+        <div class="inlineNote">サイズは変えず、上下位置だけ補正します。</div>
         <hr>
         <div class="settingsGrid">
           <div><label>月 X</label><input id="monthX" type="range" min="0" max="1" step=".002" value=".500"></div>
@@ -186,7 +222,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">試作 v2：素材重ね方式</div>
+  <div class="mini" style="text-align:center;margin:18px 0">試作 v3：素材重ね＋季節背景</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -203,14 +239,61 @@ const NICK_KEY='shuri_v13_nick';
 const SEASON_KEY='shuri_supporter_season_assets_v2';
 const SEASON_SELECTED_KEY='shuri_supporter_season_selected_v2';
 const SEASON_LAYOUT_KEY='shuri_supporter_season_layout_v2';
-const STYLE_KEY='shuri_supporter_style_v2';
+const STYLE_KEY='shuri_supporter_style_v3';
+const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 
 const defaults={
-  monthX:.500,monthY:.238,
+  monthX:.500,monthY:.235,
   nameX:.655,nameY:.490,
-  msgX:.655,msgY:.595,msgW:.385,msgH:.205
+  msgX:.655,msgY:.595,msgW:.385,msgH:.205,
+  characterY:.030,bunnyY:.025
 };
 const seasonDefaults={seasonX:.80,seasonY:.79,seasonScale:.20};
+
+const BG_PALETTES={
+  spring:['#fff3f6','#fff8e8','#f7efff','#ffeef4'],
+  summer:['#eefaff','#effff8','#fffbe8','#f2fbff','#fff2ee'],
+  autumn:['#fff4e8','#f8efe4','#f6eadf','#fff0df'],
+  winter:['#f0f7ff','#f4f2ff','#f7f7f7','#fff2f8']
+};
+let bgMode='auto';
+let bgColor='#fff8fb';
+
+function detectedSeason(){
+  const m=Number(String(currentMonthKey()).split('-')[1]||new Date().getMonth()+1);
+  if(m>=3&&m<=5)return 'spring';
+  if(m>=6&&m<=8)return 'summer';
+  if(m>=9&&m<=11)return 'autumn';
+  return 'winter';
+}
+function activeSeason(){
+  return bgMode==='auto'?detectedSeason():bgMode;
+}
+function chooseBgColor(forceDifferent=true){
+  const pal=BG_PALETTES[activeSeason()]||BG_PALETTES.summer;
+  const candidates=forceDifferent&&pal.length>1?pal.filter(c=>c!==bgColor):pal;
+  bgColor=candidates[Math.floor(Math.random()*candidates.length)]||pal[0];
+  saveJSON(BG_STYLE_KEY,{mode:bgMode,color:bgColor});
+  updateBgUI();
+  renderPreview();
+}
+function updateBgUI(){
+  document.querySelectorAll('.seasonModeBtn').forEach(b=>b.classList.toggle('active',b.dataset.season===bgMode));
+  if($('#bgSwatch')){
+    $('#bgSwatch').style.background=bgColor;
+    const labels={auto:'自動',spring:'春',summer:'夏',autumn:'秋',winter:'冬'};
+    $('#bgSwatch').textContent=`${labels[bgMode]||'自動'}：${bgColor}`;
+  }
+}
+function loadBgStyle(){
+  const saved=loadJSON(BG_STYLE_KEY,null);
+  bgMode=saved?.mode||'auto';
+  bgColor=saved?.color||'#fff8fb';
+  const active=BG_PALETTES[activeSeason()]||[];
+  if(!active.includes(bgColor)) chooseBgColor(false);
+  else updateBgUI();
+}
+
 
 let people=[],current=0;
 let template=new Image(), usingCustomTemplate=false;
@@ -314,8 +397,8 @@ function loadLayout(){
   for(const [k,v] of Object.entries(defaults)){if($('#'+k))$('#'+k).value=st[k]??v}
   const ss=loadJSON(SEASON_LAYOUT_KEY,seasonDefaults);
   for(const [k,v] of Object.entries(seasonDefaults)){if($('#'+k))$('#'+k).value=ss[k]??v}
-  const style=loadJSON(STYLE_KEY,{weight:'600',color:'#181818',showCharacter:true,showBunny:true,showSparkles:true});
-  $('#msgWeight').value=String(style.weight||'600');$('#msgColor').value=style.color||'#181818';
+  const style=loadJSON(STYLE_KEY,{weight:'400',color:'#181818',showCharacter:true,showBunny:true,showSparkles:true});
+  $('#msgWeight').value=String(style.weight||'400');$('#msgColor').value=style.color||'#181818';
   $('#showCharacter').checked=style.showCharacter!==false;
   $('#showBunny').checked=style.showBunny!==false;
   $('#showSparkles').checked=style.showSparkles!==false;
@@ -383,15 +466,30 @@ function wrapText(text,maxW,size,weight,font){
   if(line||!lines.length)lines.push(line);return lines;
 }
 function fitHeartText(text,maxW,maxH){
-  const weight=Number($('#msgWeight').value||600);
+  const weight=Number($('#msgWeight').value||400);
   for(let s=82;s>=24;s-=2){
-    const lines=wrapText(text,maxW,s,weight,TEXT_FONT),lh=s*1.18;
+    const lines=wrapText(text,maxW,s,weight,TEXT_FONT),lh=s*1.28;
     ctx.font=`${weight} ${s}px ${TEXT_FONT}`;
     const widest=Math.max(...lines.map(x=>ctx.measureText(x).width),0);
     if(widest<=maxW&&lines.length*lh<=maxH)return{size:s,lines,lh,weight};
   }
-  return{size:24,lines:wrapText(text,maxW,24,weight,TEXT_FONT),lh:29,weight};
+  return{size:24,lines:wrapText(text,maxW,24,weight,TEXT_FONT),lh:31,weight};
 }
+
+function drawCenteredSpacedText(text,cx,y,spacing){
+  const chars=[...(text||'')];
+  if(!chars.length)return;
+  const widths=chars.map(ch=>ctx.measureText(ch).width);
+  const total=widths.reduce((a,b)=>a+b,0)+spacing*Math.max(0,chars.length-1);
+  let x=cx-total/2;
+  ctx.textAlign='left';
+  chars.forEach((ch,i)=>{
+    ctx.fillText(ch,x,y);
+    x+=widths[i]+spacing;
+  });
+  ctx.textAlign='center';
+}
+
 function fitSingle(text,maxW,maxSize,minSize,weight=800){
   let s=maxSize;
   while(s>minSize){ctx.font=`${weight} ${s}px ${UI_FONT}`;if(ctx.measureText(text).width<=maxW)break;s-=2}
@@ -402,12 +500,18 @@ function renderPreview(person=people[current]){
   if(!template.complete)return;
   canvas.width=1024;canvas.height=1536;
   ctx.clearRect(0,0,1024,1536);
+
+  // Seasonal background color beneath the transparent/open areas of the base.
+  ctx.fillStyle=bgColor;
+  ctx.fillRect(0,0,1024,1536);
+
   ctx.drawImage(template,0,0,1024,1536);
 
-  // The user's separated fixed layers are already aligned to 1024x1536.
-  // Draw 1:1 over the base: no independent resize / no reposition.
-  if($('#showBunny').checked&&bunny.complete)ctx.drawImage(bunny,0,0,1024,1536);
-  if($('#showCharacter').checked&&character.complete)ctx.drawImage(character,0,0,1024,1536);
+  // Fixed layers stay 1:1. Only Y position is corrected; no scale distortion.
+  const charY=1536*(+($('#characterY')?.value||0));
+  const bunnyY=1536*(+($('#bunnyY')?.value||0));
+  if($('#showBunny').checked&&bunny.complete)ctx.drawImage(bunny,0,bunnyY,1024,1536);
+  if($('#showCharacter').checked&&character.complete)ctx.drawImage(character,0,charY,1024,1536);
 
   drawSeason();
 
@@ -429,7 +533,7 @@ function renderPreview(person=people[current]){
     ctx.fillStyle=$('#msgColor').value||'#181818';
     ctx.font=`${para.weight} ${para.size}px ${TEXT_FONT}`;
     const startY=h*L.msgY-(para.lines.length-1)*para.lh/2;
-    para.lines.forEach((line,i)=>ctx.fillText(line,w*L.msgX,startY+i*para.lh));
+    para.lines.forEach((line,i)=>drawCenteredSpacedText(line,w*L.msgX,startY+i*para.lh,Math.max(1,para.size*.025)));
     $('#whoLabel').textContent=`${current+1} / ${people.length}　${name}`;
   }else{
     $('#whoLabel').textContent='対象者なし';
@@ -449,7 +553,7 @@ function loadImages(){
 }
 
 $('#monthPick').value=monthKeyNow();
-$('#monthPick').onchange=()=>{current=0;reloadMonth();loadSeasonAssets()};
+$('#monthPick').onchange=()=>{current=0;reloadMonth();loadSeasonAssets();if(bgMode==='auto')chooseBgColor(false)};
 $('#reloadBtn').onclick=reloadMonth;
 $('#manualAddBtn').onclick=addManualNames;
 $('#clearMonthBtn').onclick=()=>{if(confirm('この月の対象者だけ全消去します。呼び方辞書は消えません。')){saveRosterList([]);reloadMonth()}};
@@ -461,6 +565,15 @@ $('#templateFile').onchange=e=>{
   const r=new FileReader();r.onload=()=>{usingCustomTemplate=true;localStorage.setItem(TEMPLATE_KEY,r.result);template.src=r.result};r.readAsDataURL(f);
 };
 $('#seasonFiles').onchange=async e=>{await addSeasonFiles(e.target.files||[]);e.target.value=''};
+
+document.querySelectorAll('.seasonModeBtn').forEach(btn=>{
+  btn.onclick=()=>{
+    bgMode=btn.dataset.season||'auto';
+    chooseBgColor(false);
+  };
+});
+$('#shuffleBgBtn').onclick=()=>chooseBgColor(true);
+
 $('#swapSeasonBtn').onclick=()=>{if(!seasonAssets.length)return alert('先に季節素材を追加してください');seasonSelected=(seasonSelected+1)%seasonAssets.length;setSeasonImage()};
 $('#removeSeasonBtn').onclick=()=>{if(!seasonAssets.length)return;seasonAssets.splice(seasonSelected,1);saveJSON(SEASON_KEY,seasonAssets);seasonSelected=Math.min(seasonSelected,Math.max(0,seasonAssets.length-1));setSeasonImage()};
 
@@ -492,7 +605,7 @@ $('#downloadAll').onclick=async()=>{
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
 };
 
-loadLayout();loadImages();loadSeasonAssets();reloadMonth();
+loadLayout();loadBgStyle();loadImages();loadSeasonAssets();reloadMonth();
 document.fonts?.ready?.then(renderPreview);
 </script>
 </body>
