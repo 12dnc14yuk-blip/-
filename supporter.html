@@ -182,7 +182,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
       <div id="bgSwatch" class="bgSwatch">季節カラー</div>
     </div>
 
-    <canvas id="canvas" width="1024" height="1536"></canvas>
+    <div class="canvasWrap" style="background:#fff8fb;border-radius:20px;padding:8px"><canvas id="canvas" width="1024" height="1536"></canvas></div>
 
     <div class="btnrow">
       <button class="secondary" id="downloadOne">今の1枚を保存</button>
@@ -199,8 +199,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
           <label><input id="showSparkles" type="checkbox" checked> キラキラ</label>
         </div>
         <div class="settingsGrid" style="margin-top:10px">
-          <div><label>女の子 上下</label><input id="characterY" type="range" min="-.08" max=".12" step=".002" value=".030"></div>
-          <div><label>うさぎ 上下</label><input id="bunnyY" type="range" min="-.08" max=".12" step=".002" value=".025"></div>
+          <div><label>女の子 上下</label><input id="characterY" type="range" min="-.08" max=".12" step=".002" value=".050"></div>
+          <div><label>うさぎ 上下</label><input id="bunnyY" type="range" min="-.08" max=".12" step=".002" value=".045"></div>
         </div>
         <div class="inlineNote">サイズは変えず、上下位置だけ補正します。</div>
         <hr>
@@ -222,7 +222,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">試作 v3：素材重ね＋季節背景</div>
+  <div class="mini" style="text-align:center;margin:18px 0">試作 v4：素材重ね＋季節背景調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -246,7 +246,7 @@ const defaults={
   monthX:.500,monthY:.235,
   nameX:.655,nameY:.490,
   msgX:.655,msgY:.595,msgW:.385,msgH:.205,
-  characterY:.030,bunnyY:.025
+  characterY:.050,bunnyY:.045
 };
 const seasonDefaults={seasonX:.80,seasonY:.79,seasonScale:.20};
 
@@ -476,6 +476,25 @@ function fitHeartText(text,maxW,maxH){
   return{size:24,lines:wrapText(text,maxW,24,weight,TEXT_FONT),lh:31,weight};
 }
 
+function hexToRgb(hex){
+  const h=String(hex||'').replace('#','').trim();
+  const full=h.length===3 ? h.split('').map(x=>x+x).join('') : h;
+  const n=parseInt(full||'fff',16);
+  return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
+}
+function replaceNearWhiteWithBg(){
+  const {r:br,g:bg,b:bb}=hexToRgb(bgColor);
+  const im=ctx.getImageData(0,0,1024,1536);
+  const d=im.data;
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
+    const max=Math.max(r,g,b), min=Math.min(r,g,b), lum=(r+g+b)/3;
+    if(a>250 && lum>246 && (max-min)<8){
+      d[i]=br; d[i+1]=bg; d[i+2]=bb;
+    }
+  }
+  ctx.putImageData(im,0,0);
+}
 function drawCenteredSpacedText(text,cx,y,spacing){
   const chars=[...(text||'')];
   if(!chars.length)return;
@@ -506,6 +525,9 @@ function renderPreview(person=people[current]){
   ctx.fillRect(0,0,1024,1536);
 
   ctx.drawImage(template,0,0,1024,1536);
+  replaceNearWhiteWithBg();
+  const wrap=$('.canvasWrap')||$('#canvas')?.parentElement;
+  if(wrap) wrap.style.background=bgColor;
 
   // Fixed layers stay 1:1. Only Y position is corrected; no scale distortion.
   const charY=1536*(+($('#characterY')?.value||0));
@@ -525,7 +547,8 @@ function renderPreview(person=people[current]){
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='#181818';
-    ctx.font=`800 ${fitSingle(name,w*.34,58,28,800)}px ${UI_FONT}`;
+    const nameWeight=Math.max(600,Number($('#msgWeight').value||400));
+    ctx.font=`${nameWeight} ${fitSingle(name,w*.34,58,28,nameWeight)}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,h*L.nameY);
 
     const txt=person.msg||'';
