@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v14.1</title>
+<title>ありがとうメッセージメーカー v14.2</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
 /* v14 learning UI */
 function v14NormalizeName(s){
@@ -15,12 +15,26 @@ function v14NormalizeName(s){
      .replace(/\s{2,}/g,' ').trim();
   return s;
 }
-function v14Alias(name){
+function v14ExactAlias(name){
   if(!name)return null;
-  if(state.nick[name])return {official:name,nick:state.nick[name],score:1};
-  let best=null,bs=0;
-  for(const k of Object.keys(state.nick)){const s=similarity(k,name);if(s>bs){bs=s;best=k}}
-  return best&&bs>=.64?{official:best,nick:state.nick[best],score:bs}:null;
+  const n=v14NormalizeName(name);
+  if(state.nick[n])return {official:n,nick:state.nick[n],score:1};
+  return null;
+}
+function v14NameSuggestions(name, limit=3){
+  const n=v14NormalizeName(name);
+  if(!n)return [];
+  const grouped=new Map();
+  for(const k of Object.keys(state.nick)){
+    const nick=state.nick[k];
+    const score=similarity(k,n);
+    if(score<.42)continue;
+    const prev=grouped.get(nick);
+    if(!prev || score>prev.score)grouped.set(nick,{official:k,nick,score});
+  }
+  return [...grouped.values()]
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,limit);
 }
 function v14Strip(){
   const el=document.getElementById('v14Strip'); if(!el)return;
@@ -45,10 +59,8 @@ mergePeople=function(list){
   list.forEach(p=>{
     const original=v14NormalizeName(p.name);
     p.ocrName=original;p.name=original;
-    const a=v14Alias(original);
-    const am=p.avatarHash?bestAvatarMatch(p.avatarHash):null;
-    if(am){p.tempNick=am.nick;p.learned=true;p.avatarLearned=true}
-    else if(a&&a.score>=.70){p.name=a.official;p.tempNick=a.nick;p.learned=true}
+    const a=v14ExactAlias(original);
+    if(a){p.name=a.official;p.tempNick=a.nick;p.learned=true}
   });
   return v14OldMerge(list);
 };
@@ -59,15 +71,15 @@ renderPeople=function(){
   el.innerHTML=`<div class="v14-summary"><span class="v14-pill">${state.people.length}人</span><span class="v14-pill ${warns?'warn':''}">要確認 ${warns}</span><span class="v14-pill">0コイン ${state.people.filter(p=>p.coin===0).length}</span></div>`;
   state.people.forEach((p,i)=>{
     p.name=v14NormalizeName(p.name);
-    const am=p.avatarHash?bestAvatarMatch(p.avatarHash):null;
-    const a=v14Alias(p.name);
-    if(am&&!p.tempNick){p.tempNick=am.nick;p.learned=true;p.avatarLearned=true}
-    else if(a&&!p.tempNick){p.tempNick=a.nick;if(a.score>=.70){p.name=a.official;p.learned=true}}
+    const a=v14ExactAlias(p.name);
+    if(a&&!p.tempNick){p.tempNick=a.nick;p.learned=true}
+    const suggestions=!a ? v14NameSuggestions(p.name,3) : [];
     const d=document.createElement('div');d.className='person '+(p.issues?.length?'warn':'ok')+(p.coin===0?' zero':'');
     const pic=v14Crop(p);
-    d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.avatarLearned?'顔✓':p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
+    d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
     ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
-    ${p.coinCandidates&&p.coinCandidates.length>1?`<div class="learnlist">💰候補：${[...new Set(p.coinCandidates.map(x=>x.v))].join(' / ')}</div>`:''}
+    ${suggestions.length?`<div class="maybeBox"><b>💡 この人かも？</b><div class="maybeBtns">${suggestions.map((x,j)=>`<button type="button" class="maybeBtn" data-maybe-i="${i}" data-maybe-j="${j}">${escapeHtml(x.nick)} <small>${Math.round(x.score*100)}%</small></button>`).join('')}</div></div>`:''}
+    ${p.coin==null&&p.coinCandidates?.length?`<div class="coinSuggest"><b>💰 コイン候補</b><div class="maybeBtns">${p.coinCandidates.map(v=>`<button type="button" class="maybeBtn" data-coin-i="${i}" data-coin-v="${v}">${v}コイン</button>`).join('')}</div></div>`:''}
     <div class="editgrid">
       <label>認識名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
       <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
@@ -86,13 +98,29 @@ renderPeople=function(){
     state.nick[official]=nick;
     if(p.ocrName)state.nick[v14NormalizeName(p.ocrName)]=nick;
     if(p.nameRaw)state.nick[v14NormalizeName(p.nameRaw)]=nick;
-    if(p.avatarHash)saveAvatarProfile(p.avatarHash,nick,official);
-    // 同じ本文名の登録済み別表記も、この人の別OCR候補として残す。
-    for(const k of Object.keys(state.nick)){
-      if(state.nick[k]===nick && similarity(k,official)>=.48)state.nick[k]=nick;
-    }
-    p.name=official;p.tempNick=nick;p.learned=true;p.avatarLearned=!!p.avatarHash;persist();renderDict();renderPeople();generateResult();
+    p.name=official;p.tempNick=nick;p.learned=true;persist();renderDict();renderPeople();generateResult();
     setStatus(`「${nick}」を覚えました。`);
+  });
+  el.querySelectorAll('[data-maybe-i]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.maybeI,j=+b.dataset.maybeJ,p=state.people[i];
+    const suggestions=v14NameSuggestions(p.name,3);
+    const hit=suggestions[j];
+    if(!hit)return;
+    const raw=v14NormalizeName(p.ocrName||p.nameRaw||p.name);
+    // Current OCR spelling becomes a learned alias for this nickname.
+    if(raw)state.nick[raw]=hit.nick;
+    if(p.name)state.nick[v14NormalizeName(p.name)]=hit.nick;
+    p.tempNick=hit.nick;
+    p.learned=true;
+    persist();renderDict();renderPeople();generateResult();
+    setStatus(`「${hit.nick}」として登録しました。次回からこの読み方も自動変換します。`);
+  });
+  el.querySelectorAll('[data-coin-i]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.coinI,v=+b.dataset.coinV,p=state.people[i];
+    p.coin=v;
+    p.issues=(p.issues||[]).filter(x=>x!=='コイン');
+    renderPeople();generateResult();
+    setStatus(`${v}コインとして確定しました。`);
   });
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult();v14Strip()});
   v14Strip();
@@ -254,10 +282,19 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 #learnPanel{padding:10px;max-height:45vh;overflow:auto}
 @media(max-width:560px){.dictHead{grid-template-columns:1fr 1fr 52px}.nickrow{grid-template-columns:1fr 1fr 52px!important}.nickrow button{grid-column:auto!important;padding:8px 4px;font-size:11px}}
 </style>
+
+<style id="v142-ui">
+.maybeBox,.coinSuggest{margin:6px 0 4px;padding:7px 8px;border-radius:10px;background:#fff8df;border:1px solid #f0cf74;font-size:11px}
+.coinSuggest{background:#f2f8ff;border-color:#a9ccea}
+.maybeBtns{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.maybeBtn{font-size:11px!important;padding:6px 8px!important;border-radius:999px!important;background:#fff!important;color:#5b463d!important;border:1px solid #dccfc7!important;font-weight:800!important}
+.maybeBtn small{font-size:9px;color:#9a8174}
+</style>
+
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v14.1</h1>
+  <h1>🐰 ありがとうメッセージメーカー v14.2</h1>
   <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、名前・コイン・Rankだけを下書き。一度直した名前は辞書に覚えて、次回から自動補正します。</p>
 
   <section class="card">
@@ -335,51 +372,6 @@ const state={
   corrections:JSON.parse(localStorage.getItem('shuri_v13_corrections')||'[]'),
   nick:JSON.parse(localStorage.getItem('shuri_v13_nick')||'{}')
 };
-
-const AVATAR_KEY='thanksAvatarProfiles';
-
-function avatarProfilesLoad(){
-  try{return JSON.parse(localStorage.getItem(AVATAR_KEY)||'[]')}catch(e){return[]}
-}
-function avatarProfilesSave(v){
-  localStorage.setItem(AVATAR_KEY,JSON.stringify(v.slice(-400)));
-}
-function hamming(a,b){
-  if(!a||!b||a.length!==b.length)return 999;
-  let n=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])n++;
-  return n;
-}
-function avatarHashFor(img,cy){
-  try{
-    const W=img.width, size=Math.max(28,Math.round(W*.09));
-    const sx=Math.max(0,Math.round(W*.03)), sy=Math.max(0,Math.round(cy-size*.52));
-    const sw=Math.min(size,img.width-sx), sh=Math.min(size,img.height-sy);
-    const c=document.createElement('canvas');c.width=8;c.height=8;
-    const x=c.getContext('2d');x.drawImage(img,sx,sy,sw,sh,0,0,8,8);
-    const d=x.getImageData(0,0,8,8).data, vals=[];
-    for(let i=0;i<d.length;i+=4)vals.push(.299*d[i]+.587*d[i+1]+.114*d[i+2]);
-    const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
-    return vals.map(v=>v<avg?'1':'0').join('');
-  }catch(e){return null}
-}
-function bestAvatarMatch(hash){
-  if(!hash)return null;
-  let best=null;
-  for(const p of avatarProfilesLoad()){
-    const d=hamming(hash,p.hash);
-    if(!best||d<best.distance)best={...p,distance:d};
-  }
-  return best&&best.distance<=13?best:null;
-}
-function saveAvatarProfile(hash,nick,official){
-  if(!hash||!nick)return;
-  let ps=avatarProfilesLoad();
-  let hit=ps.find(p=>hamming(hash,p.hash)<=8);
-  if(hit){hit.hash=hash;hit.nick=nick;hit.official=official||hit.official||'';hit.updatedAt=Date.now()}
-  else ps.push({hash,nick,official:official||'',updatedAt:Date.now()});
-  avatarProfilesSave(ps);
-}
-
 
 function setStatus(s){ $('#status').textContent=s }
 function setProgress(v){ $('#bar').style.width=Math.max(0,Math.min(100,v))+'%' }
@@ -615,82 +607,100 @@ function boxesFor(img,cy){
   const x=W*.165, right=W*.82, unit=W*.082;
   return {
     name:{x,y:cy-unit*.70,w:right-x,h:unit*.50},
-    coin:{x:W*.145,y:cy-unit*.16,w:W*.48,h:unit*.50},
+    coin:{x:W*.155,y:cy-unit*.18,w:W*.36,h:unit*.42},
     rank:{x,y:cy+unit*.34,w:right-x,h:unit*.44},
     shot:{x:W*.02,y:cy-unit*.90,w:W*.80,h:unit*1.72}
   }
 }
 
-async function ocrCoinStrong(c){
-  const nums=[];
-  const add=(v,why)=>{
-    if(Number.isFinite(v)&&v>=0&&v<=999999)nums.push({v,why});
-  };
+async function readCoinLine(img, box){
+  const crop=cropCanvas(img,box);
+  const results=[];
 
-  // 1) Existing Japanese/English OCR, useful when "コイン" is visible.
-  try{
-    const t=await ocrCanvas(c,7,'coin');
-    add(digits(t),'normal');
-  }catch(e){}
+  function pushCandidate(text, source, confidence=0){
+    const t=norm(text||'');
+    if(!t)return;
+    // Highest confidence: number directly associated with コイン.
+    let m=t.match(/([0-9０-９]{1,6})\s*コイン/);
+    if(m){
+      const v=parseInt(m[1].normalize('NFKC'),10);
+      if(Number.isFinite(v))results.push({value:v,score:100+confidence,source,text:t});
+      return;
+    }
+    // Secondary: a clean number from this narrow coin-only crop.
+    const only=t.normalize('NFKC').replace(/[^\d]/g,'');
+    if(only && only.length<=6){
+      const v=parseInt(only,10);
+      if(Number.isFinite(v))results.push({value:v,score:45+confidence,source,text:t});
+    }
+  }
 
-  // 2) Digits-only OCR, several preprocessing variants.
+  // Read the exact same narrow line using different preprocessing.
   for(const mode of ['normal','gray','bw']){
     try{
-      const pc=prepCanvas(c,mode);
-      const {data}=await Tesseract.recognize(pc,'eng',{
+      const pc=prepCanvas(crop,mode);
+      const {data}=await Tesseract.recognize(pc,'jpn+eng',{
         tessedit_pageseg_mode:'7',
-        tessedit_char_whitelist:'0123456789',
-        preserve_interword_spaces:'0'
+        preserve_interword_spaces:'1'
       });
-      const m=String(data.text||'').replace(/\D/g,'');
-      if(m)add(parseInt(m,10),'digits-'+mode);
+      pushCandidate(data.text,'jpn-'+mode,mode==='normal'?8:4);
     }catch(e){}
   }
 
-  // 3) Sparse-line fallback can recover leading digits such as 160 / 100.
-  try{
-    const pc=prepCanvas(c,'gray');
-    const {data}=await Tesseract.recognize(pc,'eng',{
-      tessedit_pageseg_mode:'13',
-      tessedit_char_whitelist:'0123456789'
-    });
-    const m=String(data.text||'').replace(/\D/g,'');
-    if(m)add(parseInt(m,10),'psm13');
-  }catch(e){}
+  // Digits-only is used only as a fallback and must agree with another result
+  // or be the sole clean candidate from the coin-only crop.
+  for(const mode of ['gray','bw']){
+    try{
+      const pc=prepCanvas(crop,mode);
+      const {data}=await Tesseract.recognize(pc,'eng',{
+        tessedit_pageseg_mode:'7',
+        tessedit_char_whitelist:'0123456789'
+      });
+      const t=String(data.text||'').trim();
+      const only=t.replace(/\D/g,'');
+      if(only && only.length<=6){
+        const v=parseInt(only,10);
+        if(Number.isFinite(v))results.push({value:v,score:35,source:'digits-'+mode,text:t});
+      }
+    }catch(e){}
+  }
 
-  if(!nums.length)return {value:null,candidates:[]};
+  if(!results.length)return {coin:null,candidates:[],needsConfirm:true};
 
-  // Prefer agreement. If every result differs, prefer the longer digit sequence,
-  // because the old failure mode was dropping the first digit (160→6, 27→2).
-  const counts=new Map();
-  nums.forEach(x=>counts.set(x.v,(counts.get(x.v)||0)+1));
-  nums.sort((a,b)=>{
-    const ca=counts.get(a.v), cb=counts.get(b.v);
-    if(cb!==ca)return cb-ca;
-    const la=String(a.v).length, lb=String(b.v).length;
-    if(lb!==la)return lb-la;
-    return b.v-a.v;
-  });
-  return {value:nums[0].v,candidates:nums};
+  const grouped=new Map();
+  for(const r of results){
+    const g=grouped.get(r.value)||{value:r.value,score:0,count:0,sources:[],texts:[]};
+    g.score+=r.score;g.count++;g.sources.push(r.source);g.texts.push(r.text);
+    grouped.set(r.value,g);
+  }
+  let groups=[...grouped.values()];
+  groups.forEach(g=>g.score += (g.count-1)*30);
+  groups.sort((a,b)=>b.score-a.score || b.count-a.count);
+
+  const best=groups[0], second=groups[1];
+  const strong=best && (best.score>=100 || best.count>=2);
+  const ambiguous=!!second && Math.abs(best.score-second.score)<35;
+
+  return {
+    coin: strong && !ambiguous ? best.value : null,
+    candidates: groups.slice(0,3).map(g=>g.value),
+    needsConfirm: !strong || ambiguous
+  };
 }
 
 async function readPerson(img,cy,imgIndex,source='auto'){
   const b=boxesFor(img,cy);
   const nameRaw=await ocrCanvas(cropCanvas(img,b.name),7,'name');
-  const coinCrop=cropCanvas(img,b.coin);
-  const coinRaw=await ocrCanvas(coinCrop,7,'coin');
-  const coinStrong=await ocrCoinStrong(coinCrop);
+  const coinInfo=await readCoinLine(img,b.coin);
+  const coinRaw=(coinInfo.candidates||[]).join(' / ');
   const rankRaw=await ocrCanvas(cropCanvas(img,b.rank),7,'rank');
-  let name=cleanName(nameRaw), coin=coinStrong.value ?? digits(coinRaw), rank=rankOf(rankRaw), isnew=isNew(rankRaw);
-  const avatarHash=avatarHashFor(img,cy);
-  const avatarMatch=bestAvatarMatch(avatarHash);
+  let name=cleanName(nameRaw), coin=coinInfo.coin, rank=rankOf(rankRaw), isnew=isNew(rankRaw);
   let issues=[];
   if(!name||name.length<1)issues.push('名前');
   if(coin===null)issues.push('コイン');
   if(rank===null && /Rank/i.test(rankRaw))issues.push('Rank');
   if(/コイン|Rank/i.test(name))issues.push('名前混入');
-  return {id:uid(),imgIndex,cy,source,nameRaw,coinRaw,rankRaw,name,coin,rank,newRank:isnew?rank:null,issues,confirmed:false,
-    avatarHash,avatarMatchedNick:avatarMatch?.nick||null,coinCandidates:coinStrong.candidates||[]}
+  return {id:uid(),imgIndex,cy,source,nameRaw,coinRaw,rankRaw,name,coin,rank,newRank:isnew?rank:null,issues,confirmed:false,coinCandidates:coinInfo.candidates||[]}
 }
 function mergePeople(list){
   let out=[];
@@ -922,7 +932,7 @@ function v14Alias(name){
   if(state.nick[name])return {official:name,nick:state.nick[name],score:1};
   let best=null,bs=0;
   for(const k of Object.keys(state.nick)){const s=similarity(k,name);if(s>bs){bs=s;best=k}}
-  return best&&bs>=.64?{official:best,nick:state.nick[best],score:bs}:null;
+  return best&&bs>=.72?{official:best,nick:state.nick[best],score:bs}:null;
 }
 function v14Strip(){
   const el=document.getElementById('v14Strip'); if(!el)return;
@@ -947,8 +957,8 @@ mergePeople=function(list){
   list.forEach(p=>{
     const original=v14NormalizeName(p.name);
     p.ocrName=original;p.name=original;
-    const a=v14Alias(original);
-    if(a&&a.score>=.70){p.name=a.official;p.tempNick=a.nick;p.learned=true}
+    const a=v14ExactAlias(original);
+    if(a){p.name=a.official;p.tempNick=a.nick;p.learned=true}
   });
   return v14OldMerge(list);
 };
@@ -959,10 +969,12 @@ renderPeople=function(){
   el.innerHTML=`<div class="v14-summary"><span class="v14-pill">${state.people.length}人</span><span class="v14-pill ${warns?'warn':''}">要確認 ${warns}</span><span class="v14-pill">0コイン ${state.people.filter(p=>p.coin===0).length}</span></div>`;
   state.people.forEach((p,i)=>{
     p.name=v14NormalizeName(p.name);
-    const a=v14Alias(p.name);if(a&&!p.tempNick){p.tempNick=a.nick;if(a.score>=.70){p.name=a.official;p.learned=true}}
+    const a=v14ExactAlias(p.name);
+    if(a&&!p.tempNick){p.tempNick=a.nick;p.learned=true}
+    const suggestions=!a ? v14NameSuggestions(p.name,3) : [];
     const d=document.createElement('div');d.className='person '+(p.issues?.length?'warn':'ok')+(p.coin===0?' zero':'');
     const pic=v14Crop(p);
-    d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.avatarLearned?'顔✓':p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
+    d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
     ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
     <div class="editgrid">
       <label>認識名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
