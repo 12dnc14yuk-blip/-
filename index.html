@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v15.3.2 Rank7完全対応</title>
+<title>ありがとうメッセージメーカー v15.3.3</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
@@ -182,10 +182,44 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 @media(max-width:520px){.v153grid{grid-template-columns:1fr 1fr!important}.v153grid label:last-child{grid-column:1/-1}}
 </style>
 
+
+<style id="site-tabs-v1">
+.siteTabs{
+  display:flex;
+  gap:8px;
+  margin:4px 0 10px;
+  flex-wrap:wrap;
+}
+.siteTabs a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:40px;
+  padding:8px 12px;
+  border-radius:999px;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:900;
+  border:1px solid var(--line);
+}
+.siteTabs .active{
+  background:linear-gradient(135deg,#ffa43a,#ffbf6d);
+  color:#fff;
+}
+.siteTabs .other{
+  background:#fff;
+  color:#9a587e;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v15.3.2 Rank7完全対応</h1>
+  <nav class="siteTabs" aria-label="ページ切り替え">
+    <a class="active" href="index.html">🎁 ありがとう</a>
+    <a class="other" href="supporter.html">🌷 サポーター</a>
+  </nav>
+  <h1>🐰 ありがとうメッセージメーカー v15.3.3</h1>
   <p class="lead">ダークモード専用。名前認識を最優先。完全一致は自動補正、似た名前は「この人かも？」で確認できます。コインは読みません。</p>
 
   <section class="card">
