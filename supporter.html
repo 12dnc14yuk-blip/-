@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8fb">
-<title>サポーター画像メーカー 試作</title>
+<title>サポーター画像メーカー v5.4</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -24,7 +24,8 @@ h1{font-size:23px;margin:2px 0 4px} h2{font-size:17px;margin:0 0 10px}
 .pageTabs{display:flex;gap:8px;margin:3px 0 11px}
 .pageTabs a{padding:9px 12px;border-radius:999px;border:1px solid var(--line);text-decoration:none;font-size:12px;font-weight:900}
 .pageTabs .other{background:#fff;color:#9a587e}.pageTabs .active{background:linear-gradient(135deg,#ed70c6,#ff9cda);color:white}
-.grid2,.settingsGrid,.summaryGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.grid2,.settingsGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch}
 label{display:block;font-size:12px;font-weight:800;color:#765f6d;margin-bottom:5px}
 input,textarea,select,button{font:inherit}
 input,textarea,select{width:100%;border:1px solid #ead0df;border-radius:13px;padding:10px 11px;background:#fff}
@@ -34,8 +35,13 @@ button{border:0;border-radius:14px;padding:11px 13px;font-weight:900;cursor:poin
 .primary{background:linear-gradient(135deg,#ed70c6,#ff9cda);color:white}
 .secondary{background:#f7f1f5;color:#855e75;border:1px solid #ead4e0}
 .danger{background:#fff0f2;color:#a75265;border:1px solid #f0d4da}
-.summaryChip{background:#fffafd;border:1px solid var(--line);border-radius:14px;padding:9px 10px;font-size:11px;color:var(--muted)}
-.summaryChip b{display:block;font-size:16px;color:#87556f;margin-top:2px}
+.summaryChip{background:#fffafd;border:1px solid var(--line);border-radius:13px;padding:7px 8px;font-size:10px;color:var(--muted);min-height:58px;display:flex;flex-direction:column;justify-content:center}
+.summaryChip b{display:block;font-size:15px;line-height:1.1;color:#87556f;margin-top:3px;font-weight:900;letter-spacing:.01em}
+.summaryChip.totalChip{background:#fffafd;border-color:var(--line)}
+.summaryChip.totalChip b{font-size:17px;color:#87556f}
+.summaryChip.currentChip{grid-column:span 2}
+.summaryChip.currentChip b{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summaryChip.rankChip b{font-size:15px}
 details{border:1px solid var(--line);border-radius:15px;background:#fffcfd;margin-top:10px;overflow:hidden}
 summary{cursor:pointer;font-weight:900;padding:11px 12px}
 .detailsBody{padding:0 11px 11px}
@@ -56,7 +62,19 @@ input[type=range]{padding:0}
 .layerList label{display:flex;align-items:center;gap:8px;margin:0;font-weight:700}
 .layerList input{width:auto}
 hr{border:0;border-top:1px solid var(--line);margin:13px 0}
-@media(max-width:720px){.grid2,.settingsGrid,.summaryGrid{grid-template-columns:1fr}}
+@media(max-width:720px){
+  .grid2,.settingsGrid{grid-template-columns:1fr}
+  .summaryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .summaryChip{min-height:54px;padding:7px}
+  .summaryChip.currentChip{grid-column:span 2}
+}
+@media(max-width:420px){
+  .summaryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .summaryChip{font-size:9px;padding:6px}
+  .summaryChip b{font-size:14px}
+  .summaryChip.totalChip b{font-size:15px}
+  .summaryChip.currentChip b{font-size:16px}
+}
 </style>
 
 <style id="supporter-v3-ui">
@@ -73,6 +91,47 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 .inlineNote{font-size:11px;color:var(--muted);line-height:1.55;margin-top:6px}
 </style>
 
+
+<style id="v54-summary">
+.compactSummary{
+  display:grid;
+  grid-template-columns:minmax(90px,.8fr) minmax(0,1.7fr);
+  gap:7px;
+}
+.compactSummary .summaryChip{
+  min-height:54px;
+  padding:7px 9px;
+}
+.compactSummary .totalChip b{font-size:16px}
+.compactSummary .currentChip b{font-size:17px}
+.compactSummary .allRanksChip{
+  grid-column:1 / -1;
+  min-height:auto;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:10px;
+  padding:7px 9px;
+}
+.compactSummary .allRanksChip span{
+  flex:0 0 auto;
+  font-size:10px;
+  color:var(--muted);
+  font-weight:800;
+}
+.compactSummary .allRanksChip b{
+  margin:0;
+  font-size:13px;
+  line-height:1.4;
+  white-space:normal;
+}
+@media(max-width:420px){
+  .compactSummary{grid-template-columns:82px minmax(0,1fr)}
+  .compactSummary .allRanksChip{gap:7px}
+  .compactSummary .allRanksChip b{font-size:12px}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -82,8 +141,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー</h1>
-    <div class="lead">分離済み素材をそのまま同じキャンバスに重ねて作る試作版。固定素材は位置・サイズを変えず、1024×1536のまま重ねます。</div>
+    <h1>🌷 サポーター画像メーカー v5.4</h1>
+    <div class="lead">分離済み素材をそのまま重ねる方式。固定素材の比率は崩さず、季節背景・名前・新規Rank共有を反映します。</div>
   </section>
 
   <section class="card">
@@ -92,17 +151,19 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
       <div><label>月</label><input id="monthPick" type="month"></div>
       <div><label>ベース差し替え（必要な時だけ）</label><input id="templateFile" type="file" accept="image/*"></div>
     </div>
-    <div class="summaryGrid" style="margin-top:9px">
-      <div class="summaryChip">対象人数<b id="sumTotal">0人</b></div>
-      <div class="summaryChip">選択中<b id="sumCurrent">なし</b></div>
-      <div class="summaryChip">Rank.1 / 2<b id="sumR12">0 / 0</b></div>
-      <div class="summaryChip">Rank.3 / 4<b id="sumR34">0 / 0</b></div>
+    <div class="summaryGrid compactSummary" style="margin-top:9px">
+      <div class="summaryChip totalChip">対象人数<b id="sumTotal">0人</b></div>
+      <div class="summaryChip currentChip">選択中<b id="sumCurrent">なし</b></div>
+      <div class="summaryChip allRanksChip">
+        <span>Rank人数</span>
+        <b id="sumRanksAll">1:0　2:0　3:0　4:0　5:0　6:0　7:0</b>
+      </div>
     </div>
     <div class="btnrow">
       <button class="secondary" id="reloadBtn">今月分を再読み込み</button>
       <button class="danger" id="clearMonthBtn">今月分だけ全消去</button>
     </div>
-    <div class="status" id="monthStatus"></div>
+    <div class="status" id="monthStatus"></div><div class="hint">ありがとう側で「🌱 新規Rank」を押した人は、この月の対象者へ自動共有されます。</div>
 
     <details id="peopleDetails">
       <summary>対象者一覧・編集 <span id="peopleCountLabel" class="mini">0人</span></summary>
@@ -199,14 +260,14 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
           <label><input id="showSparkles" type="checkbox" checked> キラキラ</label>
         </div>
         <div class="settingsGrid" style="margin-top:10px">
-          <div><label>女の子 上下</label><input id="characterY" type="range" min="-.08" max=".12" step=".002" value=".050"></div>
-          <div><label>うさぎ 上下</label><input id="bunnyY" type="range" min="-.08" max=".12" step=".002" value=".045"></div>
+          <div><label>女の子 上下</label><input id="characterY" type="range" min="-.08" max=".16" step=".002" value=".072"></div>
+          <div><label>うさぎ 上下</label><input id="bunnyY" type="range" min="-.08" max=".16" step=".002" value=".064"></div>
         </div>
         <div class="inlineNote">サイズは変えず、上下位置だけ補正します。</div>
         <hr>
         <div class="settingsGrid">
           <div><label>月 X</label><input id="monthX" type="range" min="0" max="1" step=".002" value=".500"></div>
-          <div><label>月 Y</label><input id="monthY" type="range" min="0" max="1" step=".002" value=".238"></div>
+          <div><label>月 Y</label><input id="monthY" type="range" min="0" max="1" step=".002" value=".232"></div>
           <div><label>名前 X</label><input id="nameX" type="range" min="0" max="1" step=".002" value=".655"></div>
           <div><label>名前 Y</label><input id="nameY" type="range" min="0" max="1" step=".002" value=".490"></div>
           <div><label>一言 X</label><input id="msgX" type="range" min="0" max="1" step=".002" value=".655"></div>
@@ -222,7 +283,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">試作 v4：素材重ね＋季節背景調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5：位置・季節背景・フォント・Rank共有調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -243,10 +304,10 @@ const STYLE_KEY='shuri_supporter_style_v3';
 const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 
 const defaults={
-  monthX:.500,monthY:.235,
+  monthX:.500,monthY:.232,
   nameX:.655,nameY:.490,
   msgX:.655,msgY:.595,msgW:.385,msgH:.205,
-  characterY:.050,bunnyY:.045
+  characterY:.072,bunnyY:.064
 };
 const seasonDefaults={seasonX:.80,seasonY:.79,seasonScale:.20};
 
@@ -283,6 +344,7 @@ function updateBgUI(){
     $('#bgSwatch').style.background=bgColor;
     const labels={auto:'自動',spring:'春',summer:'夏',autumn:'秋',winter:'冬'};
     $('#bgSwatch').textContent=`${labels[bgMode]||'自動'}：${bgColor}`;
+    document.body.style.background=`linear-gradient(180deg,${bgColor},#fffdf8)`;
   }
 }
 function loadBgStyle(){
@@ -350,12 +412,11 @@ function reloadMonth(){
   $('#monthStatus').textContent=`${monthLabel(currentMonthKey())}：${people.length}人`;
 }
 function updateSummary(){
-  const c={1:0,2:0,3:0,4:0};
+  const c={1:0,2:0,3:0,4:0,5:0,6:0,7:0};
   people.forEach(p=>{if(c[p.rank]!==undefined)c[p.rank]++});
   $('#sumTotal').textContent=`${people.length}人`;
   $('#sumCurrent').textContent=people[current]?.name||'なし';
-  $('#sumR12').textContent=`${c[1]} / ${c[2]}`;
-  $('#sumR34').textContent=`${c[3]} / ${c[4]}`;
+  if($('#sumRanksAll'))$('#sumRanksAll').textContent=`1:${c[1]}　2:${c[2]}　3:${c[3]}　4:${c[4]}　5:${c[5]}　6:${c[6]}　7:${c[7]}`;
   $('#peopleCountLabel').textContent=`${people.length}人`;
 }
 function addManualNames(){
@@ -381,7 +442,8 @@ function renderPeople(){
   if(!people.length){root.innerHTML='<div class="mini">今月の対象者はまだいません。</div>';return}
   people.forEach((p,i)=>{
     const card=document.createElement('div');card.className='person'+(i===current?' active':'');
-    card.innerHTML=`<div class="personHead"><b>${escapeHTML(p.name)}</b><span class="badge">${p.manual?'手入力':'Rank.'+p.rank}</span></div>
+    const sharedNew=p.source==='thanks' || p.isNew || p.newRank;
+    card.innerHTML=`<div class="personHead"><b>${escapeHTML(p.name)}</b><span class="badge">${p.manual?'手入力':`${sharedNew?'🌱 新規 ':''}Rank.${p.rank}`}</span></div>
       <textarea placeholder="${escapeHTML(p.name)}への一言">${escapeHTML(p.msg||'')}</textarea>
       <div class="btnrow"><button class="secondary showBtn">この人を表示</button><button class="danger delBtn">削除</button></div>`;
     card.querySelector('textarea').oninput=e=>{people[i].msg=e.target.value;saveDrafts();if(i===current)renderPreview()};
@@ -489,8 +551,20 @@ function replaceNearWhiteWithBg(){
   for(let i=0;i<d.length;i+=4){
     const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
     const max=Math.max(r,g,b), min=Math.min(r,g,b), lum=(r+g+b)/3;
-    if(a>250 && lum>246 && (max-min)<8){
-      d[i]=br; d[i+1]=bg; d[i+2]=bb;
+    if(a<10)continue;
+
+    // White / neutral open areas: visibly tint them with the chosen seasonal color.
+    if(lum>238 && (max-min)<18){
+      const mix=.78;
+      d[i]=Math.round(r*(1-mix)+br*mix);
+      d[i+1]=Math.round(g*(1-mix)+bg*mix);
+      d[i+2]=Math.round(b*(1-mix)+bb*mix);
+    }else if(lum>220 && (max-min)<24){
+      // Soft blend on slightly shaded neutral areas to avoid hard boundaries.
+      const mix=.34;
+      d[i]=Math.round(r*(1-mix)+br*mix);
+      d[i+1]=Math.round(g*(1-mix)+bg*mix);
+      d[i+2]=Math.round(b*(1-mix)+bb*mix);
     }
   }
   ctx.putImageData(im,0,0);
@@ -509,9 +583,9 @@ function drawCenteredSpacedText(text,cx,y,spacing){
   ctx.textAlign='center';
 }
 
-function fitSingle(text,maxW,maxSize,minSize,weight=800){
+function fitSingle(text,maxW,maxSize,minSize,weight=800,font=UI_FONT){
   let s=maxSize;
-  while(s>minSize){ctx.font=`${weight} ${s}px ${UI_FONT}`;if(ctx.measureText(text).width<=maxW)break;s-=2}
+  while(s>minSize){ctx.font=`${weight} ${s}px ${font}`;if(ctx.measureText(text).width<=maxW)break;s-=2}
   return s;
 }
 
@@ -547,8 +621,8 @@ function renderPreview(person=people[current]){
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='#181818';
-    const nameWeight=Math.max(600,Number($('#msgWeight').value||400));
-    ctx.font=`${nameWeight} ${fitSingle(name,w*.34,58,28,nameWeight)}px ${TEXT_FONT}`;
+    const nameWeight=Number($('#msgWeight').value||400);
+    ctx.font=`${nameWeight} ${fitSingle(name,w*.34,58,28,nameWeight,TEXT_FONT)}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,h*L.nameY);
 
     const txt=person.msg||'';
