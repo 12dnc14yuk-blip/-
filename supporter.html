@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8fb">
-<title>サポーター画像メーカー v5.5 コンパクト編集</title>
+<title>サポーター画像メーカー v5.6 反映ボタン版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -62,6 +62,11 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .quickEditorGrid label{font-size:12px;font-weight:800;color:#7f4b67}
 .quickEditorGrid input,.quickEditorGrid textarea{margin-top:4px;background:#fff}
 .quickEditorGrid textarea{min-height:74px;resize:vertical}
+.quickEditorCompact{display:grid;grid-template-columns:minmax(130px,.78fr) minmax(0,1.22fr) auto;gap:8px;align-items:end}
+.quickEditorCompact label{margin:0}
+.quickEditorCompact textarea{min-height:68px;border-radius:14px}
+.quickApplyBtn{height:68px;white-space:nowrap;padding:0 16px;align-self:stretch}
+.quickEditorHint{margin-top:7px}
 .peopleScroll{max-height:36vh;overflow:auto}
 .inlineAdd details{margin-top:0;background:#fff;border-style:dashed}
 .inlineAdd summary{padding:10px 12px;font-size:13px}
@@ -88,6 +93,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .summaryChip{min-height:54px;padding:7px}
   .summaryChip.currentChip{grid-column:span 2}
   .quickEditorGrid{grid-template-columns:1fr}
+  .quickEditorCompact{grid-template-columns:1fr}
+  .quickApplyBtn{height:auto;padding:11px 13px}
   .quickEditor{padding:10px}
 }
 @media(max-width:420px){
@@ -163,8 +170,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.5 コンパクト編集</h1>
-    <div class="lead">分離済み素材をそのまま重ねる方式。選択中の名前と一言をすぐ見ながら編集できるようにし、スクロール量も少し減らしました。</div>
+    <h1>🌷 サポーター画像メーカー v5.6 反映ボタン版</h1>
+    <div class="lead">分離済み素材をそのまま重ねる方式。選択中の名前と一言を上でまとめて編集し、反映ボタンで更新できるようにしました。</div>
   </section>
 
   <section class="card">
@@ -253,16 +260,17 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         </div>
         <span class="badge quickBadge" id="quickCurrentBadge">-</span>
       </div>
-      <div class="quickEditorGrid">
+      <div class="quickEditorCompact">
         <label>名前
           <input id="quickNameInput" type="text" placeholder="名前">
         </label>
         <label>一言
-          <textarea id="quickMsgInput" rows="3" placeholder="ここに一言"></textarea>
+          <textarea id="quickMsgInput" rows="2" placeholder="ここに一言"></textarea>
         </label>
+        <button type="button" class="primary quickApplyBtn" id="quickApplyBtn">反映</button>
       </div>
-      <div class="mini currentCompactHint">変更は自動で反映されます。下の一覧を開かなくてもここで編集できます。</div>
-    </div>
+      <div class="mini quickEditorHint">上で名前と一言を編集して「反映」を押すと、プレビューと一覧の両方に反映されます。</div>
+    </div></div>
 
     <div class="grid2" style="margin-bottom:10px">
       <label>一言フォント
@@ -334,7 +342,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5：位置・季節背景・フォント・Rank共有調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.6：反映ボタン・横並び編集・位置微調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -354,12 +362,13 @@ const SEASON_LAYOUT_KEY='shuri_supporter_season_layout_v2';
 const STYLE_KEY='shuri_supporter_style_v3';
 const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 const LAYOUT_MIGRATION_KEY='shuri_supporter_layout_migration_v55';
+const CHARACTER_SHIFT_KEY='shuri_supporter_character_shift_v56';
 
 const defaults={
   monthX:.500,monthY:.232,
   nameX:.655,nameY:.490,
   msgX:.655,msgY:.595,msgW:.385,msgH:.205,
-  characterY:.056,bunnyY:.064
+  characterY:.048,bunnyY:.064
 };
 const seasonDefaults={seasonX:.80,seasonY:.79,seasonScale:.20};
 
@@ -537,6 +546,11 @@ function updateRosterEntryByOfficial(official, patch){
 function loadLayout(){
   const st=loadJSON(LAYOUT_KEY,defaults);
   if(!localStorage.getItem(LAYOUT_MIGRATION_KEY)&&Math.abs(Number(st.characterY??defaults.characterY)-0.072)<0.0001){st.characterY=0.056;saveJSON(LAYOUT_KEY,st);localStorage.setItem(LAYOUT_MIGRATION_KEY,'1');}
+  if(!localStorage.getItem(CHARACTER_SHIFT_KEY)){
+    const cy=Number(st.characterY??defaults.characterY);
+    if(Math.abs(cy-0.056)<0.0001 || Math.abs(cy-0.048)<0.0001){st.characterY=0.048;saveJSON(LAYOUT_KEY,st);}
+    localStorage.setItem(CHARACTER_SHIFT_KEY,'1');
+  }
   for(const [k,v] of Object.entries(defaults)){if($('#'+k))$('#'+k).value=st[k]??v}
   const ss=loadJSON(SEASON_LAYOUT_KEY,seasonDefaults);
   for(const [k,v] of Object.entries(seasonDefaults)){if($('#'+k))$('#'+k).value=ss[k]??v}
@@ -738,20 +752,24 @@ $('#clearMonthBtn').onclick=()=>{if(confirm('この月の対象者だけ全消�
 $('#prevBtn').onclick=()=>{if(!people.length)return;current=(current-1+people.length)%people.length;renderPeople();updateSummary();syncCurrentEditor();renderPreview()};
 $('#nextBtn').onclick=()=>{if(!people.length)return;current=(current+1)%people.length;renderPeople();updateSummary();syncCurrentEditor();renderPreview()};
 
-$('#quickNameInput').oninput=e=>{
+function applyQuickEditor(){
   const p=people[current]; if(!p) return;
-  p.name=normalize(e.target.value)||p.official||'';
+  const newName=normalize($('#quickNameInput').value)||p.official||'';
+  const newMsg=$('#quickMsgInput').value;
+  p.name=newName;
+  p.msg=newMsg;
   updateRosterEntryByOfficial(p.official,{name:p.name, rank:p.rank});
+  saveDrafts();
   $('#sumCurrent').textContent=p.name||'なし';
   $('#whoLabel').textContent=`${current+1} / ${people.length}　${p.name||''}`;
   $('#quickCurrentName').textContent=p.name||'名前未設定';
   renderPeople();
   renderPreview();
-};
-$('#quickMsgInput').oninput=e=>{
-  const p=people[current]; if(!p) return;
-  p.msg=e.target.value; saveDrafts(); renderPreview();
-};
+  $('#saveStatus').textContent='反映しました。';
+}
+$('#quickApplyBtn').onclick=applyQuickEditor;
+$('#quickNameInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyQuickEditor();}});
+$('#quickMsgInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();applyQuickEditor();}});
 
 $('#templateFile').onchange=e=>{
   const f=e.target.files?.[0];if(!f)return;
