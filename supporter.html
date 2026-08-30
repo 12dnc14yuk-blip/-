@@ -332,8 +332,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.10.4 英文バランス調整版</h1>
-    <div class="lead">英文の色・位置・余白のバランスを調整しました。少し下げて見やすくし、色のなじみも改善しています。</div>
+    <h1>🌷 サポーター画像メーカー v5.10.5 名前位置修正版</h1>
+    <div class="lead">英文の見え方を保ちつつ、名前が重ならないよう位置とサイズのバランスを修正しました。</div>
   </section>
 
   <section class="card">
@@ -533,7 +533,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.10.4：英文カラー3種をワンタップ比較</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.10.5：名前位置とサイズを再調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -562,7 +562,7 @@ const CLEAN_UI_LAYOUT_KEY='shuri_supporter_clean_ui_v59';
 
 const defaults={
   monthX:.500,monthY:.232,
-  nameX:.500,nameY:.317,
+  nameX:.500,nameY:.286,
   msgX:.655,msgY:.595,msgW:.48,msgH:.20,
   characterY:.048,bunnyY:.064
 };
@@ -844,6 +844,11 @@ function loadLayout(){
     saveJSON(LAYOUT_KEY,st);
     localStorage.setItem(CLEAN_UI_LAYOUT_KEY,'1');
   }
+  if(!localStorage.getItem(ENGLISH_NAME_FIX_KEY)){
+    st.nameY=.286;
+    saveJSON(LAYOUT_KEY,st);
+    localStorage.setItem(ENGLISH_NAME_FIX_KEY,'1');
+  }
   for(const [k,v] of Object.entries(defaults)){if($('#'+k))$('#'+k).value=st[k]??v}
   const ss=loadJSON(SEASON_LAYOUT_KEY,seasonDefaults);
   for(const [k,v] of Object.entries(seasonDefaults)){if($('#'+k))$('#'+k).value=ss[k]??v}
@@ -918,6 +923,7 @@ function drawSeason(){
 const TEXT_FONT="'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
 const NAME_TOPTEXT='Thank you for being my supporter';
 const ENGLISH_COLOR_KEY='shuri_supporter_english_color_v5104';
+const ENGLISH_NAME_FIX_KEY='shuri_supporter_english_name_fix_v5105';
 const UI_FONT="'Hiragino Maru Gothic ProN','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Yu Gothic','Hiragino Sans',sans-serif";
 let tekitoFontReady=false;
 async function ensureTekitouPoem(){
@@ -1107,13 +1113,13 @@ async function renderPreview(person=people[current]){
 
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
-    const englishY=h*(L.nameY+.010);
-    const nameY=h*(L.nameY+.060);
+    const englishY=h*(L.nameY+.006);
+    const nameY=h*(L.nameY+.092);
     drawSoftEnglishHeading(NAME_TOPTEXT,w*L.nameX,englishY,w*.70);
 
     ctx.fillStyle='#181818';
     const nameWeight=Math.max(700,Number($('#msgWeight').value||700));
-    const nameSize=fitSingle(name,w*.58,66,30,nameWeight,TEXT_FONT);
+    const nameSize=fitSingle(name,w*.52,58,28,nameWeight,TEXT_FONT);
     ctx.font=`${nameWeight} ${nameSize}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,nameY);
 
