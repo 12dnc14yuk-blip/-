@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v14.4 安定優先</title>
+<title>ありがとうメッセージメーカー v15 安定認識版</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
 /* v14 learning UI */
 function v14NormalizeName(s){
@@ -15,12 +15,12 @@ function v14NormalizeName(s){
      .replace(/\s{2,}/g,' ').trim();
   return s;
 }
-function v14ExactAlias(name){
+function v15ExactAlias(name){
   if(!name)return null;
   const n=v14NormalizeName(name);
   return state.nick[n] ? {official:n,nick:state.nick[n],score:1} : null;
 }
-function v14NameSuggestions(name, limit=3){
+function v15NameSuggestions(name, limit=3){
   const n=v14NormalizeName(name);
   if(!n)return [];
   const grouped=new Map();
@@ -56,7 +56,7 @@ mergePeople=function(list){
   list.forEach(p=>{
     const original=v14NormalizeName(p.name);
     p.ocrName=original;p.name=original;
-    const a=v14ExactAlias(original);
+    const a=v15ExactAlias(original);
     if(a){p.name=a.official;p.tempNick=a.nick;p.learned=true}
   });
   return v14OldMerge(list);
@@ -68,9 +68,9 @@ renderPeople=function(){
   el.innerHTML=`<div class="v14-summary"><span class="v14-pill">${state.people.length}人</span><span class="v14-pill ${warns?'warn':''}">要確認 ${warns}</span><span class="v14-pill">0コイン ${state.people.filter(p=>p.coin===0).length}</span></div>`;
   state.people.forEach((p,i)=>{
     p.name=v14NormalizeName(p.name);
-    const a=v14ExactAlias(p.name);
+    const a=v15ExactAlias(p.name);
     if(a&&!p.tempNick){p.tempNick=a.nick;p.learned=true}
-    const suggestions=!a ? v14NameSuggestions(p.name,3) : [];
+    const suggestions=!a ? v15NameSuggestions(p.name,3) : [];
     const d=document.createElement('div');d.className='person '+(p.issues?.length?'warn':'ok')+(p.coin===0?' zero':'');
     const pic=v14Crop(p);
     d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
@@ -99,14 +99,15 @@ renderPeople=function(){
   });
   el.querySelectorAll('[data-maybe-i]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.maybeI,j=+b.dataset.maybeJ,p=state.people[i];
-    const hit=v14NameSuggestions(p.name,3)[j];
+    const hit=v15NameSuggestions(p.name,3)[j];
     if(!hit)return;
     const raw=v14NormalizeName(p.ocrName||p.nameRaw||p.name);
     if(raw)state.nick[raw]=hit.nick;
     if(p.name)state.nick[v14NormalizeName(p.name)]=hit.nick;
-    p.tempNick=hit.nick;p.learned=true;
+    p.tempNick=hit.nick;
+    p.learned=true;
     persist();renderDict();renderPeople();generateResult();
-    setStatus(`「${hit.nick}」として覚えました。`);
+    setStatus(`「${hit.nick}」として覚えました。次回からこの読み方は自動変換します。`);
   });
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult();v14Strip()});
   v14Strip();
@@ -269,7 +270,7 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 @media(max-width:560px){.dictHead{grid-template-columns:1fr 1fr 52px}.nickrow{grid-template-columns:1fr 1fr 52px!important}.nickrow button{grid-column:auto!important;padding:8px 4px;font-size:11px}}
 </style>
 
-<style id="v144-ui">
+<style id="v15-ui">
 .maybeBox{margin:6px 0 4px;padding:7px 8px;border-radius:10px;background:#fff8df;border:1px solid #f0cf74;font-size:11px}
 .maybeBtns{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .maybeBtn{font-size:11px!important;padding:6px 8px!important;border-radius:999px!important;background:#fff!important;color:#5b463d!important;border:1px solid #dccfc7!important;font-weight:800!important}
@@ -279,8 +280,8 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v14.4 安定優先</h1>
-  <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、名前・コイン・Rankだけを下書き。一度直した名前は辞書に覚えて、次回から自動補正します。</p>
+  <h1>🐰 ありがとうメッセージメーカー v15 安定認識版</h1>
+  <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、同じOCR Workerを使い回して安定読取。完全一致は自動補正、似た名前は「この人かも？」で確認できます。</p>
 
   <section class="card">
     <h2>① スクショを入れる</h2>
@@ -357,6 +358,65 @@ const state={
   corrections:JSON.parse(localStorage.getItem('shuri_v13_corrections')||'[]'),
   nick:JSON.parse(localStorage.getItem('shuri_v13_nick')||'{}')
 };
+
+let ocrWorker=null;
+let ocrWorkerBusy=false;
+
+async function ensureOcrWorker(){
+  if(ocrWorker)return ocrWorker;
+  setStatus('OCRエンジンを準備しています…');
+  ocrWorker=await Tesseract.createWorker('jpn+eng', 1, {
+    logger:m=>{
+      if(m.status==='recognizing text' && Number.isFinite(m.progress)){
+        const base=Number($('#bar').dataset.base||0);
+        const span=Number($('#bar').dataset.span||0);
+        setProgress(base + span*m.progress);
+      }
+    }
+  });
+  await ocrWorker.setParameters({preserve_interword_spaces:'1'});
+  return ocrWorker;
+}
+
+async function destroyOcrWorker(){
+  if(ocrWorker){
+    try{await ocrWorker.terminate()}catch(e){}
+    ocrWorker=null;
+  }
+}
+
+async function recognizeWithWorker(canvas, opts={}){
+  const {
+    psm=7,
+    whitelist='',
+    timeoutMs=12000,
+    label='OCR'
+  }=opts;
+
+  const run=async()=>{
+    const w=await ensureOcrWorker();
+    const params={tessedit_pageseg_mode:String(psm),preserve_interword_spaces:'1'};
+    params.tessedit_char_whitelist=whitelist||'';
+    await w.setParameters(params);
+    const {data}=await w.recognize(canvas);
+    return norm(data?.text||'');
+  };
+
+  let timer;
+  try{
+    return await Promise.race([
+      run(),
+      new Promise((_,rej)=>{timer=setTimeout(()=>rej(new Error(label+' timeout')),timeoutMs)})
+    ]);
+  }catch(e){
+    // A real recovery: terminate the stuck worker, then the next OCR creates a fresh one.
+    await destroyOcrWorker();
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
 
 function setStatus(s){ $('#status').textContent=s }
 function setProgress(v){ $('#bar').style.width=Math.max(0,Math.min(100,v))+'%' }
@@ -566,36 +626,29 @@ function prepCanvas(src, mode='normal'){
   }
   x.putImageData(im,0,0); return c;
 }
-
-function withTimeout(promise, ms, label='OCR'){
-  let timer;
-  const timeout=new Promise((_,rej)=>{
-    timer=setTimeout(()=>rej(new Error(label+' timeout')),ms);
-  });
-  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
-}
-
 async function ocrCanvas(c, psm=7, kind='generic'){
+  // Same Worker is reused. Names get two stable preprocess variants; coin/rank only one.
   const variants=kind==='name'?['normal','gray']:['normal'];
   let candidates=[];
   for(const mode of variants){
     const pc=prepCanvas(c,mode);
-    let data;
     try{
-      ({data}=await withTimeout(Tesseract.recognize(pc,'jpn+eng',{
-        logger:m=>{ if(m.status==='recognizing text') setProgress(15+Math.round(m.progress*70)); },
-        tessedit_pageseg_mode:String(psm), preserve_interword_spaces:'1'
-      }),9000,kind));
-    }catch(e){
-      continue;
-    }
-    const t=norm(data.text); if(t)candidates.push(t);
+      const t=await recognizeWithWorker(pc,{
+        psm,
+        timeoutMs:kind==='name'?12000:9000,
+        label:kind
+      });
+      if(t)candidates.push(t);
+    }catch(e){}
   }
   if(!candidates.length)return'';
+
   if(kind==='name'){
     candidates=candidates.map(cleanName).filter(Boolean);
     candidates.sort((a,b)=>{
-      const bad=x=>(/コイン|Rank|送信先|ギフトコイン/.test(x)?8:0)+(x.match(/\s/g)||[]).length*0.25+(x.match(/[|]{2,}/g)||[]).length*2;
+      const bad=x=>(/コイン|Rank|送信先|ギフトコイン/.test(x)?8:0)
+        +(x.match(/\s/g)||[]).length*.25
+        +(x.match(/[|]{2,}/g)||[]).length*2;
       return bad(a)-bad(b) || Math.abs(a.length-12)-Math.abs(b.length-12);
     });
   }
@@ -611,12 +664,52 @@ function boxesFor(img,cy){
     shot:{x:W*.02,y:cy-unit*.90,w:W*.80,h:unit*1.72}
   }
 }
+
+function nameBoxesFor(img,cy){
+  const W=img.width, unit=W*.082;
+  return [
+    {x:W*.150,y:cy-unit*.76,w:W*.67,h:unit*.56},
+    {x:W*.165,y:cy-unit*.70,w:W*.655,h:unit*.50},
+    {x:W*.145,y:cy-unit*.66,w:W*.68,h:unit*.48}
+  ];
+}
+
+function scoreNameCandidate(name){
+  const n=cleanName(name||'');
+  if(!n)return -999;
+  let score=0;
+  if(/コイン|Rank|Lv\.?|送信先|ギフトコイン|メッセージ/.test(n))score-=20;
+  if(n.length>=1&&n.length<=30)score+=8;
+  if(/[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9]/.test(n))score+=5;
+  if((n.match(/[|]{2,}/g)||[]).length)score-=5;
+  score-=Math.abs(n.length-12)*.08;
+  return score;
+}
+
+async function readNameStable(img,cy){
+  const boxes=nameBoxesFor(img,cy);
+  const found=[];
+  for(let i=0;i<boxes.length;i++){
+    const crop=cropCanvas(img,boxes[i]);
+    try{
+      const t=await ocrCanvas(crop,7,'name');
+      const cleaned=cleanName(t);
+      if(cleaned)found.push({name:cleaned,score:scoreNameCandidate(cleaned),boxIndex:i});
+    }catch(e){}
+    // Usually two crops are enough; a third is fallback only.
+    if(found.length>=2 && Math.abs(found[0].score-found[1].score)<6)break;
+  }
+  if(!found.length)return {name:'',raw:''};
+  found.sort((a,b)=>b.score-a.score);
+  return {name:found[0].name,raw:found.map(x=>x.name).join(' | ')};
+}
 async function readPerson(img,cy,imgIndex,source='auto'){
   const b=boxesFor(img,cy);
-  const nameRaw=await ocrCanvas(cropCanvas(img,b.name),7,'name');
+  const nameInfo=await readNameStable(img,cy);
+  const nameRaw=nameInfo.raw||nameInfo.name||'';
   const coinRaw=await ocrCanvas(cropCanvas(img,b.coin),7,'coin');
   const rankRaw=await ocrCanvas(cropCanvas(img,b.rank),7,'rank');
-  let name=cleanName(nameRaw), coin=digits(coinRaw), rank=rankOf(rankRaw), isnew=isNew(rankRaw);
+  let name=cleanName(nameInfo.name||nameRaw), coin=digits(coinRaw), rank=rankOf(rankRaw), isnew=isNew(rankRaw);
   let issues=[];
   if(!name||name.length<1)issues.push('名前');
   if(coin===null)issues.push('コイン');
@@ -646,36 +739,61 @@ function mergePeople(list){
 
 async function analyze(){
   if(!state.images.length)return;
-  state.people=[]; setProgress(3);
-  for(let i=0;i<state.images.length;i++){
-    const img=state.images[i];
-    setStatus(`画像 ${i+1}/${state.images.length}：人物を探しています…`);
-    let rows=fuseRows(img);
-    // learned row spacing aid
-    for(const c of state.corrections.filter(x=>x.kind==='missed-row')){
-      if(c.heightRatio && Math.abs(img.height/img.width-c.aspect)<.25){
-        const cy=c.cyRatio*img.height;
-        if(!rows.some(r=>Math.abs(r.cy-cy)<img.width*.09))rows.push({cy,conf:0.5});
+  state.people=[];setProgress(2);
+
+  try{
+    await ensureOcrWorker();
+
+    let totalRows=0, processed=0;
+    const rowsByImage=[];
+
+    for(let i=0;i<state.images.length;i++){
+      let rows=fuseRows(state.images[i]);
+      for(const c of state.corrections.filter(x=>x.kind==='missed-row')){
+        const img=state.images[i];
+        if(c.heightRatio && Math.abs(img.height/img.width-c.aspect)<.25){
+          const cy=c.cyRatio*img.height;
+          if(!rows.some(r=>Math.abs(r.cy-cy)<img.width*.09))rows.push({cy,conf:.5});
+        }
+      }
+      rows.sort((a,b)=>a.cy-b.cy);
+      rowsByImage.push(rows);
+      totalRows+=rows.length;
+    }
+
+    for(let i=0;i<state.images.length;i++){
+      const img=state.images[i],rows=rowsByImage[i];
+      for(let k=0;k<rows.length;k++){
+        const pctBase=8+(processed/Math.max(1,totalRows))*86;
+        const pctSpan=86/Math.max(1,totalRows);
+        $('#bar').dataset.base=String(pctBase);
+        $('#bar').dataset.span=String(pctSpan);
+        setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…`);
+
+        try{
+          const p=await readPerson(img,rows[k].cy,i);
+          if(!/ギフトコイン数|メッセージ|送信先|すべて選択|サポーター/.test(p.name)){
+            state.people.push(p);
+          }
+        }catch(e){
+          // Do not stop the whole batch. Continue to the next person.
+        }
+        processed++;
+        setProgress(8+(processed/Math.max(1,totalRows))*86);
       }
     }
-    rows.sort((a,b)=>a.cy-b.cy);
-    for(let k=0;k<rows.length;k++){
-      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…（最大9秒で次へ）`);
-      let p;
-      try{
-        p=await readPerson(img,rows[k].cy,i);
-      }catch(e){
-        setStatus(`画像 ${i+1}/${state.images.length}：${k+1}人目は読取失敗。次へ進みます…`);
-        continue;
-      }
-      // suppress obvious non-person OCR
-      if(/ギフトコイン数|メッセージ|送信先|すべて選択|サポーター/.test(p.name)) continue;
-      state.people.push(p);
-    }
+
+    state.people=mergePeople(state.people);
+    setProgress(100);
+    setStatus(`完了！ ${state.people.length}人を検出しました。要確認だけ直して使えます。`);
+    renderPeople();renderOverlay();generateResult();
+  }catch(e){
+    setStatus('OCRの準備に失敗しました。ページを再読み込みしてもう一度お試しください。');
+  }finally{
+    $('#bar').dataset.base='0';
+    $('#bar').dataset.span='0';
+    await destroyOcrWorker();
   }
-  state.people=mergePeople(state.people);
-  setProgress(100);setStatus(`完了！ ${state.people.length}人を検出しました。`);
-  renderPeople();renderOverlay();generateResult();
 }
 function renderPeople(){
   const el=$('#people');el.innerHTML='';
@@ -885,7 +1003,7 @@ mergePeople=function(list){
   list.forEach(p=>{
     const original=v14NormalizeName(p.name);
     p.ocrName=original;p.name=original;
-    const a=v14ExactAlias(original);
+    const a=v15ExactAlias(original);
     if(a){p.name=a.official;p.tempNick=a.nick;p.learned=true}
   });
   return v14OldMerge(list);
@@ -897,9 +1015,9 @@ renderPeople=function(){
   el.innerHTML=`<div class="v14-summary"><span class="v14-pill">${state.people.length}人</span><span class="v14-pill ${warns?'warn':''}">要確認 ${warns}</span><span class="v14-pill">0コイン ${state.people.filter(p=>p.coin===0).length}</span></div>`;
   state.people.forEach((p,i)=>{
     p.name=v14NormalizeName(p.name);
-    const a=v14ExactAlias(p.name);
+    const a=v15ExactAlias(p.name);
     if(a&&!p.tempNick){p.tempNick=a.nick;p.learned=true}
-    const suggestions=!a ? v14NameSuggestions(p.name,3) : [];
+    const suggestions=!a ? v15NameSuggestions(p.name,3) : [];
     const d=document.createElement('div');d.className='person '+(p.issues?.length?'warn':'ok')+(p.coin===0?' zero':'');
     const pic=v14Crop(p);
     d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
