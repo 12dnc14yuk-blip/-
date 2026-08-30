@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.7 名前一覧・配置調整版</title>
+<title>サポーター画像メーカー v5.9 すっきりUI版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -59,18 +59,18 @@ summary{cursor:pointer;font-weight:900;padding:11px 12px}
 .badge{font-size:10px;border:1px solid #edcfdf;background:#fff0f8;color:#a65387;border-radius:999px;padding:3px 7px;font-weight:900}
 canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .previewNav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
-.quickEditor{margin:10px 0 12px;padding:10px 11px;border:1px solid var(--line);border-radius:18px;background:#fffdfd}
-.quickEditorHeader{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
-.quickEditorHeader b{display:block;font-size:16px;line-height:1.2;color:#7f4b67}
-.quickEditorMeta{font-size:11px;color:var(--muted)}
-.quickBadge{white-space:nowrap}
+.quickEditor{margin:10px 0 12px;padding:11px;border:1px solid var(--line);border-radius:18px;background:#fffdfd}
+.quickEditorHeader{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px;padding:0 2px}
+.quickEditorHeader b{display:block;font-size:18px;line-height:1.2;color:#7f4b67}
+.quickEditorMeta{font-size:10px;color:var(--muted)}
+.quickBadge{white-space:nowrap;opacity:.8}
 .quickEditorGrid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:8px;align-items:start}
 .quickEditorGrid label{font-size:12px;font-weight:800;color:#7f4b67}
 .quickEditorGrid input,.quickEditorGrid textarea{margin-top:4px;background:#fff}
 .quickEditorGrid textarea{min-height:74px;resize:vertical}
 .quickEditorCompact{
   display:grid;
-  grid-template-columns:92px minmax(0,1fr);
+  grid-template-columns:minmax(78px,26%) minmax(0,1fr);
   grid-template-rows:auto auto;
   gap:8px 10px;
   align-items:stretch;
@@ -78,27 +78,27 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .quickNameSide{
   grid-column:1;
   grid-row:1;
-  min-height:132px;
-  border:1px solid #ead0df;
-  border-radius:16px;
-  background:#fff;
-  padding:10px 8px;
+  min-height:126px;
+  border:1px solid rgba(234,208,223,.78);
+  border-radius:15px;
+  background:rgba(255,255,255,.18);
+  padding:12px 7px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
+  justify-content:flex-start;
   text-align:center;
 }
 .quickNameSide .sideLabel{
-  font-size:10px;
+  font-size:9px;
   color:var(--muted);
   font-weight:800;
-  margin-bottom:6px;
+  margin-bottom:12px;
 }
 .quickNameSide b{
-  font-family:"TekitouPoem","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  font-family:"TekitouPoem","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
   font-size:18px;
-  line-height:1.25;
+  line-height:1.28;
   color:#6f4a60;
   overflow-wrap:anywhere;
 }
@@ -108,17 +108,19 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
   margin:0;
 }
 .quickMsgLabel textarea{
-  min-height:132px;
-  border-radius:16px;
+  min-height:126px;
+  border-radius:15px;
+  background:rgba(255,255,255,.28);
   resize:vertical;
 }
 .quickApplyBtn{
-  grid-column:2;
+  grid-column:1 / -1;
   grid-row:2;
-  height:48px;
+  height:46px;
+  width:62%;
   white-space:nowrap;
   padding:0 18px;
-  justify-self:stretch;
+  justify-self:center;
 }
 .quickEditorHint{margin-top:7px}
 .peopleScroll{max-height:none;overflow:visible}
@@ -157,6 +159,8 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .sectionFold>summary::-webkit-details-marker{display:none}
 .foldHint{font-size:11px;color:var(--muted);font-weight:700}
 .sectionFoldBody{padding-top:10px}
+.compactSettings{margin:8px 0 10px;background:#fff;border-style:dashed}
+.compactSettings summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;font-size:13px}
 .currentCompactHint{margin-top:6px}
 
 .previewNav .spacer{flex:1}
@@ -174,11 +178,11 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .summaryChip{min-height:54px;padding:7px}
   .summaryChip.currentChip{grid-column:span 2}
   .quickEditorGrid{grid-template-columns:1fr}
-  .quickEditorCompact{grid-template-columns:82px minmax(0,1fr)}
-  .quickNameSide{min-height:126px;padding:8px 6px}
+  .quickEditorCompact{grid-template-columns:78px minmax(0,1fr)}
+  .quickNameSide{min-height:120px;padding:10px 5px}
   .quickNameSide b{font-size:16px}
   .quickMsgLabel{grid-column:2;grid-row:1}
-  .quickApplyBtn{grid-column:2;grid-row:2;height:auto;padding:11px 13px;width:100%;justify-self:stretch}
+  .quickApplyBtn{grid-column:1 / -1;grid-row:2;height:44px;padding:10px 13px;width:64%;justify-self:center}
   .quickEditor{padding:10px}
 }
 @media(max-width:420px){
@@ -188,6 +192,9 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .summaryChip.totalChip b{font-size:15px}
   .summaryChip.currentChip b{font-size:16px}
 }
+
+.canvasWrap{position:relative}
+
 </style>
 
 <style id="supporter-v3-ui">
@@ -248,7 +255,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 
 <style id="v561-font-lock">
 #quickMsgInput{
-  font-family:"TekitouPoem","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  font-family:"TekitouPoem","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
   font-weight:400;
 }
 </style>
@@ -262,8 +269,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.7 名前一覧・配置調整版</h1>
-    <div class="lead">名前一覧からタップで選択、前・次でも切り替え。一言編集は下の1か所だけにまとめました。</div>
+    <h1>🌷 サポーター画像メーカー v5.9 すっきりUI版</h1>
+    <div class="lead">名前を選んで一言を入れて反映するだけ。細かい文字・背景設定は必要な時だけ開けます。</div>
   </section>
 
   <section class="card">
@@ -346,56 +353,57 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 
     <div class="quickEditor" id="quickEditor">
       <div class="quickEditorHeader">
-        <div>
-          <div class="quickEditorMeta">選択中の人をそのまま編集</div>
-          <b id="quickCurrentName">対象者なし</b>
-        </div>
+        <b id="quickCurrentName">対象者なし</b>
         <span class="badge quickBadge" id="quickCurrentBadge">-</span>
       </div>
       <div class="quickEditorCompact">
         <div class="quickNameSide">
-          <span class="sideLabel">名前</span>
+          <span class="sideLabel">NAME</span>
           <b id="quickSideName">対象者なし</b>
         </div>
-        <label class="quickMsgLabel">一言
+        <label class="quickMsgLabel">MESSAGE
           <textarea id="quickMsgInput" rows="4" placeholder="ここに一言"></textarea>
         </label>
         <button type="button" class="primary quickApplyBtn" id="quickApplyBtn">反映</button>
       </div>
-      <div class="mini quickEditorHint">左に選択中の名前、右に一言。入力後「反映」でプレビューに反映されます。</div>
+      <div class="mini quickEditorHint">一言を入れて「反映」。</div>
     </div>
 
-    <div class="grid2" style="margin-bottom:10px">
-      <label>一言フォント
-        <select id="msgWeight">
-          <option value="400">Regular</option>
-          <option value="600" selected>SemiBold</option>
-          <option value="700">Bold</option>
-          <option value="800">ExtraBold</option>
-        </select>
-      </label>
-      <label>一言の文字色
-        <input id="msgColor" type="color" value="#181818">
-      </label>
-    </div>
-    <div class="hint">ハート内には見えない文字枠があります。短い一言は大きく、長い一言は改行＋縮小して枠内に収めます。</div>
-
-    <div style="margin:12px 0 10px">
-      <label>背景カラー</label>
-      <div class="seasonModeRow" id="seasonModeRow">
-        <button type="button" class="seasonModeBtn active" data-season="auto">自動</button>
-        <button type="button" class="seasonModeBtn" data-season="spring">春</button>
-        <button type="button" class="seasonModeBtn" data-season="summer">夏</button>
-        <button type="button" class="seasonModeBtn" data-season="autumn">秋</button>
-        <button type="button" class="seasonModeBtn" data-season="winter">冬</button>
+    <details class="compactSettings">
+      <summary>文字・背景を変える <span class="foldHint">必要な時だけ</span></summary>
+      <div class="detailsBody">
+        <div class="grid2" style="margin-top:8px">
+          <label>文字の太さ
+            <select id="msgWeight">
+              <option value="400">Regular</option>
+              <option value="600" selected>SemiBold</option>
+              <option value="700">Bold</option>
+              <option value="800">ExtraBold</option>
+            </select>
+          </label>
+          <label>文字色
+            <input id="msgColor" type="color" value="#181818">
+          </label>
+        </div>
+        <hr>
+        <label>背景カラー</label>
+        <div class="seasonModeRow" id="seasonModeRow">
+          <button type="button" class="seasonModeBtn active" data-season="auto">自動</button>
+          <button type="button" class="seasonModeBtn" data-season="spring">春</button>
+          <button type="button" class="seasonModeBtn" data-season="summer">夏</button>
+          <button type="button" class="seasonModeBtn" data-season="autumn">秋</button>
+          <button type="button" class="seasonModeBtn" data-season="winter">冬</button>
+        </div>
+        <div class="btnrow">
+          <button type="button" class="secondary" id="shuffleBgBtn">🎨 背景シャッフル</button>
+        </div>
+        <div id="bgSwatch" class="bgSwatch">季節カラー</div>
       </div>
-      <div class="btnrow">
-        <button type="button" class="secondary" id="shuffleBgBtn">🎨 背景シャッフル</button>
-      </div>
-      <div id="bgSwatch" class="bgSwatch">季節カラー</div>
-    </div>
+    </details>
 
-    <div class="canvasWrap" style="background:#fff8fb;border-radius:20px;padding:8px"><canvas id="canvas" width="1024" height="1536"></canvas></div>
+    <div class="canvasWrap" style="background:#fff8fb;border-radius:20px;padding:8px">
+      <canvas id="canvas" width="1024" height="1536"></canvas>
+    </div>
 
     <div class="btnrow">
       <button class="secondary" id="downloadOne">今の1枚を保存</button>
@@ -421,11 +429,11 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
           <div><label>月 X</label><input id="monthX" type="range" min="0" max="1" step=".002" value=".500"></div>
           <div><label>月 Y</label><input id="monthY" type="range" min="0" max="1" step=".002" value=".232"></div>
           <div><label>名前 X</label><input id="nameX" type="range" min="0" max="1" step=".002" value=".500"></div>
-          <div><label>名前 Y</label><input id="nameY" type="range" min="0" max="1" step=".002" value=".323"></div>
+          <div><label>名前 Y</label><input id="nameY" type="range" min="0" max="1" step=".002" value=".317"></div>
           <div><label>一言 X</label><input id="msgX" type="range" min="0" max="1" step=".002" value=".655"></div>
           <div><label>一言 Y</label><input id="msgY" type="range" min="0" max="1" step=".002" value=".595"></div>
-          <div><label>一言幅</label><input id="msgW" type="range" min=".20" max=".50" step=".005" value=".385"></div>
-          <div><label>一言高さ</label><input id="msgH" type="range" min=".12" max=".34" step=".005" value=".245"></div>
+          <div><label>一言幅</label><input id="msgW" type="range" min=".20" max=".55" step=".005" value=".48"></div>
+          <div><label>一言高さ</label><input id="msgH" type="range" min=".10" max=".34" step=".005" value=".20"></div>
         </div>
         <div class="btnrow">
           <button class="secondary" id="saveLayoutBtn">配置を保存</button>
@@ -435,7 +443,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.7：名前一覧タップ・前後移動・名前位置調整・太字化</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.9：編集欄を整理・設定を収納・画像文字バランス調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -458,11 +466,14 @@ const LAYOUT_MIGRATION_KEY='shuri_supporter_layout_migration_v55';
 const CHARACTER_SHIFT_KEY='shuri_supporter_character_shift_v56';
 const TEXT_LAYOUT_MIGRATION_KEY='shuri_supporter_text_layout_v57';
 const TEXT_WEIGHT_MIGRATION_KEY='shuri_supporter_text_weight_v57';
+const MSG_WRAP_MIGRATION_KEY='shuri_supporter_msg_wrap_v58';
+const MSG_RATIO_MIGRATION_KEY='shuri_supporter_msg_ratio_v581';
+const CLEAN_UI_LAYOUT_KEY='shuri_supporter_clean_ui_v59';
 
 const defaults={
   monthX:.500,monthY:.232,
-  nameX:.500,nameY:.323,
-  msgX:.655,msgY:.595,msgW:.385,msgH:.245,
+  nameX:.500,nameY:.317,
+  msgX:.655,msgY:.595,msgW:.48,msgH:.20,
   characterY:.048,bunnyY:.064
 };
 const seasonDefaults={seasonX:.80,seasonY:.79,seasonScale:.20};
@@ -666,6 +677,22 @@ function loadLayout(){
     }
     localStorage.setItem(TEXT_LAYOUT_MIGRATION_KEY,'1');
   }
+  if(!localStorage.getItem(MSG_WRAP_MIGRATION_KEY)){
+    const mw=Number(st.msgW??defaults.msgW);
+    if(mw<.41){st.msgW=.425;saveJSON(LAYOUT_KEY,st);}
+    localStorage.setItem(MSG_WRAP_MIGRATION_KEY,'1');
+  }
+  if(!localStorage.getItem(MSG_RATIO_MIGRATION_KEY)){
+    st.msgW=.48;
+    st.msgH=.20;
+    saveJSON(LAYOUT_KEY,st);
+    localStorage.setItem(MSG_RATIO_MIGRATION_KEY,'1');
+  }
+  if(!localStorage.getItem(CLEAN_UI_LAYOUT_KEY)){
+    st.nameY=.317;
+    saveJSON(LAYOUT_KEY,st);
+    localStorage.setItem(CLEAN_UI_LAYOUT_KEY,'1');
+  }
   for(const [k,v] of Object.entries(defaults)){if($('#'+k))$('#'+k).value=st[k]??v}
   const ss=loadJSON(SEASON_LAYOUT_KEY,seasonDefaults);
   for(const [k,v] of Object.entries(seasonDefaults)){if($('#'+k))$('#'+k).value=ss[k]??v}
@@ -731,8 +758,8 @@ function drawSeason(){
   ctx.drawImage(seasonImg,cx-dw/2,cy-dh/2,dw,dh);
 }
 
-const TEXT_FONT="'TekitouPoem','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
-const UI_FONT="'Hiragino Maru Gothic ProN','Yu Gothic','Hiragino Sans',sans-serif";
+const TEXT_FONT="'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
+const UI_FONT="'Hiragino Maru Gothic ProN','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Yu Gothic','Hiragino Sans',sans-serif";
 let tekitoFontReady=false;
 async function ensureTekitouPoem(){
   if(tekitoFontReady)return;
@@ -756,15 +783,60 @@ function wrapText(text,maxW,size,weight,font){
   }
   if(line||!lines.length)lines.push(line);return lines;
 }
+function splitBalancedChars(text,lineCount){
+  const raw=[...(text||'')];
+  if(!raw.length)return [''];
+  const out=[];
+  let pos=0;
+  for(let i=0;i<lineCount;i++){
+    const remain=raw.length-pos;
+    const slots=lineCount-i;
+    let take=Math.ceil(remain/slots);
+    // Avoid beginning a line with common Japanese punctuation.
+    let end=Math.min(raw.length,pos+take);
+    while(end<raw.length && /[、。！？!?）」』】]/.test(raw[end]) && end-pos<take+2) end++;
+    out.push(raw.slice(pos,end).join(''));
+    pos=end;
+  }
+  if(pos<raw.length)out[out.length-1]+=raw.slice(pos).join('');
+  return out.filter((x,i,a)=>x||a.length===1);
+}
 function fitHeartText(text,maxW,maxH){
   const weight=Number($('#msgWeight').value||600);
-  for(let s=82;s>=24;s-=2){
-    const lines=wrapText(text,maxW,s,weight,TEXT_FONT),lh=s*1.28;
-    ctx.font=`${weight} ${s}px ${TEXT_FONT}`;
-    const widest=Math.max(...lines.map(x=>ctx.measureText(x).width),0);
-    if(widest<=maxW&&lines.length*lh<=maxH)return{size:s,lines,lh,weight};
+  const raw=String(text||'').trim();
+  if(!raw)return{size:52,lines:[''],lh:67,weight};
+
+  const explicit=raw.split(/\n/);
+  // If the user explicitly inserted line breaks, respect them and only shrink.
+  if(explicit.length>1){
+    for(let size=78;size>=24;size-=2){
+      const lh=size*1.22;
+      ctx.font=`${weight} ${size}px ${TEXT_FONT}`;
+      const widest=Math.max(...explicit.map(x=>ctx.measureText(x).width),0);
+      if(widest<=maxW && explicit.length*lh<=maxH)return{size,lines:explicit,lh,weight};
+    }
+    return{size:24,lines:explicit,lh:31,weight};
   }
-  return{size:24,lines:wrapText(text,maxW,24,weight,TEXT_FONT),lh:31,weight};
+
+  // Prefer fewer, balanced lines. Shrink the font before allowing awkward tiny fragments.
+  for(const lineCount of [2,3,4,5]){
+    const lines=splitBalancedChars(raw,lineCount);
+    for(let size=78;size>=26;size-=2){
+      const lh=size*1.22;
+      ctx.font=`${weight} ${size}px ${TEXT_FONT}`;
+      const widest=Math.max(...lines.map(x=>ctx.measureText(x).width),0);
+      if(widest<=maxW && lines.length*lh<=maxH)return{size,lines,lh,weight};
+    }
+  }
+
+  // Fallback to the original width-aware wrapper for very long text.
+  for(let size=44;size>=22;size-=2){
+    const lines=wrapText(raw,maxW,size,weight,TEXT_FONT),lh=size*1.28;
+    ctx.font=`${weight} ${size}px ${TEXT_FONT}`;
+    const widest=Math.max(...lines.map(x=>ctx.measureText(x).width),0);
+    if(widest<=maxW&&lines.length*lh<=maxH)return{size,lines,lh,weight};
+  }
+  return{size:22,lines:wrapText(raw,maxW,22,weight,TEXT_FONT),lh:29,weight};
 }
 
 function hexToRgb(hex){
@@ -852,7 +924,7 @@ async function renderPreview(person=people[current]){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='#181818';
     const nameWeight=Math.max(600,Number($('#msgWeight').value||600));
-    ctx.font=`${nameWeight} ${fitSingle(name,w*.34,58,28,nameWeight,TEXT_FONT)}px ${TEXT_FONT}`;
+    ctx.font=`${nameWeight} ${fitSingle(name,w*.62,72,32,nameWeight,TEXT_FONT)}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,h*L.nameY);
 
     const txt=person.msg||'';
