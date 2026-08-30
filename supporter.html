@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.10.3 英文カラー比較版</title>
+<title>サポーター画像メーカー v5.10.4 英文カラー比較版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -332,8 +332,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.10.3 英文カラー比較版</h1>
-    <div class="lead">英文カラーを3パターンからワンタップで比較できます。その他のレイアウトはそのままです。</div>
+    <h1>🌷 サポーター画像メーカー v5.10.4 英文バランス調整版</h1>
+    <div class="lead">英文の色・位置・余白のバランスを調整しました。少し下げて見やすくし、色のなじみも改善しています。</div>
   </section>
 
   <section class="card">
@@ -471,9 +471,9 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         <hr>
         <label>英文カラー</label>
         <div class="englishColorRow" id="englishColorRow">
-          <button type="button" class="englishColorBtn active" data-color="#b96f97"><span class="englishColorDot" style="background:#b96f97"></span>ローズ</button>
-          <button type="button" class="englishColorBtn" data-color="#9f748b"><span class="englishColorDot" style="background:#9f748b"></span>モーヴ</button>
-          <button type="button" class="englishColorBtn" data-color="#b7847f"><span class="englishColorDot" style="background:#b7847f"></span>ココアピンク</button>
+          <button type="button" class="englishColorBtn" data-color="#b67a9a"><span class="englishColorDot" style="background:#b67a9a"></span>ローズ</button>
+          <button type="button" class="englishColorBtn active" data-color="#8f6d82"><span class="englishColorDot" style="background:#8f6d82"></span>モーヴ</button>
+          <button type="button" class="englishColorBtn" data-color="#b78378"><span class="englishColorDot" style="background:#b78378"></span>ココアピンク</button>
         </div>
         <hr>
         <label>背景カラー</label>
@@ -533,7 +533,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.10.3：英文カラー3種をワンタップ比較</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.10.4：英文カラー3種をワンタップ比較</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -917,7 +917,7 @@ function drawSeason(){
 
 const TEXT_FONT="'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
 const NAME_TOPTEXT='Thank you for being my supporter';
-const ENGLISH_COLOR_KEY='shuri_supporter_english_color_v5103';
+const ENGLISH_COLOR_KEY='shuri_supporter_english_color_v5104';
 const UI_FONT="'Hiragino Maru Gothic ProN','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Yu Gothic','Hiragino Sans',sans-serif";
 let tekitoFontReady=false;
 async function ensureTekitouPoem(){
@@ -1050,7 +1050,23 @@ function fitSingle(text,maxW,maxSize,minSize,weight=800,font=UI_FONT){
 }
 
 function englishHeadingColor(){
-  return localStorage.getItem(ENGLISH_COLOR_KEY)||'#b96f97';
+  return localStorage.getItem(ENGLISH_COLOR_KEY)||'#8f6d82';
+}
+function drawSoftEnglishHeading(text,x,y,maxW){
+  const size=fitSingle(text,maxW,50,24,700,TEXT_FONT);
+  ctx.save();
+  ctx.font=`700 ${size}px ${TEXT_FONT}`;
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.shadowColor='rgba(255,255,255,.88)';
+  ctx.shadowBlur=5;
+  ctx.lineWidth=2;
+  ctx.strokeStyle='rgba(255,248,252,.85)';
+  ctx.strokeText(text,x,y);
+  ctx.fillStyle=englishHeadingColor();
+  ctx.fillText(text,x,y);
+  ctx.restore();
+  return size;
 }
 function syncEnglishColorButtons(){
   const c=englishHeadingColor().toLowerCase();
@@ -1091,15 +1107,15 @@ async function renderPreview(person=people[current]){
 
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
-    ctx.fillStyle=englishHeadingColor();
-    ctx.font=`700 ${fitSingle(NAME_TOPTEXT,w*.80,46,22,700,TEXT_FONT)}px ${TEXT_FONT}`;
-    ctx.fillText(NAME_TOPTEXT,w*L.nameX,h*(L.nameY-.006));
+    const englishY=h*(L.nameY+.010);
+    const nameY=h*(L.nameY+.060);
+    drawSoftEnglishHeading(NAME_TOPTEXT,w*L.nameX,englishY,w*.70);
 
     ctx.fillStyle='#181818';
     const nameWeight=Math.max(700,Number($('#msgWeight').value||700));
-    const nameSize=fitSingle(name,w*.62,66,30,nameWeight,TEXT_FONT);
+    const nameSize=fitSingle(name,w*.58,66,30,nameWeight,TEXT_FONT);
     ctx.font=`${nameWeight} ${nameSize}px ${TEXT_FONT}`;
-    ctx.fillText(name,w*L.nameX,h*(L.nameY+.034));
+    ctx.fillText(name,w*L.nameX,nameY);
 
     const txt=person.msg||'';
     const para=fitHeartText(txt,w*L.msgW,h*L.msgH);
