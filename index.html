@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v14.2.1</title>
+<title>ありがとうメッセージメーカー v14.3 安定版</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
 /* v14 learning UI */
 function v14NormalizeName(s){
@@ -32,9 +32,7 @@ function v14NameSuggestions(name, limit=3){
     const prev=grouped.get(nick);
     if(!prev || score>prev.score)grouped.set(nick,{official:k,nick,score});
   }
-  return [...grouped.values()]
-    .sort((a,b)=>b.score-a.score)
-    .slice(0,limit);
+  return [...grouped.values()].sort((a,b)=>b.score-a.score).slice(0,limit);
 }
 function v14Strip(){
   const el=document.getElementById('v14Strip'); if(!el)return;
@@ -79,7 +77,6 @@ renderPeople=function(){
     d.innerHTML=`<div class="personhead"><div class="personname">${escapeHtml(p.name||'名前を確認')}</div><span class="badge ${p.issues?.length?'warn':''}">${p.learned?'辞書✓':p.coin===0?'0コイン':p.issues?.length?'要確認':'OK'}</span></div>
     ${pic?`<img class="v14-person-preview" src="${pic}">`:''}
     ${suggestions.length?`<div class="maybeBox"><b>💡 この人かも？</b><div class="maybeBtns">${suggestions.map((x,j)=>`<button type="button" class="maybeBtn" data-maybe-i="${i}" data-maybe-j="${j}">${escapeHtml(x.nick)} <small>${Math.round(x.score*100)}%</small></button>`).join('')}</div></div>`:''}
-    ${p.coin==null&&p.coinCandidates?.length?`<div class="coinSuggest"><b>💰 コイン候補</b><div class="maybeBtns">${p.coinCandidates.map(v=>`<button type="button" class="maybeBtn" data-coin-i="${i}" data-coin-v="${v}">${v}コイン</button>`).join('')}</div></div>`:''}
     <div class="editgrid">
       <label>認識名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
       <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
@@ -103,24 +100,14 @@ renderPeople=function(){
   });
   el.querySelectorAll('[data-maybe-i]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.maybeI,j=+b.dataset.maybeJ,p=state.people[i];
-    const suggestions=v14NameSuggestions(p.name,3);
-    const hit=suggestions[j];
+    const hit=v14NameSuggestions(p.name,3)[j];
     if(!hit)return;
     const raw=v14NormalizeName(p.ocrName||p.nameRaw||p.name);
-    // Current OCR spelling becomes a learned alias for this nickname.
     if(raw)state.nick[raw]=hit.nick;
     if(p.name)state.nick[v14NormalizeName(p.name)]=hit.nick;
-    p.tempNick=hit.nick;
-    p.learned=true;
+    p.tempNick=hit.nick;p.learned=true;
     persist();renderDict();renderPeople();generateResult();
-    setStatus(`「${hit.nick}」として登録しました。次回からこの読み方も自動変換します。`);
-  });
-  el.querySelectorAll('[data-coin-i]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.coinI,v=+b.dataset.coinV,p=state.people[i];
-    p.coin=v;
-    p.issues=(p.issues||[]).filter(x=>x!=='コイン');
-    renderPeople();generateResult();
-    setStatus(`${v}コインとして確定しました。`);
+    setStatus(`「${hit.nick}」として覚えました。次回からこの読み方も自動変換します。`);
   });
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult();v14Strip()});
   v14Strip();
@@ -282,19 +269,16 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 #learnPanel{padding:10px;max-height:45vh;overflow:auto}
 @media(max-width:560px){.dictHead{grid-template-columns:1fr 1fr 52px}.nickrow{grid-template-columns:1fr 1fr 52px!important}.nickrow button{grid-column:auto!important;padding:8px 4px;font-size:11px}}
 </style>
-
-<style id="v142-ui">
-.maybeBox,.coinSuggest{margin:6px 0 4px;padding:7px 8px;border-radius:10px;background:#fff8df;border:1px solid #f0cf74;font-size:11px}
-.coinSuggest{background:#f2f8ff;border-color:#a9ccea}
+<style id="v143-ui">
+.maybeBox{margin:6px 0 4px;padding:7px 8px;border-radius:10px;background:#fff8df;border:1px solid #f0cf74;font-size:11px}
 .maybeBtns{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .maybeBtn{font-size:11px!important;padding:6px 8px!important;border-radius:999px!important;background:#fff!important;color:#5b463d!important;border:1px solid #dccfc7!important;font-weight:800!important}
 .maybeBtn small{font-size:9px;color:#9a8174}
 </style>
-
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v14.2.1</h1>
+  <h1>🐰 ありがとうメッセージメーカー v14.3 安定版</h1>
   <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、名前・コイン・Rankだけを下書き。一度直した名前は辞書に覚えて、次回から自動補正します。</p>
 
   <section class="card">
@@ -582,7 +566,7 @@ function prepCanvas(src, mode='normal'){
   x.putImageData(im,0,0); return c;
 }
 async function ocrCanvas(c, psm=7, kind='generic'){
-  const variants=kind==='name'?['normal','gray','bw']:['normal','gray'];
+  const variants=kind==='name'?['normal','gray','bw']:['normal'];
   let candidates=[];
   for(const mode of variants){
     const pc=prepCanvas(c,mode);
@@ -607,77 +591,23 @@ function boxesFor(img,cy){
   const x=W*.165, right=W*.82, unit=W*.082;
   return {
     name:{x,y:cy-unit*.70,w:right-x,h:unit*.50},
-    coin:{x:W*.155,y:cy-unit*.18,w:W*.36,h:unit*.42},
+    coin:{x,y:cy-unit*.12,w:right-x,h:unit*.42},
     rank:{x,y:cy+unit*.34,w:right-x,h:unit*.44},
     shot:{x:W*.02,y:cy-unit*.90,w:W*.80,h:unit*1.72}
   }
 }
-
-async function readCoinLine(img, box){
-  const crop=cropCanvas(img,box);
-
-  function parseStrong(text){
-    const t=norm(text||'');
-    let m=t.match(/([0-9０-９]{1,6})\s*コイン/);
-    if(m){
-      const v=parseInt(m[1].normalize('NFKC'),10);
-      if(Number.isFinite(v))return v;
-    }
-    return null;
-  }
-  function parseLoose(text){
-    const t=String(text||'').normalize('NFKC');
-    const m=t.match(/\d{1,6}/);
-    return m?parseInt(m[0],10):null;
-  }
-
-  // Pass 1: normal Japanese OCR. If "xxコイン" is read cleanly, stop immediately.
-  let firstText='';
-  try{
-    const {data}=await Tesseract.recognize(prepCanvas(crop,'normal'),'jpn+eng',{
-      tessedit_pageseg_mode:'7',
-      preserve_interword_spaces:'1'
-    });
-    firstText=data.text||'';
-    const strong=parseStrong(firstText);
-    if(strong!==null)return {coin:strong,candidates:[strong],needsConfirm:false};
-  }catch(e){}
-
-  // Pass 2 only if needed: grayscale digits-only.
-  let secondText='';
-  try{
-    const {data}=await Tesseract.recognize(prepCanvas(crop,'gray'),'eng',{
-      tessedit_pageseg_mode:'7',
-      tessedit_char_whitelist:'0123456789'
-    });
-    secondText=data.text||'';
-  }catch(e){}
-
-  const a=parseLoose(firstText), b=parseLoose(secondText);
-  const candidates=[...new Set([a,b].filter(Number.isFinite))];
-
-  // Only auto-confirm when both passes agree.
-  if(a!==null && b!==null && a===b){
-    return {coin:a,candidates:[a],needsConfirm:false};
-  }
-
-  // If they disagree, do not invent a value. Show tap-able candidates instead.
-  return {coin:null,candidates:candidates.slice(0,3),needsConfirm:true};
-}
-
 async function readPerson(img,cy,imgIndex,source='auto'){
   const b=boxesFor(img,cy);
   const nameRaw=await ocrCanvas(cropCanvas(img,b.name),7,'name');
-  const coinInfo=await readCoinLine(img,b.coin);
-  const coinRaw=(coinInfo.candidates||[]).join(' / ');
+  const coinRaw=await ocrCanvas(cropCanvas(img,b.coin),7,'coin');
   const rankRaw=await ocrCanvas(cropCanvas(img,b.rank),7,'rank');
-  let name=cleanName(nameRaw), coin=coinInfo.coin, rank=rankOf(rankRaw), isnew=isNew(rankRaw);
+  let name=cleanName(nameRaw), coin=digits(coinRaw), rank=rankOf(rankRaw), isnew=isNew(rankRaw);
   let issues=[];
   if(!name||name.length<1)issues.push('名前');
   if(coin===null)issues.push('コイン');
   if(rank===null && /Rank/i.test(rankRaw))issues.push('Rank');
   if(/コイン|Rank/i.test(name))issues.push('名前混入');
-  return {id:uid(),imgIndex,cy,source,nameRaw,coinRaw,rankRaw,name,coin,rank,newRank:isnew?rank:null,issues,confirmed:false,coinCandidates:coinInfo.candidates||[]}
+  return {id:uid(),imgIndex,cy,source,nameRaw,coinRaw,rankRaw,name,coin,rank,newRank:isnew?rank:null,issues,confirmed:false}
 }
 function mergePeople(list){
   let out=[];
@@ -715,7 +645,7 @@ async function analyze(){
     }
     rows.sort((a,b)=>a.cy-b.cy);
     for(let k=0;k<rows.length;k++){
-      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…（名前→コイン→Rank）`);
+      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…`);
       let p=await readPerson(img,rows[k].cy,i);
       // suppress obvious non-person OCR
       if(/ギフトコイン数|メッセージ|送信先|すべて選択|サポーター/.test(p.name)) continue;
