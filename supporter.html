@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.9 すっきりUI版</title>
+<title>サポーター画像メーカー v5.9.1 名前アクセント版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -269,8 +269,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.9 すっきりUI版</h1>
-    <div class="lead">名前を選んで一言を入れて反映するだけ。細かい文字・背景設定は必要な時だけ開けます。</div>
+    <h1>🌷 サポーター画像メーカー v5.9.1 名前アクセント版</h1>
+    <div class="lead">名前を選んで一言を入れて反映するだけ。本文は少し太め、名前欄には薄いアクセント文字を入れています。</div>
   </section>
 
   <section class="card">
@@ -376,8 +376,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
           <label>文字の太さ
             <select id="msgWeight">
               <option value="400">Regular</option>
-              <option value="600" selected>SemiBold</option>
-              <option value="700">Bold</option>
+              <option value="600">SemiBold</option>
+              <option value="700" selected>Bold</option>
               <option value="800">ExtraBold</option>
             </select>
           </label>
@@ -443,7 +443,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.9：編集欄を整理・設定を収納・画像文字バランス調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.9.1：本文を少し太く・名前欄にアクセント追加</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -696,13 +696,19 @@ function loadLayout(){
   for(const [k,v] of Object.entries(defaults)){if($('#'+k))$('#'+k).value=st[k]??v}
   const ss=loadJSON(SEASON_LAYOUT_KEY,seasonDefaults);
   for(const [k,v] of Object.entries(seasonDefaults)){if($('#'+k))$('#'+k).value=ss[k]??v}
-  const style=loadJSON(STYLE_KEY,{weight:'600',color:'#181818',showCharacter:true,showBunny:true,showSparkles:true});
+  const style=loadJSON(STYLE_KEY,{weight:'700',color:'#181818',showCharacter:true,showBunny:true,showSparkles:true});
   if(!localStorage.getItem(TEXT_WEIGHT_MIGRATION_KEY)){
     if(String(style.weight||'400')==='400')style.weight='600';
     saveJSON(STYLE_KEY,style);
     localStorage.setItem(TEXT_WEIGHT_MIGRATION_KEY,'1');
   }
-  $('#msgWeight').value=String(style.weight||'600');$('#msgColor').value=style.color||'#181818';
+  const TEXT_WEIGHT_TUNE_KEY='shuri_supporter_text_weight_v591';
+  if(!localStorage.getItem(TEXT_WEIGHT_TUNE_KEY)){
+    if(String(style.weight||'600')==='600') style.weight='700';
+    saveJSON(STYLE_KEY,style);
+    localStorage.setItem(TEXT_WEIGHT_TUNE_KEY,'1');
+  }
+  $('#msgWeight').value=String(style.weight||'700');$('#msgColor').value=style.color||'#181818';
   $('#showCharacter').checked=style.showCharacter!==false;
   $('#showBunny').checked=style.showBunny!==false;
   $('#showSparkles').checked=style.showSparkles!==false;
@@ -759,6 +765,7 @@ function drawSeason(){
 }
 
 const TEXT_FONT="'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
+const NAME_SUBTEXT='いつもありがとう';
 const UI_FONT="'Hiragino Maru Gothic ProN','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Yu Gothic','Hiragino Sans',sans-serif";
 let tekitoFontReady=false;
 async function ensureTekitouPoem(){
@@ -923,9 +930,14 @@ async function renderPreview(person=people[current]){
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='#181818';
-    const nameWeight=Math.max(600,Number($('#msgWeight').value||600));
-    ctx.font=`${nameWeight} ${fitSingle(name,w*.62,72,32,nameWeight,TEXT_FONT)}px ${TEXT_FONT}`;
+    const nameWeight=Math.max(700,Number($('#msgWeight').value||700));
+    const nameSize=fitSingle(name,w*.62,72,32,nameWeight,TEXT_FONT);
+    ctx.font=`${nameWeight} ${nameSize}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,h*L.nameY);
+
+    ctx.fillStyle='rgba(176,133,151,.92)';
+    ctx.font=`600 ${fitSingle(NAME_SUBTEXT,w*.30,18,10,600,TEXT_FONT)}px ${TEXT_FONT}`;
+    ctx.fillText(NAME_SUBTEXT,w*L.nameX,h*(L.nameY+.052));
 
     const txt=person.msg||'';
     const para=fitHeartText(txt,w*L.msgW,h*L.msgH);
