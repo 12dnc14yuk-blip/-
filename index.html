@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v14.2</title>
+<title>ありがとうメッセージメーカー v14.2.1</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
 /* v14 learning UI */
 function v14NormalizeName(s){
@@ -294,7 +294,7 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v14.2</h1>
+  <h1>🐰 ありがとうメッセージメーカー v14.2.1</h1>
   <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、名前・コイン・Rankだけを下書き。一度直した名前は辞書に覚えて、次回から自動補正します。</p>
 
   <section class="card">
@@ -615,77 +615,54 @@ function boxesFor(img,cy){
 
 async function readCoinLine(img, box){
   const crop=cropCanvas(img,box);
-  const results=[];
 
-  function pushCandidate(text, source, confidence=0){
+  function parseStrong(text){
     const t=norm(text||'');
-    if(!t)return;
-    // Highest confidence: number directly associated with コイン.
     let m=t.match(/([0-9０-９]{1,6})\s*コイン/);
     if(m){
       const v=parseInt(m[1].normalize('NFKC'),10);
-      if(Number.isFinite(v))results.push({value:v,score:100+confidence,source,text:t});
-      return;
+      if(Number.isFinite(v))return v;
     }
-    // Secondary: a clean number from this narrow coin-only crop.
-    const only=t.normalize('NFKC').replace(/[^\d]/g,'');
-    if(only && only.length<=6){
-      const v=parseInt(only,10);
-      if(Number.isFinite(v))results.push({value:v,score:45+confidence,source,text:t});
-    }
+    return null;
+  }
+  function parseLoose(text){
+    const t=String(text||'').normalize('NFKC');
+    const m=t.match(/\d{1,6}/);
+    return m?parseInt(m[0],10):null;
   }
 
-  // Read the exact same narrow line using different preprocessing.
-  for(const mode of ['normal','gray','bw']){
-    try{
-      const pc=prepCanvas(crop,mode);
-      const {data}=await Tesseract.recognize(pc,'jpn+eng',{
-        tessedit_pageseg_mode:'7',
-        preserve_interword_spaces:'1'
-      });
-      pushCandidate(data.text,'jpn-'+mode,mode==='normal'?8:4);
-    }catch(e){}
+  // Pass 1: normal Japanese OCR. If "xxコイン" is read cleanly, stop immediately.
+  let firstText='';
+  try{
+    const {data}=await Tesseract.recognize(prepCanvas(crop,'normal'),'jpn+eng',{
+      tessedit_pageseg_mode:'7',
+      preserve_interword_spaces:'1'
+    });
+    firstText=data.text||'';
+    const strong=parseStrong(firstText);
+    if(strong!==null)return {coin:strong,candidates:[strong],needsConfirm:false};
+  }catch(e){}
+
+  // Pass 2 only if needed: grayscale digits-only.
+  let secondText='';
+  try{
+    const {data}=await Tesseract.recognize(prepCanvas(crop,'gray'),'eng',{
+      tessedit_pageseg_mode:'7',
+      tessedit_char_whitelist:'0123456789'
+    });
+    secondText=data.text||'';
+  }catch(e){}
+
+  const a=parseLoose(firstText), b=parseLoose(secondText);
+  const candidates=[...new Set([a,b].filter(Number.isFinite))];
+
+  // Only auto-confirm when both passes agree.
+  if(a!==null && b!==null && a===b){
+    return {coin:a,candidates:[a],needsConfirm:false};
   }
 
-  // Digits-only is used only as a fallback and must agree with another result
-  // or be the sole clean candidate from the coin-only crop.
-  for(const mode of ['gray','bw']){
-    try{
-      const pc=prepCanvas(crop,mode);
-      const {data}=await Tesseract.recognize(pc,'eng',{
-        tessedit_pageseg_mode:'7',
-        tessedit_char_whitelist:'0123456789'
-      });
-      const t=String(data.text||'').trim();
-      const only=t.replace(/\D/g,'');
-      if(only && only.length<=6){
-        const v=parseInt(only,10);
-        if(Number.isFinite(v))results.push({value:v,score:35,source:'digits-'+mode,text:t});
-      }
-    }catch(e){}
-  }
-
-  if(!results.length)return {coin:null,candidates:[],needsConfirm:true};
-
-  const grouped=new Map();
-  for(const r of results){
-    const g=grouped.get(r.value)||{value:r.value,score:0,count:0,sources:[],texts:[]};
-    g.score+=r.score;g.count++;g.sources.push(r.source);g.texts.push(r.text);
-    grouped.set(r.value,g);
-  }
-  let groups=[...grouped.values()];
-  groups.forEach(g=>g.score += (g.count-1)*30);
-  groups.sort((a,b)=>b.score-a.score || b.count-a.count);
-
-  const best=groups[0], second=groups[1];
-  const strong=best && (best.score>=100 || best.count>=2);
-  const ambiguous=!!second && Math.abs(best.score-second.score)<35;
-
-  return {
-    coin: strong && !ambiguous ? best.value : null,
-    candidates: groups.slice(0,3).map(g=>g.value),
-    needsConfirm: !strong || ambiguous
-  };
+  // If they disagree, do not invent a value. Show tap-able candidates instead.
+  return {coin:null,candidates:candidates.slice(0,3),needsConfirm:true};
 }
 
 async function readPerson(img,cy,imgIndex,source='auto'){
@@ -738,7 +715,7 @@ async function analyze(){
     }
     rows.sort((a,b)=>a.cy-b.cy);
     for(let k=0;k<rows.length;k++){
-      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を3行読取中…`);
+      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…（名前→コイン→Rank）`);
       let p=await readPerson(img,rows[k].cy,i);
       // suppress obvious non-person OCR
       if(/ギフトコイン数|メッセージ|送信先|すべて選択|サポーター/.test(p.name)) continue;
