@@ -70,7 +70,7 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .quickEditorGrid textarea{min-height:74px;resize:vertical}
 .quickEditorCompact{
   display:grid;
-  grid-template-columns:minmax(78px,26%) minmax(0,1fr);
+  grid-template-columns:minmax(84px,24%) minmax(0,1fr);
   grid-template-rows:auto auto;
   gap:8px 10px;
   align-items:stretch;
@@ -99,10 +99,10 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 }
 .quickNameSide b{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
-  font-size:28px;
-  font-weight:900;
-  line-height:1.16;
-  letter-spacing:.05em;
+  font-size:20px;
+  font-weight:800;
+  line-height:1.24;
+  letter-spacing:.02em;
   color:#765769;
   overflow-wrap:anywhere;
   word-break:break-word;
@@ -126,14 +126,23 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.95);
   resize:vertical;
 }
-.quickApplyBtn{
-  grid-column:1 / -1;
+.quickClearBtn{
+  grid-column:1;
   grid-row:2;
   height:46px;
-  width:62%;
+  width:100%;
+  white-space:nowrap;
+  padding:0 10px;
+  font-size:14px;
+}
+.quickApplyBtn{
+  grid-column:2;
+  grid-row:2;
+  height:46px;
+  width:100%;
   white-space:nowrap;
   padding:0 18px;
-  justify-self:center;
+  justify-self:stretch;
 }
 .quickEditorHint{margin-top:7px}
 .peopleScroll{max-height:none;overflow:visible}
@@ -191,11 +200,12 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .summaryChip{min-height:54px;padding:7px}
   .summaryChip.currentChip{grid-column:span 2}
   .quickEditorGrid{grid-template-columns:1fr}
-  .quickEditorCompact{grid-template-columns:92px minmax(0,1fr)}
+  .quickEditorCompact{grid-template-columns:84px minmax(0,1fr)}
   .quickNameSide{min-height:126px;padding:10px 6px}
-  .quickNameSide b{font-size:22px}
+  .quickNameSide b{font-size:18px}
   .quickMsgLabel{grid-column:2;grid-row:1}
-  .quickApplyBtn{grid-column:1 / -1;grid-row:2;height:44px;padding:10px 13px;width:64%;justify-self:center}
+  .quickClearBtn{grid-column:1;grid-row:2;height:44px;padding:10px 8px;width:100%}
+  .quickApplyBtn{grid-column:2;grid-row:2;height:44px;padding:10px 13px;width:100%;justify-self:stretch}
   .quickEditor{padding:10px}
 }
 @media(max-width:420px){
@@ -287,8 +297,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.9.3 英語見出し版</h1>
-    <div class="lead">名前の上に英語メッセージ、下に日本語の名前。編集欄のNAME / MESSAGEも少しスタイリッシュに整えています。</div>
+    <h1>🌷 サポーター画像メーカー v5.9.4 英語見出し微調整版</h1>
+    <div class="lead">英語見出しを大きめに、編集欄の横名前をコンパクトに。余白には使いやすいクリアボタンを置いています。</div>
   </section>
 
   <section class="card">
@@ -382,6 +392,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         <label class="quickMsgLabel">MESSAGE
           <textarea id="quickMsgInput" rows="4" placeholder="ここに一言"></textarea>
         </label>
+        <button type="button" class="secondary quickClearBtn" id="quickClearBtn">クリア</button>
         <button type="button" class="primary quickApplyBtn" id="quickApplyBtn">反映</button>
       </div>
       <div class="mini quickEditorHint">一言を入れて「反映」。編集欄は見やすいフォントです。</div>
@@ -461,7 +472,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.9.3：名前上に英語見出し・名前欄バランス調整・編集欄を少しスタイリッシュ化</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.9.4：英語見出し拡大・編集欄の横名前を小さめ化・クリア追加</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -659,13 +670,13 @@ function tuneQuickSideName(text){
   if(!el) return;
   const t=String(text||'').trim();
   const len=[...t].length;
-  let size=34;
-  if(!t || t==='対象者なし') size=24;
-  else if(len>=12) size=17;
-  else if(len>=10) size=19;
-  else if(len>=8) size=22;
-  else if(len>=6) size=25;
-  else if(len>=4) size=29;
+  let size=20;
+  if(!t || t==='対象者なし') size=16;
+  else if(len>=12) size=13;
+  else if(len>=10) size=14;
+  else if(len>=8) size=15;
+  else if(len>=6) size=16;
+  else if(len>=4) size=18;
   el.style.fontSize=size+'px';
 }
 function syncCurrentEditor(){
@@ -962,8 +973,8 @@ async function renderPreview(person=people[current]){
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='rgba(176,133,151,.96)';
-    ctx.font=`700 ${fitSingle(NAME_TOPTEXT,w*.58,22,11,700,UI_FONT)}px ${UI_FONT}`;
-    ctx.fillText(NAME_TOPTEXT,w*L.nameX,h*(L.nameY-.042));
+    ctx.font=`700 ${fitSingle(NAME_TOPTEXT,w*.66,30,15,700,TEXT_FONT)}px ${TEXT_FONT}`;
+    ctx.fillText(NAME_TOPTEXT,w*L.nameX,h*(L.nameY-.046));
 
     ctx.fillStyle='#181818';
     const nameWeight=Math.max(700,Number($('#msgWeight').value||700));
@@ -1016,6 +1027,7 @@ function applyQuickEditor(){
   $('#saveStatus').textContent='一言を反映しました。';
 }
 $('#quickApplyBtn').onclick=applyQuickEditor;
+$('#quickClearBtn').onclick=()=>{const p=people[current]; if(!p) return; $('#quickMsgInput').value=''; p.msg=''; renderPreview(); renderPeople();};
 $('#quickMsgInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();applyQuickEditor();}});
 
 $('#templateFile').onchange=e=>{
