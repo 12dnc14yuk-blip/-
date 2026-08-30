@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.6.3 名前左・一言BOX版</title>
+<title>サポーター画像メーカー v5.7 名前一覧・配置調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -121,7 +121,34 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
   justify-self:stretch;
 }
 .quickEditorHint{margin-top:7px}
-.peopleScroll{max-height:36vh;overflow:auto}
+.peopleScroll{max-height:none;overflow:visible}
+
+.namePickList{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:8px;
+}
+.namePickBtn{
+  appearance:none;
+  border:1px solid var(--line);
+  background:#fff;
+  color:#704e61;
+  border-radius:999px;
+  padding:8px 11px;
+  font-size:12px;
+  font-weight:900;
+}
+.namePickBtn.active{
+  background:linear-gradient(135deg,#ed70c6,#ff9cda);
+  color:#fff;
+  border-color:#ed70c6;
+}
+.namePickBtn .rankMini{
+  margin-left:4px;
+  font-size:9px;
+  opacity:.75;
+}
 .inlineAdd details{margin-top:0;background:#fff;border-style:dashed}
 .inlineAdd summary{padding:10px 12px;font-size:13px}
 .inlineAdd .detailsBody{padding-top:0}
@@ -235,8 +262,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.6.3 名前左・一言BOX版</h1>
-    <div class="lead">分離済み素材をそのまま重ねる方式。選択中の名前を左、一言入力欄を右にまとめて表示します。</div>
+    <h1>🌷 サポーター画像メーカー v5.7 名前一覧・配置調整版</h1>
+    <div class="lead">名前一覧からタップで選択、前・次でも切り替え。一言編集は下の1か所だけにまとめました。</div>
   </section>
 
   <section class="card">
@@ -259,12 +286,13 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </div>
     <div class="status" id="monthStatus"></div><div class="hint">ありがとう側で「🌱 新規Rank」を押した人は、この月の対象者へ自動共有されます。</div>
 
-    <details id="peopleDetails">
-      <summary>対象者一覧・編集 <span id="peopleCountLabel" class="mini">0人</span></summary>
+    <details id="peopleDetails" open>
+      <summary>名前一覧 <span id="peopleCountLabel" class="mini">0人</span></summary>
       <div class="detailsBody">
+        <div id="people" class="namePickList"></div>
         <div class="inlineAdd">
           <details>
-            <summary>＋ 取りこぼしを手入力追加（必要な時だけ）</summary>
+            <summary>＋ 名前を手入力追加（必要な時だけ）</summary>
             <div class="detailsBody">
               <label>1行に1人ずつ</label>
               <textarea id="manualNames" placeholder="れんな&#10;はやみん"></textarea>
@@ -272,7 +300,6 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
             </div>
           </details>
         </div>
-        <div class="peopleScroll"><div id="people"></div></div>
       </div>
     </details>
   </section>
@@ -336,13 +363,13 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         <button type="button" class="primary quickApplyBtn" id="quickApplyBtn">反映</button>
       </div>
       <div class="mini quickEditorHint">左に選択中の名前、右に一言。入力後「反映」でプレビューに反映されます。</div>
-    </div></div>
+    </div>
 
     <div class="grid2" style="margin-bottom:10px">
       <label>一言フォント
         <select id="msgWeight">
-          <option value="400" selected>Regular</option>
-          <option value="600">SemiBold</option>
+          <option value="400">Regular</option>
+          <option value="600" selected>SemiBold</option>
           <option value="700">Bold</option>
           <option value="800">ExtraBold</option>
         </select>
@@ -393,12 +420,12 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         <div class="settingsGrid">
           <div><label>月 X</label><input id="monthX" type="range" min="0" max="1" step=".002" value=".500"></div>
           <div><label>月 Y</label><input id="monthY" type="range" min="0" max="1" step=".002" value=".232"></div>
-          <div><label>名前 X</label><input id="nameX" type="range" min="0" max="1" step=".002" value=".655"></div>
-          <div><label>名前 Y</label><input id="nameY" type="range" min="0" max="1" step=".002" value=".490"></div>
+          <div><label>名前 X</label><input id="nameX" type="range" min="0" max="1" step=".002" value=".500"></div>
+          <div><label>名前 Y</label><input id="nameY" type="range" min="0" max="1" step=".002" value=".323"></div>
           <div><label>一言 X</label><input id="msgX" type="range" min="0" max="1" step=".002" value=".655"></div>
           <div><label>一言 Y</label><input id="msgY" type="range" min="0" max="1" step=".002" value=".595"></div>
           <div><label>一言幅</label><input id="msgW" type="range" min=".20" max=".50" step=".005" value=".385"></div>
-          <div><label>一言高さ</label><input id="msgH" type="range" min=".12" max=".34" step=".005" value=".205"></div>
+          <div><label>一言高さ</label><input id="msgH" type="range" min=".12" max=".34" step=".005" value=".245"></div>
         </div>
         <div class="btnrow">
           <button class="secondary" id="saveLayoutBtn">配置を保存</button>
@@ -408,7 +435,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.6.3：名前を左・一言BOXを右に配置</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.7：名前一覧タップ・前後移動・名前位置調整・太字化</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -429,11 +456,13 @@ const STYLE_KEY='shuri_supporter_style_v3';
 const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 const LAYOUT_MIGRATION_KEY='shuri_supporter_layout_migration_v55';
 const CHARACTER_SHIFT_KEY='shuri_supporter_character_shift_v56';
+const TEXT_LAYOUT_MIGRATION_KEY='shuri_supporter_text_layout_v57';
+const TEXT_WEIGHT_MIGRATION_KEY='shuri_supporter_text_weight_v57';
 
 const defaults={
   monthX:.500,monthY:.232,
-  nameX:.655,nameY:.490,
-  msgX:.655,msgY:.595,msgW:.385,msgH:.205,
+  nameX:.500,nameY:.323,
+  msgX:.655,msgY:.595,msgW:.385,msgH:.245,
   characterY:.048,bunnyY:.064
 };
 const seasonDefaults={seasonX:.80,seasonY:.79,seasonScale:.20};
@@ -565,17 +594,27 @@ function deletePerson(i){
   current=Math.max(0,current-(i<=current?1:0));reloadMonth();
 }
 function renderPeople(){
-  const root=$('#people');root.innerHTML='';
-  if(!people.length){root.innerHTML='<div class="mini">今月の対象者はまだいません。</div>';return}
+  const root=$('#people');
+  root.innerHTML='';
+  if(!people.length){
+    root.innerHTML='<div class="mini">今月の対象者はまだいません。</div>';
+    return;
+  }
   people.forEach((p,i)=>{
-    const card=document.createElement('div');card.className='person'+(i===current?' active':'');
-    card.innerHTML=`<div class="personHead"><b>${escapeHTML(p.name)}</b><span class="badge">${escapeHTML(rankBadgeText(p))}</span></div>
-      <textarea placeholder="${escapeHTML(p.name)}への一言">${escapeHTML(p.msg||'')}</textarea>
-      <div class="btnrow"><button class="secondary showBtn">この人を表示</button><button class="danger delBtn">削除</button></div>`;
-    card.querySelector('textarea').oninput=e=>{people[i].msg=e.target.value;saveDrafts();if(i===current){syncCurrentEditor();renderPreview()}};
-    card.querySelector('.showBtn').onclick=()=>{current=i;renderPeople();updateSummary();syncCurrentEditor();renderPreview();$('#peopleDetails')&&( $('#peopleDetails').open=false );document.getElementById('previewSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
-    card.querySelector('.delBtn').onclick=()=>{if(confirm(`「${p.name}」を削除しますか？`))deletePerson(i)};
-    root.appendChild(card);
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='namePickBtn'+(i===current?' active':'');
+    const rankText=p.manual?'':`<span class="rankMini">R${Number(p.rank)||1}</span>`;
+    btn.innerHTML=`${escapeHTML(p.name)}${rankText}`;
+    btn.onclick=()=>{
+      current=i;
+      renderPeople();
+      updateSummary();
+      syncCurrentEditor();
+      renderPreview();
+      document.getElementById('previewSection')?.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    root.appendChild(btn);
   });
 }
 function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -619,11 +658,24 @@ function loadLayout(){
     if(Math.abs(cy-0.056)<0.0001 || Math.abs(cy-0.048)<0.0001){st.characterY=0.048;saveJSON(LAYOUT_KEY,st);}
     localStorage.setItem(CHARACTER_SHIFT_KEY,'1');
   }
+  if(!localStorage.getItem(TEXT_LAYOUT_MIGRATION_KEY)){
+    const oldNameX=Number(st.nameX??0), oldNameY=Number(st.nameY??0);
+    if(oldNameY>.40 || Math.abs(oldNameX-.655)<.03){
+      st.nameX=.500; st.nameY=.323; st.msgH=.245;
+      saveJSON(LAYOUT_KEY,st);
+    }
+    localStorage.setItem(TEXT_LAYOUT_MIGRATION_KEY,'1');
+  }
   for(const [k,v] of Object.entries(defaults)){if($('#'+k))$('#'+k).value=st[k]??v}
   const ss=loadJSON(SEASON_LAYOUT_KEY,seasonDefaults);
   for(const [k,v] of Object.entries(seasonDefaults)){if($('#'+k))$('#'+k).value=ss[k]??v}
-  const style=loadJSON(STYLE_KEY,{weight:'400',color:'#181818',showCharacter:true,showBunny:true,showSparkles:true});
-  $('#msgWeight').value=String(style.weight||'400');$('#msgColor').value=style.color||'#181818';
+  const style=loadJSON(STYLE_KEY,{weight:'600',color:'#181818',showCharacter:true,showBunny:true,showSparkles:true});
+  if(!localStorage.getItem(TEXT_WEIGHT_MIGRATION_KEY)){
+    if(String(style.weight||'400')==='400')style.weight='600';
+    saveJSON(STYLE_KEY,style);
+    localStorage.setItem(TEXT_WEIGHT_MIGRATION_KEY,'1');
+  }
+  $('#msgWeight').value=String(style.weight||'600');$('#msgColor').value=style.color||'#181818';
   $('#showCharacter').checked=style.showCharacter!==false;
   $('#showBunny').checked=style.showBunny!==false;
   $('#showSparkles').checked=style.showSparkles!==false;
@@ -705,7 +757,7 @@ function wrapText(text,maxW,size,weight,font){
   if(line||!lines.length)lines.push(line);return lines;
 }
 function fitHeartText(text,maxW,maxH){
-  const weight=Number($('#msgWeight').value||400);
+  const weight=Number($('#msgWeight').value||600);
   for(let s=82;s>=24;s-=2){
     const lines=wrapText(text,maxW,s,weight,TEXT_FONT),lh=s*1.28;
     ctx.font=`${weight} ${s}px ${TEXT_FONT}`;
@@ -799,7 +851,7 @@ async function renderPreview(person=people[current]){
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='#181818';
-    const nameWeight=Number($('#msgWeight').value||400);
+    const nameWeight=Math.max(600,Number($('#msgWeight').value||600));
     ctx.font=`${nameWeight} ${fitSingle(name,w*.34,58,28,nameWeight,TEXT_FONT)}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,h*L.nameY);
 
