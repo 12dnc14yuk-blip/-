@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v15.3 名前優先版</title>
+<title>ありがとうメッセージメーカー v15.3.1 名前優先版</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
@@ -185,7 +185,7 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v15.3 名前優先版</h1>
+  <h1>🐰 ありがとうメッセージメーカー v15.3.1 名前優先版</h1>
   <p class="lead">ダークモード専用。名前認識を最優先。完全一致は自動補正、似た名前は「この人かも？」で確認できます。コインは読みません。</p>
 
   <section class="card">
@@ -275,7 +275,7 @@ function digits(s){
 }
 function rankOf(s){
   let t=(s||'').normalize('NFKC');
-  let m=t.match(/Rank\s*\.?\s*([1234])/i);
+  let m=t.match(/Rank\s*\.?\s*([1-7])/i);
   return m?parseInt(m[1],10):null;
 }
 function isNew(s){ return /新規/.test(s||'') }
