@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v15.3.1 名前優先版</title>
+<title>ありがとうメッセージメーカー v15.3.2 Rank7完全対応</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
@@ -185,7 +185,7 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v15.3.1 名前優先版</h1>
+  <h1>🐰 ありがとうメッセージメーカー v15.3.2 Rank7完全対応</h1>
   <p class="lead">ダークモード専用。名前認識を最優先。完全一致は自動補正、似た名前は「この人かも？」で確認できます。コインは読みません。</p>
 
   <section class="card">
@@ -905,12 +905,12 @@ renderPeople=function(){
     <div class="editgrid v153grid">
       <label>認識名<input data-i="${i}" data-k="name" value="${attr(p.name||'')}"></label>
       <label>本文名<input data-i="${i}" data-k="nick" value="${attr(p.tempNick||nicknameFor(p.name||''))}"></label>
-      <label>Rank<select data-i="${i}" data-k="rank"><option value="">なし</option>${[1,2,3,4].map(n=>`<option value="${n}"${p.rank===n?' selected':''}>Rank.${n}</option>`).join('')}</select></label>
+      <label>Rank<select data-i="${i}" data-k="rank"><option value="">なし</option>${[1,2,3,4,5,6,7].map(n=>`<option value="${n}"${p.rank===n?' selected':''}>Rank.${n}</option>`).join('')}</select></label>
     </div>
     <div class="newRankPanel">
       <div class="newRankTitle">🌱 新規Rank ${p.newRank?`<span class="newVisible">新規 Rank.${p.newRank}</span>`:'<span class="mutedSmall">なし</span>'}</div>
       <div class="newRankBtns">
-        ${[1,2,3,4].map(n=>`<button type="button" class="newRankBtn ${p.newRank===n?'active':''}" data-newrank-i="${i}" data-newrank-v="${n}">Rank.${n}</button>`).join('')}
+        ${[1,2,3,4,5,6,7].map(n=>`<button type="button" class="newRankBtn ${p.newRank===n?'active':''}" data-newrank-i="${i}" data-newrank-v="${n}">Rank.${n}</button>`).join('')}
       </div>
     </div>
     <div class="btnrow v153actions">
