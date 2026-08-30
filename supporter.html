@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.10 2人編集版</title>
+<title>サポーター画像メーカー v5.10.1 2人編集調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -282,27 +282,23 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 .quickEditorHeader{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;padding:0 2px}
 .quickEditorHeader b{display:block;font-size:18px;line-height:1.2;color:#7f4b67}
 .quickEditorMeta{font-size:11px;color:var(--muted);font-weight:800}
-.quickPairGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
-.quickMiniCard{border:1px solid rgba(230,204,218,.95);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(252,247,250,.94));box-shadow:inset 0 1px 0 rgba(255,255,255,.95);padding:12px;transition:.18s ease}
+.quickPairGrid{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+.quickMiniCard{border:1px solid rgba(230,204,218,.95);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(252,247,250,.94));box-shadow:inset 0 1px 0 rgba(255,255,255,.95);padding:12px 12px 14px;transition:.18s ease}
 .quickMiniCard.active{border-color:#ef90cf;box-shadow:0 0 0 2px rgba(242,155,213,.18), inset 0 1px 0 rgba(255,255,255,.96)}
 .quickMiniCard[hidden]{display:none!important}
-.quickMiniHead{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
-.quickMiniNameBtn{appearance:none;border:none;background:transparent;padding:0;margin:0;font-size:24px;line-height:1.15;font-weight:900;color:#7f4b67;text-align:left;cursor:pointer;letter-spacing:.01em;font-family:'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif}
+.quickMiniHead{position:relative;display:block;margin-bottom:8px}
+.quickMiniNameBtn{appearance:none;border:none;background:transparent;padding:0 92px 0 0;margin:0;display:block;width:100%;font-size:18px;line-height:1.25;font-weight:900;color:#7f4b67;text-align:left;cursor:pointer;letter-spacing:.01em;font-family:'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 .quickMiniNameBtn:hover{opacity:.9}
-.quickMiniBadge{white-space:nowrap;opacity:.86;align-self:flex-start}
+.quickMiniBadge{position:absolute;right:0;top:0;white-space:nowrap;opacity:.9;max-width:88px;overflow:hidden;text-overflow:ellipsis}
 .quickMsgLabel{display:block;color:#8f7081;font-size:11px;font-weight:900;letter-spacing:.12em;margin:0 0 6px}
-.quickMsgArea{width:100%;margin-top:6px;min-height:118px;border-radius:18px;background:#fff;border:1px solid rgba(230,204,218,.95);box-shadow:inset 0 1px 0 rgba(255,255,255,.95);resize:vertical;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;font-weight:700;line-height:1.48;letter-spacing:.01em}
+.quickMsgArea{width:100%;margin-top:6px;min-height:112px;border-radius:18px;background:#fff;border:1px solid rgba(230,204,218,.95);box-shadow:inset 0 1px 0 rgba(255,255,255,.95);resize:vertical;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;font-weight:700;line-height:1.48;letter-spacing:.01em}
 .quickMsgArea::placeholder{color:#b9a6b1}
-.quickMiniActions{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;margin-top:10px}
+.quickMiniActions{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;margin-top:10px}
 .quickMiniActions button{height:46px;white-space:nowrap;padding:0 12px}
 .quickEditorHint{margin-top:8px}
-@media(max-width:720px){
-  .quickPairGrid{grid-template-columns:1fr 1fr}
-  .quickMiniNameBtn{font-size:22px}
-  .quickMiniActions{grid-template-columns:88px minmax(0,1fr)}
-}
-@media(max-width:360px){
-  .quickPairGrid{grid-template-columns:1fr}
+@media(max-width:520px){
+  .quickMiniNameBtn{font-size:17px;padding-right:86px}
+  .quickMiniBadge{max-width:82px;font-size:12px}
   .quickMiniActions{grid-template-columns:92px minmax(0,1fr)}
 }
 </style>
@@ -315,8 +311,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.10 2人編集版</h1>
-    <div class="lead">名前は上表示にして、2人ずつ一言を入れやすく整理。英語見出しは少し下げて大きめ・色味も調整しています。</div>
+    <h1>🌷 サポーター画像メーカー v5.10.1 2人編集調整版</h1>
+    <div class="lead">2人編集欄を見やすく整理し、名前は小さめで上表示。サポ画像の英語文はさらに大きく、名前位置も少し下げています。</div>
   </section>
 
   <section class="card">
@@ -507,7 +503,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.10：2人ずつ編集・名前を上表示・英語見出し位置/サイズ/色を調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.10.1：2人編集欄を縦並び整理・名前縮小・英語見出し拡大・名前位置下げ</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1046,14 +1042,14 @@ async function renderPreview(person=people[current]){
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
     ctx.fillStyle='rgba(171,129,150,.98)';
-    ctx.font=`700 ${fitSingle(NAME_TOPTEXT,w*.72,34,18,700,TEXT_FONT)}px ${TEXT_FONT}`;
-    ctx.fillText(NAME_TOPTEXT,w*L.nameX,h*(L.nameY-.028));
+    ctx.font=`700 ${fitSingle(NAME_TOPTEXT,w*.78,42,20,700,TEXT_FONT)}px ${TEXT_FONT}`;
+    ctx.fillText(NAME_TOPTEXT,w*L.nameX,h*(L.nameY-.018));
 
     ctx.fillStyle='#181818';
     const nameWeight=Math.max(700,Number($('#msgWeight').value||700));
-    const nameSize=fitSingle(name,w*.62,74,34,nameWeight,TEXT_FONT);
+    const nameSize=fitSingle(name,w*.62,70,32,nameWeight,TEXT_FONT);
     ctx.font=`${nameWeight} ${nameSize}px ${TEXT_FONT}`;
-    ctx.fillText(name,w*L.nameX,h*(L.nameY+.006));
+    ctx.fillText(name,w*L.nameX,h*(L.nameY+.018));
 
     const txt=person.msg||'';
     const para=fitHeartText(txt,w*L.msgW,h*L.msgH);
