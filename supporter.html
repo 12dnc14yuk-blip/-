@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8fb">
-<title>サポーター画像メーカー v5.6 反映ボタン版</title>
+
+<link rel="preload" href="TekitouPoem.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="TekitouPoem_SemiBold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
+
+<title>サポーター画像メーカー v5.6.3 名前左・一言BOX版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -62,10 +68,58 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .quickEditorGrid label{font-size:12px;font-weight:800;color:#7f4b67}
 .quickEditorGrid input,.quickEditorGrid textarea{margin-top:4px;background:#fff}
 .quickEditorGrid textarea{min-height:74px;resize:vertical}
-.quickEditorCompact{display:grid;grid-template-columns:minmax(130px,.78fr) minmax(0,1.22fr) auto;gap:8px;align-items:end}
-.quickEditorCompact label{margin:0}
-.quickEditorCompact textarea{min-height:68px;border-radius:14px}
-.quickApplyBtn{height:68px;white-space:nowrap;padding:0 16px;align-self:stretch}
+.quickEditorCompact{
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  gap:8px 10px;
+  align-items:stretch;
+}
+.quickNameSide{
+  grid-column:1;
+  grid-row:1;
+  min-height:132px;
+  border:1px solid #ead0df;
+  border-radius:16px;
+  background:#fff;
+  padding:10px 8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.quickNameSide .sideLabel{
+  font-size:10px;
+  color:var(--muted);
+  font-weight:800;
+  margin-bottom:6px;
+}
+.quickNameSide b{
+  font-family:"TekitouPoem","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  font-size:18px;
+  line-height:1.25;
+  color:#6f4a60;
+  overflow-wrap:anywhere;
+}
+.quickMsgLabel{
+  grid-column:2;
+  grid-row:1;
+  margin:0;
+}
+.quickMsgLabel textarea{
+  min-height:132px;
+  border-radius:16px;
+  resize:vertical;
+}
+.quickApplyBtn{
+  grid-column:2;
+  grid-row:2;
+  height:48px;
+  white-space:nowrap;
+  padding:0 18px;
+  justify-self:stretch;
+}
 .quickEditorHint{margin-top:7px}
 .peopleScroll{max-height:36vh;overflow:auto}
 .inlineAdd details{margin-top:0;background:#fff;border-style:dashed}
@@ -93,8 +147,11 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .summaryChip{min-height:54px;padding:7px}
   .summaryChip.currentChip{grid-column:span 2}
   .quickEditorGrid{grid-template-columns:1fr}
-  .quickEditorCompact{grid-template-columns:1fr}
-  .quickApplyBtn{height:auto;padding:11px 13px}
+  .quickEditorCompact{grid-template-columns:82px minmax(0,1fr)}
+  .quickNameSide{min-height:126px;padding:8px 6px}
+  .quickNameSide b{font-size:16px}
+  .quickMsgLabel{grid-column:2;grid-row:1}
+  .quickApplyBtn{grid-column:2;grid-row:2;height:auto;padding:11px 13px;width:100%;justify-self:stretch}
   .quickEditor{padding:10px}
 }
 @media(max-width:420px){
@@ -161,6 +218,14 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 }
 </style>
 
+
+<style id="v561-font-lock">
+#quickMsgInput{
+  font-family:"TekitouPoem","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  font-weight:400;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -170,8 +235,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.6 反映ボタン版</h1>
-    <div class="lead">分離済み素材をそのまま重ねる方式。選択中の名前と一言を上でまとめて編集し、反映ボタンで更新できるようにしました。</div>
+    <h1>🌷 サポーター画像メーカー v5.6.3 名前左・一言BOX版</h1>
+    <div class="lead">分離済み素材をそのまま重ねる方式。選択中の名前を左、一言入力欄を右にまとめて表示します。</div>
   </section>
 
   <section class="card">
@@ -261,15 +326,16 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         <span class="badge quickBadge" id="quickCurrentBadge">-</span>
       </div>
       <div class="quickEditorCompact">
-        <label>名前
-          <input id="quickNameInput" type="text" placeholder="名前">
-        </label>
-        <label>一言
-          <textarea id="quickMsgInput" rows="2" placeholder="ここに一言"></textarea>
+        <div class="quickNameSide">
+          <span class="sideLabel">名前</span>
+          <b id="quickSideName">対象者なし</b>
+        </div>
+        <label class="quickMsgLabel">一言
+          <textarea id="quickMsgInput" rows="4" placeholder="ここに一言"></textarea>
         </label>
         <button type="button" class="primary quickApplyBtn" id="quickApplyBtn">反映</button>
       </div>
-      <div class="mini quickEditorHint">上で名前と一言を編集して「反映」を押すと、プレビューと一覧の両方に反映されます。</div>
+      <div class="mini quickEditorHint">左に選択中の名前、右に一言。入力後「反映」でプレビューに反映されます。</div>
     </div></div>
 
     <div class="grid2" style="margin-bottom:10px">
@@ -342,7 +408,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.6：反映ボタン・横並び編集・位置微調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.6.3：名前を左・一言BOXを右に配置</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -521,18 +587,20 @@ function rankBadgeText(p){
   return `${sharedNew?'🌱 新規 ':''}Rank.${p.rank}`;
 }
 function syncCurrentEditor(){
-  const nameEl=$('#quickNameInput'), msgEl=$('#quickMsgInput');
-  const currentName=$('#quickCurrentName'), badge=$('#quickCurrentBadge');
+  const msgEl=$('#quickMsgInput');
+  const currentName=$('#quickCurrentName'), sideName=$('#quickSideName'), badge=$('#quickCurrentBadge');
   const p=people[current];
   if(!p){
-    currentName.textContent='対象者なし'; badge.textContent='-';
-    if(nameEl){nameEl.value=''; nameEl.disabled=true;}
+    currentName.textContent='対象者なし';
+    if(sideName)sideName.textContent='対象者なし';
+    badge.textContent='-';
     if(msgEl){msgEl.value=''; msgEl.disabled=true;}
     return;
   }
-  currentName.textContent=p.name||p.official||'名前未設定';
+  const shownName=p.name||p.official||'名前未設定';
+  currentName.textContent=shownName;
+  if(sideName)sideName.textContent=shownName;
   badge.textContent=rankBadgeText(p);
-  if(nameEl){ if(nameEl.value!==String(p.name||'')) nameEl.value=p.name||''; nameEl.disabled=false; }
   if(msgEl){ if(msgEl.value!==String(p.msg||'')) msgEl.value=p.msg||''; msgEl.disabled=false; }
 }
 function updateRosterEntryByOfficial(official, patch){
@@ -613,6 +681,20 @@ function drawSeason(){
 
 const TEXT_FONT="'TekitouPoem','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
 const UI_FONT="'Hiragino Maru Gothic ProN','Yu Gothic','Hiragino Sans',sans-serif";
+let tekitoFontReady=false;
+async function ensureTekitouPoem(){
+  if(tekitoFontReady)return;
+  if(!document.fonts){tekitoFontReady=true;return;}
+  try{
+    await Promise.all([
+      document.fonts.load('400 48px "TekitouPoem"'),
+      document.fonts.load('600 48px "TekitouPoem"'),
+      document.fonts.load('700 48px "TekitouPoem"'),
+      document.fonts.load('800 48px "TekitouPoem"')
+    ]);
+  }catch(e){}
+  tekitoFontReady=true;
+}
 function wrapText(text,maxW,size,weight,font){
   ctx.font=`${weight} ${size}px ${font}`;const lines=[];let line='';
   for(const ch of [...(text||'')]){
@@ -684,8 +766,9 @@ function fitSingle(text,maxW,maxSize,minSize,weight=800,font=UI_FONT){
   return s;
 }
 
-function renderPreview(person=people[current]){
+async function renderPreview(person=people[current]){
   if(!template.complete)return;
+  await ensureTekitouPoem();
   canvas.width=1024;canvas.height=1536;
   ctx.clearRect(0,0,1024,1536);
 
@@ -733,7 +816,10 @@ function renderPreview(person=people[current]){
 
   if($('#showSparkles').checked&&sparkles.complete)ctx.drawImage(sparkles,0,0,1024,1536);
 }
-function currentPng(person){renderPreview(person);return canvas.toDataURL('image/png')}
+async function currentPng(person){
+  await renderPreview(person);
+  return canvas.toDataURL('image/png');
+}
 
 function loadImages(){
   character.src='character.png';
@@ -754,21 +840,14 @@ $('#nextBtn').onclick=()=>{if(!people.length)return;current=(current+1)%people.l
 
 function applyQuickEditor(){
   const p=people[current]; if(!p) return;
-  const newName=normalize($('#quickNameInput').value)||p.official||'';
-  const newMsg=$('#quickMsgInput').value;
-  p.name=newName;
-  p.msg=newMsg;
-  updateRosterEntryByOfficial(p.official,{name:p.name, rank:p.rank});
+  p.msg=$('#quickMsgInput').value;
   saveDrafts();
-  $('#sumCurrent').textContent=p.name||'なし';
-  $('#whoLabel').textContent=`${current+1} / ${people.length}　${p.name||''}`;
-  $('#quickCurrentName').textContent=p.name||'名前未設定';
+  syncCurrentEditor();
   renderPeople();
   renderPreview();
-  $('#saveStatus').textContent='反映しました。';
+  $('#saveStatus').textContent='一言を反映しました。';
 }
 $('#quickApplyBtn').onclick=applyQuickEditor;
-$('#quickNameInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyQuickEditor();}});
 $('#quickMsgInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();applyQuickEditor();}});
 
 $('#templateFile').onchange=e=>{
@@ -799,16 +878,20 @@ $('#resetLayoutBtn').onclick=()=>{
   renderPreview();
 };
 
-$('#downloadOne').onclick=()=>{
+$('#downloadOne').onclick=async()=>{
   if(!people.length)return alert('対象者がいません');
-  const p=people[current],a=document.createElement('a');a.href=currentPng(p);a.download=`${currentMonthKey()}_${safeName(p.name)}.png`;a.click();renderPreview();
+  const p=people[current],a=document.createElement('a');
+  a.href=await currentPng(p);
+  a.download=`${currentMonthKey()}_${safeName(p.name)}.png`;
+  a.click();
+  renderPreview();
 };
 $('#downloadAll').onclick=async()=>{
   if(!people.length)return alert('対象者がいません');
   if(typeof JSZip==='undefined')return alert('ZIPライブラリを読み込めませんでした');
   const zip=new JSZip();$('#saveStatus').textContent='全員分を作成中…';
   for(let i=0;i<people.length;i++){
-    const p=people[i],blob=await(await fetch(currentPng(p))).blob();
+    const p=people[i],blob=await(await fetch(await currentPng(p))).blob();
     zip.file(`${String(i+1).padStart(2,'0')}_${safeName(p.name)}.png`,blob);
   }
   const out=await zip.generateAsync({type:'blob'}),a=document.createElement('a');
@@ -817,7 +900,8 @@ $('#downloadAll').onclick=async()=>{
 };
 
 loadLayout();loadBgStyle();loadImages();loadSeasonAssets();reloadMonth();
-document.fonts?.ready?.then(renderPreview);
+ensureTekitouPoem().then(()=>renderPreview());
+document.fonts?.ready?.then(()=>renderPreview());
 </script>
 </body>
 </html>
