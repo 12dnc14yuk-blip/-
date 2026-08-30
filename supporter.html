@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.10.2 スワイプ編集版</title>
+<title>サポーター画像メーカー v5.10.3 英文カラー比較版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -306,6 +306,23 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .quickMsgArea{min-height:124px}
 }
 </style>
+
+<style id="v5103-english-color-presets">
+.englishColorRow{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.englishColorBtn{
+  appearance:none;border:1px solid var(--line);background:#fff;color:#7c5d6f;
+  border-radius:999px;padding:8px 12px;font-size:12px;font-weight:900
+}
+.englishColorBtn.active{
+  box-shadow:0 0 0 2px rgba(237,112,198,.16);
+  border-color:#e89ac9;background:#fff8fc
+}
+.englishColorDot{
+  width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:5px;
+  vertical-align:-1px;border:1px solid rgba(80,59,72,.12)
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -315,8 +332,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.10.2 スワイプ編集版</h1>
-    <div class="lead">2人編集欄は横スワイプで切り替えやすくし、名前は小さめで上表示。サポ画像の英語文は色味もやわらかく調整しています。</div>
+    <h1>🌷 サポーター画像メーカー v5.10.3 英文カラー比較版</h1>
+    <div class="lead">英文カラーを3パターンからワンタップで比較できます。その他のレイアウトはそのままです。</div>
   </section>
 
   <section class="card">
@@ -452,6 +469,13 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
           </label>
         </div>
         <hr>
+        <label>英文カラー</label>
+        <div class="englishColorRow" id="englishColorRow">
+          <button type="button" class="englishColorBtn active" data-color="#b96f97"><span class="englishColorDot" style="background:#b96f97"></span>ローズ</button>
+          <button type="button" class="englishColorBtn" data-color="#9f748b"><span class="englishColorDot" style="background:#9f748b"></span>モーヴ</button>
+          <button type="button" class="englishColorBtn" data-color="#b7847f"><span class="englishColorDot" style="background:#b7847f"></span>ココアピンク</button>
+        </div>
+        <hr>
         <label>背景カラー</label>
         <div class="seasonModeRow" id="seasonModeRow">
           <button type="button" class="seasonModeBtn active" data-season="auto">自動</button>
@@ -509,7 +533,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.10.2：2人編集欄を横スワイプ化・名前小さめ・英語見出しの色/位置調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.10.3：英文カラー3種をワンタップ比較</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -893,6 +917,7 @@ function drawSeason(){
 
 const TEXT_FONT="'TekitouPoem','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
 const NAME_TOPTEXT='Thank you for being my supporter';
+const ENGLISH_COLOR_KEY='shuri_supporter_english_color_v5103';
 const UI_FONT="'Hiragino Maru Gothic ProN','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Yu Gothic','Hiragino Sans',sans-serif";
 let tekitoFontReady=false;
 async function ensureTekitouPoem(){
@@ -1024,6 +1049,16 @@ function fitSingle(text,maxW,maxSize,minSize,weight=800,font=UI_FONT){
   return s;
 }
 
+function englishHeadingColor(){
+  return localStorage.getItem(ENGLISH_COLOR_KEY)||'#b96f97';
+}
+function syncEnglishColorButtons(){
+  const c=englishHeadingColor().toLowerCase();
+  document.querySelectorAll('.englishColorBtn').forEach(btn=>{
+    btn.classList.toggle('active', String(btn.dataset.color||'').toLowerCase()===c);
+  });
+}
+
 async function renderPreview(person=people[current]){
   if(!template.complete)return;
   await ensureTekitouPoem();
@@ -1056,7 +1091,7 @@ async function renderPreview(person=people[current]){
 
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
-    ctx.fillStyle='rgba(191,126,162,.98)';
+    ctx.fillStyle=englishHeadingColor();
     ctx.font=`700 ${fitSingle(NAME_TOPTEXT,w*.80,46,22,700,TEXT_FONT)}px ${TEXT_FONT}`;
     ctx.fillText(NAME_TOPTEXT,w*L.nameX,h*(L.nameY-.006));
 
@@ -1114,6 +1149,15 @@ document.querySelectorAll('.seasonModeBtn').forEach(btn=>{
     chooseBgColor(false);
   };
 });
+document.querySelectorAll('.englishColorBtn').forEach(btn=>{
+  btn.onclick=()=>{
+    localStorage.setItem(ENGLISH_COLOR_KEY,btn.dataset.color||'#b96f97');
+    syncEnglishColorButtons();
+    renderPreview();
+  };
+});
+syncEnglishColorButtons();
+
 $('#shuffleBgBtn').onclick=()=>chooseBgColor(true);
 
 $('#swapSeasonBtn').onclick=()=>{if(!seasonAssets.length)return alert('先に季節素材を追加してください');seasonSelected=(seasonSelected+1)%seasonAssets.length;setSeasonImage()};
