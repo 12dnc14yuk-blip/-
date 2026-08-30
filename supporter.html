@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.9.1 名前アクセント版</title>
+<title>サポーター画像メーカー v5.9.2 編集見やすさ版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -253,10 +253,15 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 </style>
 
 
-<style id="v561-font-lock">
+<style id="v592-editor-font-lock">
 #quickMsgInput{
-  font-family:"TekitouPoem","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
-  font-weight:400;
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  font-weight:700;
+  line-height:1.45;
+  letter-spacing:.01em;
+}
+#quickMsgInput::placeholder{
+  color:#b9a6b1;
 }
 </style>
 
@@ -269,7 +274,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.9.1 名前アクセント版</h1>
+    <h1>🌷 サポーター画像メーカー v5.9.2 編集見やすさ版</h1>
     <div class="lead">名前を選んで一言を入れて反映するだけ。本文は少し太め、名前欄には薄いアクセント文字を入れています。</div>
   </section>
 
@@ -366,7 +371,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
         </label>
         <button type="button" class="primary quickApplyBtn" id="quickApplyBtn">反映</button>
       </div>
-      <div class="mini quickEditorHint">一言を入れて「反映」。</div>
+      <div class="mini quickEditorHint">一言を入れて「反映」。編集欄は見やすいフォントです。</div>
     </div>
 
     <details class="compactSettings">
@@ -443,7 +448,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.9.1：本文を少し太く・名前欄にアクセント追加</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.9.2：本文そのまま・編集欄の名前/入力フォントを見やすく</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -636,20 +641,34 @@ function rankBadgeText(p){
   if(p.manual) return '手入力';
   return `${sharedNew?'🌱 新規 ':''}Rank.${p.rank}`;
 }
+function tuneQuickSideName(text){
+  const el=$('#quickSideName');
+  if(!el) return;
+  const t=String(text||'').trim();
+  const len=[...t].length;
+  let size=34;
+  if(!t || t==='対象者なし') size=24;
+  else if(len>=11) size=18;
+  else if(len>=9) size=20;
+  else if(len>=7) size=24;
+  else if(len>=5) size=28;
+  else if(len>=4) size=31;
+  el.style.fontSize=size+'px';
+}
 function syncCurrentEditor(){
   const msgEl=$('#quickMsgInput');
   const currentName=$('#quickCurrentName'), sideName=$('#quickSideName'), badge=$('#quickCurrentBadge');
   const p=people[current];
   if(!p){
     currentName.textContent='対象者なし';
-    if(sideName)sideName.textContent='対象者なし';
+    if(sideName){sideName.textContent='対象者なし'; tuneQuickSideName('対象者なし');}
     badge.textContent='-';
     if(msgEl){msgEl.value=''; msgEl.disabled=true;}
     return;
   }
   const shownName=p.name||p.official||'名前未設定';
   currentName.textContent=shownName;
-  if(sideName)sideName.textContent=shownName;
+  if(sideName){sideName.textContent=shownName; tuneQuickSideName(shownName);}
   badge.textContent=rankBadgeText(p);
   if(msgEl){ if(msgEl.value!==String(p.msg||'')) msgEl.value=p.msg||''; msgEl.disabled=false; }
 }
