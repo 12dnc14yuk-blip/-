@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ありがとうメッセージメーカー v14.3 安定版</title>
+<title>ありがとうメッセージメーカー v14.4 安定優先</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
 /* v14 learning UI */
 function v14NormalizeName(s){
@@ -18,8 +18,7 @@ function v14NormalizeName(s){
 function v14ExactAlias(name){
   if(!name)return null;
   const n=v14NormalizeName(name);
-  if(state.nick[n])return {official:n,nick:state.nick[n],score:1};
-  return null;
+  return state.nick[n] ? {official:n,nick:state.nick[n],score:1} : null;
 }
 function v14NameSuggestions(name, limit=3){
   const n=v14NormalizeName(name);
@@ -107,7 +106,7 @@ renderPeople=function(){
     if(p.name)state.nick[v14NormalizeName(p.name)]=hit.nick;
     p.tempNick=hit.nick;p.learned=true;
     persist();renderDict();renderPeople();generateResult();
-    setStatus(`「${hit.nick}」として覚えました。次回からこの読み方も自動変換します。`);
+    setStatus(`「${hit.nick}」として覚えました。`);
   });
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.people.splice(+b.dataset.del,1);renderPeople();generateResult();v14Strip()});
   v14Strip();
@@ -269,16 +268,18 @@ input,select,textarea{padding:7px 8px;font-size:13px;border-radius:9px}
 #learnPanel{padding:10px;max-height:45vh;overflow:auto}
 @media(max-width:560px){.dictHead{grid-template-columns:1fr 1fr 52px}.nickrow{grid-template-columns:1fr 1fr 52px!important}.nickrow button{grid-column:auto!important;padding:8px 4px;font-size:11px}}
 </style>
-<style id="v143-ui">
+
+<style id="v144-ui">
 .maybeBox{margin:6px 0 4px;padding:7px 8px;border-radius:10px;background:#fff8df;border:1px solid #f0cf74;font-size:11px}
 .maybeBtns{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .maybeBtn{font-size:11px!important;padding:6px 8px!important;border-radius:999px!important;background:#fff!important;color:#5b463d!important;border:1px solid #dccfc7!important;font-weight:800!important}
 .maybeBtn small{font-size:9px;color:#9a8174}
 </style>
+
 </head>
 <body>
 <div class="wrap">
-  <h1>🐰 ありがとうメッセージメーカー v14.3 安定版</h1>
+  <h1>🐰 ありがとうメッセージメーカー v14.4 安定優先</h1>
   <p class="lead">ダークモード専用。左の丸アイコンを人物の起点に、名前・コイン・Rankだけを下書き。一度直した名前は辞書に覚えて、次回から自動補正します。</p>
 
   <section class="card">
@@ -565,15 +566,29 @@ function prepCanvas(src, mode='normal'){
   }
   x.putImageData(im,0,0); return c;
 }
+
+function withTimeout(promise, ms, label='OCR'){
+  let timer;
+  const timeout=new Promise((_,rej)=>{
+    timer=setTimeout(()=>rej(new Error(label+' timeout')),ms);
+  });
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
+
 async function ocrCanvas(c, psm=7, kind='generic'){
-  const variants=kind==='name'?['normal','gray','bw']:['normal'];
+  const variants=kind==='name'?['normal','gray']:['normal'];
   let candidates=[];
   for(const mode of variants){
     const pc=prepCanvas(c,mode);
-    const {data}=await Tesseract.recognize(pc,'jpn+eng',{
-      logger:m=>{ if(m.status==='recognizing text') setProgress(15+Math.round(m.progress*70)); },
-      tessedit_pageseg_mode:String(psm), preserve_interword_spaces:'1'
-    });
+    let data;
+    try{
+      ({data}=await withTimeout(Tesseract.recognize(pc,'jpn+eng',{
+        logger:m=>{ if(m.status==='recognizing text') setProgress(15+Math.round(m.progress*70)); },
+        tessedit_pageseg_mode:String(psm), preserve_interword_spaces:'1'
+      }),9000,kind));
+    }catch(e){
+      continue;
+    }
     const t=norm(data.text); if(t)candidates.push(t);
   }
   if(!candidates.length)return'';
@@ -645,8 +660,14 @@ async function analyze(){
     }
     rows.sort((a,b)=>a.cy-b.cy);
     for(let k=0;k<rows.length;k++){
-      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…`);
-      let p=await readPerson(img,rows[k].cy,i);
+      setStatus(`画像 ${i+1}/${state.images.length}：${k+1}/${rows.length}人目を読取中…（最大9秒で次へ）`);
+      let p;
+      try{
+        p=await readPerson(img,rows[k].cy,i);
+      }catch(e){
+        setStatus(`画像 ${i+1}/${state.images.length}：${k+1}人目は読取失敗。次へ進みます…`);
+        continue;
+      }
       // suppress obvious non-person OCR
       if(/ギフトコイン数|メッセージ|送信先|すべて選択|サポーター/.test(p.name)) continue;
       state.people.push(p);
