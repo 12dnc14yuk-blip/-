@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.18.1 MEMORY二分割配置</title>
+<title>サポーター画像メーカー v5.18.3 名前一覧3〜4列版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -52,7 +52,7 @@ details{border:1px solid var(--line);border-radius:15px;background:#fffcfd;margi
 summary{cursor:pointer;font-weight:900;padding:11px 12px}
 .detailsBody{padding:0 11px 11px}
 .peopleScroll{max-height:48vh;overflow:auto}
-#people{display:grid;gap:8px}
+#people{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
 .person{padding:10px;border:1px solid var(--line);border-radius:15px;background:#fff}
 .person.active{outline:2px solid #f29bd5}
 .personHead{display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -148,9 +148,9 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
 .peopleScroll{max-height:none;overflow:visible}
 
 .namePickList{
-  display:flex;
-  flex-wrap:wrap;
-  gap:7px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
   margin-top:8px;
 }
 .namePickBtn{
@@ -158,10 +158,19 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
   border:1px solid var(--line);
   background:#fff;
   color:#704e61;
-  border-radius:999px;
-  padding:8px 11px;
+  border-radius:16px;
+  min-height:48px;
+  width:100%;
+  padding:8px 10px;
   font-size:12px;
   font-weight:900;
+  line-height:1.15;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  flex-direction:column;
+  overflow:hidden;
 }
 .namePickBtn.active{
   background:linear-gradient(135deg,#ed70c6,#ff9cda);
@@ -169,9 +178,11 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
   border-color:#ed70c6;
 }
 .namePickBtn .rankMini{
-  margin-left:4px;
-  font-size:9px;
-  opacity:.75;
+  margin-left:0;
+  margin-top:3px;
+  font-size:10px;
+  opacity:.78;
+  line-height:1;
 }
 .inlineAdd details{margin-top:0;background:#fff;border-style:dashed}
 .inlineAdd summary{padding:10px 12px;font-size:13px}
@@ -333,7 +344,9 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 .quickMiniActions{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;margin-top:10px}
 .quickMiniActions button{height:46px;white-space:nowrap;padding:0 12px}
 .quickEditorHint{margin-top:8px}
-@media(min-width:780px){.quickMiniCard{flex-basis:calc(50% - 6px)}}
+.singleEditorGrid{display:block}
+.singleEditorGrid .quickMiniCard{width:100%;max-width:none;flex:1 1 auto}
+@media(min-width:780px){.quickMiniCard{flex-basis:calc(50% - 6px)}.singleEditorGrid .quickMiniCard{flex-basis:100%}}
 @media(max-width:520px){
   .quickMiniNameBtn{font-size:14px;padding-right:90px}
   .quickMiniBadge{max-width:88px;font-size:12px}
@@ -387,6 +400,12 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 .monthlyScaleRow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .monthlyResetBtn{width:100%}
 @media(max-width:430px){.monthlySlotGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.monthlyThumb{height:96px}.monthlySlot{padding:8px}.monthlySlotActions{grid-template-columns:1fr}}
+@media(min-width:700px){
+  .namePickList{grid-template-columns:repeat(4,minmax(0,1fr));}
+}
+@media(max-width:380px){
+  .namePickList{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
 </style>
 </head>
 <body>
@@ -397,7 +416,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.18.1 MEMORY二分割配置</h1>
+    <h1>🌷 サポーター画像メーカー v5.18.3 名前一覧3〜4列版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -442,6 +461,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
       <summary>名前一覧 <span id="peopleCountLabel" class="mini">0人</span></summary>
       <div class="detailsBody">
         <div id="people" class="namePickList"></div>
+        <div class="mini" style="margin-top:6px">名前一覧はスマホで3列、広めの画面では4列表示です。</div>
         <div class="inlineAdd">
           <details>
             <summary>＋ 名前を手入力追加（必要な時だけ）</summary>
@@ -602,11 +622,11 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 
     <div class="quickEditor" id="quickEditor">
       <div class="quickEditorHeader">
-        <b>2人ずつまとめて一言編集</b>
+        <b>一言編集</b>
         <span class="quickEditorMeta" id="quickPairLabel">-</span>
       </div>
       <div class="quickPairViewport" id="quickPairViewport">
-        <div class="quickPairGrid">
+        <div class="quickPairGrid singleEditorGrid">
           <div class="quickMiniCard" id="quickCardA">
             <div class="quickMiniHead">
               <button type="button" class="quickMiniNameBtn" id="quickNameA">対象者なし</button>
@@ -620,22 +640,9 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
               <button type="button" class="primary" id="quickApplyA">反映</button>
             </div>
           </div>
-          <div class="quickMiniCard" id="quickCardB">
-            <div class="quickMiniHead">
-              <button type="button" class="quickMiniNameBtn" id="quickNameB">対象者なし</button>
-              <span class="badge quickMiniBadge" id="quickBadgeB">-</span>
-            </div>
-            <label class="quickMsgLabel">MESSAGE
-              <textarea class="quickMsgArea" id="quickMsgB" rows="5" placeholder="ここに一言"></textarea>
-            </label>
-            <div class="quickMiniActions">
-              <button type="button" class="secondary" id="quickClearB">クリア</button>
-              <button type="button" class="primary" id="quickApplyB">反映</button>
-            </div>
-          </div>
         </div>
       </div>
-      <div class="mini quickEditorHint">横にスワイプして2人目も編集できます。名前をタップした人が下の画像プレビューに出ます。前/次は2人ずつ進みます。</div>
+      <div class="mini quickEditorHint">名前一覧から選んだ人を1人ずつ編集できます。名前をタップした人が下の画像プレビューに出ます。前/次は1人ずつ進みます。</div>
     </div>
 
     <details class="compactSettings">
@@ -719,7 +726,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.18.1：SUPPORTER MEMORY欄を二分割配置に調整。左上の感謝文と下中央の記録を分けて、左右の飾りに被りにくくしました。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.18.3：名前一覧をスクロールしやすい3〜4列グリッド表示に変更。人数が多い月でも縦の長さを減らします。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -943,20 +950,6 @@ function rankBadgeText(p){
   if(p.manual) return '手入力';
   return `${sharedNew?'🌱 新規 ':''}Rank.${p.rank}`;
 }
-function pairStartIndex(){
-  if(!people.length) return 0;
-  return Math.floor(current/2)*2;
-}
-function pairIndices(){
-  if(!people.length) return [];
-  const start=pairStartIndex();
-  return [start, start+1<people.length ? start+1 : null];
-}
-function revealQuickSlot(slot){
-  const el=document.getElementById(`quickCard${slot}`);
-  el?.scrollIntoView?.({behavior:'smooth',block:'nearest',inline:'start'});
-}
-
 function selectCurrent(i,scroll=false){
   if(i==null || !people[i]) return;
   current=i;
@@ -966,10 +959,10 @@ function selectCurrent(i,scroll=false){
   renderPreview();
   if(scroll) document.getElementById('previewSection')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
-function bindQuickSlot(slot, idx){
-  const card=$(`#quickCard${slot}`), nameBtn=$(`#quickName${slot}`), badge=$(`#quickBadge${slot}`), msg=$(`#quickMsg${slot}`), apply=$(`#quickApply${slot}`), clear=$(`#quickClear${slot}`);
+function bindQuickCurrent(){
+  const card=$('#quickCardA'), nameBtn=$('#quickNameA'), badge=$('#quickBadgeA'), msg=$('#quickMsgA'), apply=$('#quickApplyA'), clear=$('#quickClearA');
   if(!card || !nameBtn || !badge || !msg || !apply || !clear) return;
-  const p=(idx==null)?null:people[idx];
+  const p=people[current]||null;
   if(!p){
     card.hidden=true;
     card.classList.remove('active');
@@ -981,53 +974,43 @@ function bindQuickSlot(slot, idx){
   }
   const shownName=p.name||p.official||'名前未設定';
   card.hidden=false;
-  card.classList.toggle('active', idx===current);
+  card.classList.add('active');
   nameBtn.textContent=shownName;
   badge.textContent=rankBadgeText(p);
   if(msg.value!==String(p.msg||'')) msg.value=p.msg||'';
   msg.disabled=false;
-  nameBtn.onclick=()=>{selectCurrent(idx,false); setTimeout(()=>revealQuickSlot(slot),0);};
-  msg.onfocus=()=>{ if(current!==idx){ current=idx; renderPeople(); updateSummary(); syncCurrentEditor(); renderPreview(); } setTimeout(()=>revealQuickSlot(slot),0); };
+  nameBtn.onclick=()=>{selectCurrent(current,false);};
+  msg.onfocus=()=>{ if(current!==people.indexOf(p)){ current=people.indexOf(p); renderPeople(); updateSummary(); syncCurrentEditor(); renderPreview(); } };
   apply.onclick=()=>{
     p.msg=msg.value;
     saveDrafts();
-    current=idx;
     renderPeople();
     syncCurrentEditor();
     renderPreview();
     $('#saveStatus').textContent=`${shownName} を反映しました。`;
-    setTimeout(()=>revealQuickSlot(slot),0);
   };
   clear.onclick=()=>{
     msg.value='';
     p.msg='';
     saveDrafts();
-    current=idx;
     renderPeople();
     syncCurrentEditor();
     renderPreview();
     $('#saveStatus').textContent=`${shownName} をクリアしました。`;
-    setTimeout(()=>revealQuickSlot(slot),0);
   };
   msg.onkeydown=(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){ e.preventDefault(); apply.onclick(); } };
 }
 function syncCurrentEditor(){
-  const pair=pairIndices();
-  const pairLabel=$('#quickPairLabel');
+  const editorLabel=$('#quickPairLabel');
   if(!people.length){
-    if(pairLabel) pairLabel.textContent='0 / 0';
-    bindQuickSlot('A', null);
-    bindQuickSlot('B', null);
+    if(editorLabel) editorLabel.textContent='0 / 0';
+    bindQuickCurrent();
     return;
   }
-  const start=pair[0];
-  const end=(pair[1]==null)?pair[0]:pair[1];
-  if(pairLabel) pairLabel.textContent=`${start+1}${end!==start ? '–'+(end+1) : ''} / ${people.length}`;
-  bindQuickSlot('A', pair[0]);
-  bindQuickSlot('B', pair[1]);
-  const activeSlot=(pair[1]!=null && current===pair[1])?'B':'A';
-  setTimeout(()=>revealQuickSlot(activeSlot),0);
+  if(editorLabel) editorLabel.textContent=`${current+1} / ${people.length}`;
+  bindQuickCurrent();
 }
+
 function updateRosterEntryByOfficial(official, patch){
   const list=loadRosterList();
   const idx=list.findIndex(x=>normalize(x.official||x.name||x.raw||x.nick||'')===normalize(official||''));
@@ -1436,43 +1419,37 @@ function drawSupporterMemory(person){
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
 
-  // Two-zone layout:
-  // 1) thank-you line in the upper-left safe area of the lower frame
-  // 2) record lines in the lower-centre safe area, away from both corner stickers
-  const titleX=w*.44;
-  const titleY=h*.755;
-  const mainX=w*.31;
-  const mainY=h*.792;
-  const infoX=w*.43;
-  const infoY1=h*.822;
-  const infoY2=h*.847;
+  // Clean two-zone layout:
+  // upper blank = simple thank-you line
+  // lower-centre blank = compact memory record
+  const mainX=w*.305;
+  const mainY=h*.755;
+  const infoX=w*.49;
+  const labelY=h*.810;
+  const recordY=h*.837;
 
   ctx.save();
   ctx.textAlign='center';
   ctx.textBaseline='middle';
 
-  ctx.fillStyle='#9b748a';
-  ctx.font=`700 24px ${TEXT_FONT}`;
-  ctx.fillText('SUPPORTER MEMORY',titleX,titleY);
-
   const main=`${month}も応援ありがとう！`;
   ctx.fillStyle='#332a30';
-  ctx.font=`700 ${fitSingle(main,w*.30,34,22,700,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.font=`700 ${fitSingle(main,w*.32,36,23,700,TEXT_FONT)}px ${TEXT_FONT}`;
   ctx.fillText(main,mainX,mainY);
 
-  const record1=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
-  const record2='from syuri';
   ctx.fillStyle='#9b748a';
-  ctx.font=`600 ${fitSingle(record1,w*.24,22,16,600,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(record1,infoX,infoY1);
-  ctx.font=`600 18px ${TEXT_FONT}`;
-  ctx.fillText(record2,infoX,infoY2);
+  ctx.font=`700 20px ${TEXT_FONT}`;
+  ctx.fillText('SUPPORTER MEMORY',infoX,labelY);
+
+  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}  ♡  from syuri`;
+  ctx.font=`600 ${fitSingle(record,w*.42,22,15,600,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(record,infoX,recordY);
 
   ctx.fillStyle='#d89abb';
-  ctx.font=`700 18px ${UI_FONT}`;
-  ctx.fillText('✦',mainX-w*.14,mainY-1);
-  ctx.fillText('✦',infoX-w*.12,infoY1);
-  ctx.fillText('✦',infoX+w*.12,infoY1);
+  ctx.font=`700 17px ${UI_FONT}`;
+  ctx.fillText('✦',mainX-w*.15,mainY);
+  ctx.fillText('✦',infoX-w*.22,recordY);
+  ctx.fillText('✦',infoX+w*.22,recordY);
   ctx.restore();
 }
 
@@ -1562,8 +1539,8 @@ $('#monthPick').onchange=()=>{current=0;reloadMonth();loadSeasonAssets();loadMon
 $('#reloadBtn').onclick=reloadMonth;
 $('#manualAddBtn').onclick=addManualNames;
 $('#clearMonthBtn').onclick=()=>{if(confirm('この月の対象者だけ全消去します。呼び方辞書は消えません。')){saveRosterList([]);reloadMonth()}};
-$('#prevBtn').onclick=()=>{if(!people.length)return;let start=pairStartIndex()-2; if(start<0) start=Math.max(0,(Math.ceil(people.length/2)-1)*2); current=Math.min(start,people.length-1); renderPeople(); updateSummary(); syncCurrentEditor(); renderPreview()};
-$('#nextBtn').onclick=()=>{if(!people.length)return; let start=pairStartIndex()+2; if(start>=people.length) start=0; current=start; renderPeople(); updateSummary(); syncCurrentEditor(); renderPreview()};
+$('#prevBtn').onclick=()=>{if(!people.length)return; current=(current-1+people.length)%people.length; renderPeople(); updateSummary(); syncCurrentEditor(); renderPreview()};
+$('#nextBtn').onclick=()=>{if(!people.length)return; current=(current+1)%people.length; renderPeople(); updateSummary(); syncCurrentEditor(); renderPreview()};
 
 
 $('#templateFile').onchange=e=>{
