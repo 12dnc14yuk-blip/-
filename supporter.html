@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.2 ルート配置対応版</title>
+<title>サポーター画像メーカー v5.19.9 下部位置微調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.2 ルート配置対応版</h1>
+    <h1>🌷 サポーター画像メーカー v5.19.9 下部位置微調整版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。名前一覧は3〜4列表示、下部メッセージはイラストと重なりにくい配置に調整しました。</div>
   </section>
 
@@ -1347,7 +1347,7 @@ function hexToRgb(hex){
   return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 function replaceNearWhiteWithBg(){
-  // v5.19.8: 以前は白っぽい画素を季節色へ直接置換していたため、
+  // v5.19.9: 以前は白っぽい画素を季節色へ直接置換していたため、
   // ハート・名前枠・白い装飾まで誤って着色されていた。
   // 元イラストの色を守るため、画像本体へのピクセル着色は行わない。
   return;
@@ -1454,8 +1454,8 @@ function drawSupporterMemory(person){
   // Keep both text groups inside the two blank safe zones.
   // Left message: make it larger and clearly two-line.
   // Memory block: slightly larger and optically centered.
-  const leftBox={x:w*.070,y:h*.765,w:w*.33,h:h*.084};
-  const rightBox={x:w*.285,y:h*.828,w:w*.36,h:h*.100};
+  const leftBox={x:w*.088,y:h*.747,w:w*.33,h:h*.084};
+  const rightBox={x:w*.305,y:h*.828,w:w*.36,h:h*.100};
 
   ctx.save();
   ctx.textBaseline='middle';
