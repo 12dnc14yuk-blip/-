@@ -571,7 +571,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.12.6：左上素材を上へ再調整・女の子上素材をさらに拡大</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.12.7：左上素材をさらに少し上へ調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -935,7 +935,7 @@ function currentMonthNumber(){
 }
 function monthlyAssetPath(month, role){return EMBEDDED_MONTHLY_ASSETS[`m${String(month).padStart(2,'0')}_${role}`] || '';}
 function monthlyDefaults(){return {
-  A:{choice:0,show:true,x:.108,y:.086,scale:.34},
+  A:{choice:0,show:true,x:.108,y:.070,scale:.34},
   B:{choice:1,show:true,x:.892,y:.232,scale:.26},
   C:{choice:2,show:true,x:.150,y:.468,scale:.26},
   D:{choice:3,show:true,x:.822,y:.848,scale:.35}
@@ -945,10 +945,10 @@ function loadMonthlyMaterialState(){
   monthlyState=all[key]||{};
   for(const role of MONTHLY_ROLES) monthlyState[role]={...def[role],...(monthlyState[role]||{})};
 
-  const LAYOUT_MIGRATION_KEY='shuri_monthly_material_layout_v5126';
+  const LAYOUT_MIGRATION_KEY='shuri_monthly_material_layout_v5127';
   if(!localStorage.getItem(LAYOUT_MIGRATION_KEY)){
     const tuned={
-      A:{x:.108,y:.086,scale:.34},
+      A:{x:.108,y:.070,scale:.34},
       B:{x:.892,y:.232,scale:.26},
       C:{x:.150,y:.468,scale:.26},
       D:{x:.822,y:.848,scale:.35}
