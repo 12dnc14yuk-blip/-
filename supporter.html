@@ -1468,33 +1468,45 @@ function drawSupporterMemory(person){
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
 
-  const main=`${month}も応援ありがとう！`;
-  const leftBox={x:w*.085,y:h*.748,w:w*.33,h:h*.082};
-  const rightBox={x:w*.47,y:h*.792,w:w*.31,h:h*.088};
+  const mainTop=`${month}も`;
+  const mainBottom='ありがとう！';
+  // Keep both text groups inside the two blank safe zones.
+  // Left message: make it larger and clearly two-line.
+  // Memory block: slightly larger and optically centered.
+  const leftBox={x:w*.125,y:h*.713,w:w*.34,h:h*.086};
+  const rightBox={x:w*.415,y:h*.758,w:w*.305,h:h*.096};
 
   ctx.save();
   ctx.textBaseline='middle';
 
-  const mainFit=fitBoxText(main,leftBox.w-22,leftBox.h-10,{maxSize:42,minSize:22,weight:800,font:TEXT_FONT,lineHeight:1.16,preferredLineCounts:[1,2]});
-  drawLinesInBox(mainFit.lines,leftBox.x+10,leftBox.y,leftBox.w-20,leftBox.h,{size:mainFit.size,lh:mainFit.lh,weight:800,font:TEXT_FONT,align:'left',color:'#332a30'});
+  const mainLines=[mainTop,mainBottom];
+  let mainSize=47;
+  for(let s=47;s>=28;s--){
+    ctx.font=`800 ${s}px ${TEXT_FONT}`;
+    const widest=Math.max(...mainLines.map(line=>ctx.measureText(line).width));
+    const totalH=Math.round(s*1.15)*mainLines.length;
+    if(widest<=leftBox.w-16 && totalH<=leftBox.h-6){ mainSize=s; break; }
+  }
+  const mainLh=Math.round(mainSize*1.15);
+  drawLinesInBox(mainLines,leftBox.x+8,leftBox.y,leftBox.w-16,leftBox.h,{size:mainSize,lh:mainLh,weight:800,font:TEXT_FONT,align:'center',color:'#332a30'});
 
   const title='SUPPORTER MEMORY';
   const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
   const sign='from syuri';
-  const titleFit=fitBoxText(title,rightBox.w-16,rightBox.h*.26,{maxSize:25,minSize:17,weight:700,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
-  const recordFit=fitBoxText(record,rightBox.w-18,rightBox.h*.22,{maxSize:26,minSize:17,weight:600,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
-  const signFit=fitBoxText(sign,rightBox.w-18,rightBox.h*.20,{maxSize:22,minSize:15,weight:600,font:TEXT_FONT,lineHeight:1.1,preferredLineCounts:[1]});
+  const titleFit=fitBoxText(title,rightBox.w-10,rightBox.h*.28,{maxSize:29,minSize:18,weight:700,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
+  const recordFit=fitBoxText(record,rightBox.w-10,rightBox.h*.24,{maxSize:29,minSize:18,weight:600,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
+  const signFit=fitBoxText(sign,rightBox.w-14,rightBox.h*.22,{maxSize:24,minSize:16,weight:600,font:TEXT_FONT,lineHeight:1.1,preferredLineCounts:[1]});
 
   ctx.fillStyle='#9b748a';
   ctx.textAlign='center';
   ctx.font=`700 ${titleFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.18);
+  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.22);
 
   ctx.font=`600 ${recordFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.50);
+  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.53);
 
   ctx.font=`600 ${signFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.80);
+  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.81);
 
   ctx.fillStyle='#d89abb';
   ctx.font=`700 16px ${UI_FONT}`;
