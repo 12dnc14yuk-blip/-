@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.16 全月素材内蔵＋メッセージ位置調整版</title>
+<title>サポーター画像メーカー v5.17 MEMORY左上寄せ＋月連動修正版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -397,7 +397,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.16 全月素材内蔵＋メッセージ位置調整版</h1>
+    <h1>🌷 サポーター画像メーカー v5.17 MEMORY左上寄せ＋月連動修正版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -719,7 +719,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.16：1〜12月ぶんの月替わり素材をHTMLに全て内蔵。下のメッセージも少し上に寄せて、イラストと被りにくく調整しました。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.17：SUPPORTER MEMORYを下枠の左上寄りへ移動。右下の月素材と被りにくくし、月表示も選択中の月へ確実に連動。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -749,6 +749,7 @@ const MSG_WRAP_MIGRATION_KEY='shuri_supporter_msg_wrap_v58';
 const MSG_RATIO_MIGRATION_KEY='shuri_supporter_msg_ratio_v581';
 const CLEAN_UI_LAYOUT_KEY='shuri_supporter_clean_ui_v59';
 const LOWER_MESSAGE_LIFT_KEY='shuri_supporter_lower_message_lift_v516';
+const MEMORY_LEFT_UP_KEY='shuri_supporter_memory_leftup_v517';
 
 const defaults={
   monthX:.500,monthY:.232,
@@ -1434,34 +1435,31 @@ function drawSupporterMemory(person){
   const w=canvas.width,h=canvas.height;
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
-  const cx=w*.49;
-  const topY=h*.782;
+  // Keep this block in the lower frame's safer zone: above the fixed bunny and left of the right-side monthly art.
+  const cx=w*.405;
+  const topY=h*.748;
   ctx.save();
   ctx.textAlign='center';
   ctx.textBaseline='middle';
 
-  // Small keepsake label
   ctx.fillStyle='#9b748a';
-  ctx.font=`700 28px ${TEXT_FONT}`;
+  ctx.font=`700 27px ${TEXT_FONT}`;
   ctx.fillText('SUPPORTER MEMORY',cx,topY);
 
-  // Main monthly thank-you line
   const main=`${month}も応援ありがとう！`;
   ctx.fillStyle='#332a30';
-  ctx.font=`700 ${fitSingle(main,w*.44,44,30,700,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(main,cx,topY+46);
+  ctx.font=`700 ${fitSingle(main,w*.36,42,29,700,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(main,cx,topY+44);
 
-  // Automatic record line
   const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}  ♡  from syuri`;
   ctx.fillStyle='#9b748a';
-  ctx.font=`600 ${fitSingle(record,w*.52,30,20,600,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(record,cx,topY+88);
+  ctx.font=`600 ${fitSingle(record,w*.40,28,19,600,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(record,cx,topY+82);
 
-  // Tiny side ornaments so the lower frame feels intentional, not crowded.
   ctx.fillStyle='#d89abb';
-  ctx.font=`700 24px ${UI_FONT}`;
-  ctx.fillText('✦',cx-w*.245,topY+47);
-  ctx.fillText('✦',cx+w*.245,topY+47);
+  ctx.font=`700 22px ${UI_FONT}`;
+  ctx.fillText('✦',cx-w*.19,topY+45);
+  ctx.fillText('✦',cx+w*.19,topY+45);
   ctx.restore();
 }
 
