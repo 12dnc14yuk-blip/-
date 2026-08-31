@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.17 MEMORY左上寄せ＋月連動修正版</title>
+<title>サポーター画像メーカー v5.18.1 MEMORY二分割配置</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -397,7 +397,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.17 MEMORY左上寄せ＋月連動修正版</h1>
+    <h1>🌷 サポーター画像メーカー v5.18.1 MEMORY二分割配置</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -719,7 +719,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.17：SUPPORTER MEMORYを下枠の左上寄りへ移動。右下の月素材と被りにくくし、月表示も選択中の月へ確実に連動。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.18.1：SUPPORTER MEMORY欄を二分割配置に調整。左上の感謝文と下中央の記録を分けて、左右の飾りに被りにくくしました。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1435,31 +1435,44 @@ function drawSupporterMemory(person){
   const w=canvas.width,h=canvas.height;
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
-  // Keep this block in the lower frame's safer zone: above the fixed bunny and left of the right-side monthly art.
-  const cx=w*.405;
-  const topY=h*.748;
+
+  // Two-zone layout:
+  // 1) thank-you line in the upper-left safe area of the lower frame
+  // 2) record lines in the lower-centre safe area, away from both corner stickers
+  const titleX=w*.44;
+  const titleY=h*.755;
+  const mainX=w*.31;
+  const mainY=h*.792;
+  const infoX=w*.43;
+  const infoY1=h*.822;
+  const infoY2=h*.847;
+
   ctx.save();
   ctx.textAlign='center';
   ctx.textBaseline='middle';
 
   ctx.fillStyle='#9b748a';
-  ctx.font=`700 27px ${TEXT_FONT}`;
-  ctx.fillText('SUPPORTER MEMORY',cx,topY);
+  ctx.font=`700 24px ${TEXT_FONT}`;
+  ctx.fillText('SUPPORTER MEMORY',titleX,titleY);
 
   const main=`${month}も応援ありがとう！`;
   ctx.fillStyle='#332a30';
-  ctx.font=`700 ${fitSingle(main,w*.36,42,29,700,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(main,cx,topY+44);
+  ctx.font=`700 ${fitSingle(main,w*.30,34,22,700,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(main,mainX,mainY);
 
-  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}  ♡  from syuri`;
+  const record1=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
+  const record2='from syuri';
   ctx.fillStyle='#9b748a';
-  ctx.font=`600 ${fitSingle(record,w*.40,28,19,600,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(record,cx,topY+82);
+  ctx.font=`600 ${fitSingle(record1,w*.24,22,16,600,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(record1,infoX,infoY1);
+  ctx.font=`600 18px ${TEXT_FONT}`;
+  ctx.fillText(record2,infoX,infoY2);
 
   ctx.fillStyle='#d89abb';
-  ctx.font=`700 22px ${UI_FONT}`;
-  ctx.fillText('✦',cx-w*.19,topY+45);
-  ctx.fillText('✦',cx+w*.19,topY+45);
+  ctx.font=`700 18px ${UI_FONT}`;
+  ctx.fillText('✦',mainX-w*.14,mainY-1);
+  ctx.fillText('✦',infoX-w*.12,infoY1);
+  ctx.fillText('✦',infoX+w*.12,infoY1);
   ctx.restore();
 }
 
