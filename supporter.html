@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19 軽量版</title>
+<title>サポーター画像メーカー v5.19.1 軽量修正版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,8 +419,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19 軽量版</h1>
-    <div class="lead">見た目と機能はそのまま、画像素材を別ファイル化して軽量化。選んだ月の素材だけ読み込みます。</div>
+    <h1>🌷 サポーター画像メーカー v5.19.1 軽量修正版</h1>
+    <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。名前一覧は3〜4列表示、下部メッセージはイラストと重なりにくい配置に調整しました。</div>
   </section>
 
   <div class="stickyPreviewBar" id="stickyPreviewBar">
@@ -1419,8 +1419,7 @@ function supporterMemoryDateLabel(){
 function fitBoxText(text,maxW,maxH,{maxSize=44,minSize=18,weight=700,font=TEXT_FONT,lineHeight=1.2,preferredLineCounts=[1,2,3]}={}){
   const raw=String(text||'').trim();
   if(!raw)return{size:maxSize,lines:[''],lh:maxSize*lineHeight,weight,font};
-  const explicit=raw.split(/
-/);
+  const explicit=raw.split(/\n/);
   if(explicit.length>1){
     for(let size=maxSize;size>=minSize;size-=1){
       ctx.font=`${weight} ${size}px ${font}`;
