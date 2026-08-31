@@ -1347,7 +1347,7 @@ function hexToRgb(hex){
   return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 function replaceNearWhiteWithBg(){
-  // v5.19.7: 以前は白っぽい画素を季節色へ直接置換していたため、
+  // v5.19.8: 以前は白っぽい画素を季節色へ直接置換していたため、
   // ハート・名前枠・白い装飾まで誤って着色されていた。
   // 元イラストの色を守るため、画像本体へのピクセル着色は行わない。
   return;
@@ -1455,7 +1455,7 @@ function drawSupporterMemory(person){
   // Left message: make it larger and clearly two-line.
   // Memory block: slightly larger and optically centered.
   const leftBox={x:w*.070,y:h*.765,w:w*.33,h:h*.084};
-  const rightBox={x:w*.355,y:h*.775,w:w*.33,h:h*.108};
+  const rightBox={x:w*.285,y:h*.828,w:w*.36,h:h*.100};
 
   ctx.save();
   ctx.textBaseline='middle';
@@ -1481,13 +1481,13 @@ function drawSupporterMemory(person){
   ctx.fillStyle='#77566a';
   ctx.textAlign='center';
   ctx.font=`800 ${titleFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.20);
+  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.18);
 
   ctx.font=`700 ${recordFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.52);
+  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.50);
 
   ctx.font=`700 ${signFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.82);
+  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.80);
 
   ctx.fillStyle='#d89abb';
   ctx.font=`700 16px ${UI_FONT}`;
