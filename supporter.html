@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.18.3 名前一覧3〜4列版</title>
+<title>サポーター画像メーカー v5.18.5 名前一覧3〜4列＋メッセージ調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -53,6 +53,9 @@ summary{cursor:pointer;font-weight:900;padding:11px 12px}
 .detailsBody{padding:0 11px 11px}
 .peopleScroll{max-height:48vh;overflow:auto}
 #people{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+#people.namePickList{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;align-items:stretch}
+@media(min-width:880px){#people.namePickList{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:360px){#people.namePickList{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 .person{padding:10px;border:1px solid var(--line);border-radius:15px;background:#fff}
 .person.active{outline:2px solid #f29bd5}
 .personHead{display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -162,7 +165,7 @@ canvas{width:100%;display:block;border-radius:18px;background:#f5eef3}
   min-height:48px;
   width:100%;
   padding:8px 10px;
-  font-size:12px;
+  font-size:11.5px;
   font-weight:900;
   line-height:1.15;
   display:flex;
@@ -416,8 +419,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.18.3 名前一覧3〜4列版</h1>
-    <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
+    <h1>🌷 サポーター画像メーカー v5.18.5 名前一覧3〜4列＋メッセージ調整版</h1>
+    <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。名前一覧は3〜4列表示、下部メッセージはイラストと重なりにくい配置に調整しました。</div>
   </section>
 
   <div class="stickyPreviewBar" id="stickyPreviewBar">
@@ -1419,37 +1422,43 @@ function drawSupporterMemory(person){
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
 
-  // Clean two-zone layout:
-  // upper blank = simple thank-you line
-  // lower-centre blank = compact memory record
-  const mainX=w*.305;
-  const mainY=h*.755;
-  const infoX=w*.49;
-  const labelY=h*.810;
-  const recordY=h*.837;
+  // Lower message area split into two zones:
+  // 1) upper-left thank-you line
+  // 2) lower-centre memory meta
+  const mainLeftX=w*.155;
+  const mainRightX=w*.415;
+  const mainY=h*.777;
+  const infoX=w*.545;
+  const labelY=h*.804;
+  const recordY=h*.830;
+  const signY=h*.855;
 
   ctx.save();
-  ctx.textAlign='center';
   ctx.textBaseline='middle';
 
   const main=`${month}も応援ありがとう！`;
+  const mainCx=(mainLeftX+mainRightX)/2;
   ctx.fillStyle='#332a30';
-  ctx.font=`700 ${fitSingle(main,w*.32,36,23,700,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(main,mainX,mainY);
+  ctx.font=`700 ${fitSingle(main,(mainRightX-mainLeftX),32,20,700,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.textAlign='center';
+  ctx.fillText(main,mainCx,mainY);
 
   ctx.fillStyle='#9b748a';
-  ctx.font=`700 20px ${TEXT_FONT}`;
+  ctx.font=`700 18px ${TEXT_FONT}`;
   ctx.fillText('SUPPORTER MEMORY',infoX,labelY);
 
-  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}  ♡  from syuri`;
-  ctx.font=`600 ${fitSingle(record,w*.42,22,15,600,TEXT_FONT)}px ${TEXT_FONT}`;
+  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
+  ctx.font=`600 ${fitSingle(record,w*.28,20,13,600,TEXT_FONT)}px ${TEXT_FONT}`;
   ctx.fillText(record,infoX,recordY);
 
+  ctx.font=`600 ${fitSingle('from syuri',w*.18,18,12,600,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText('from syuri',infoX,signY);
+
   ctx.fillStyle='#d89abb';
-  ctx.font=`700 17px ${UI_FONT}`;
-  ctx.fillText('✦',mainX-w*.15,mainY);
-  ctx.fillText('✦',infoX-w*.22,recordY);
-  ctx.fillText('✦',infoX+w*.22,recordY);
+  ctx.font=`700 16px ${UI_FONT}`;
+  ctx.fillText('✦',mainLeftX-10,mainY);
+  ctx.fillText('✦',infoX-w*.14,recordY);
+  ctx.fillText('✦',infoX+w*.14,recordY);
   ctx.restore();
 }
 
