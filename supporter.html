@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.13 月替わり素材 微調整版</title>
+<title>サポーター画像メーカー v5.15 SUPPORTER MEMORY版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -397,7 +397,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.13 月替わり素材 微調整版</h1>
+    <h1>🌷 サポーター画像メーカー v5.15 SUPPORTER MEMORY版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -719,7 +719,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.13：月替わり素材に位置・サイズの微調整を追加</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.15：下の空白枠にSUPPORTER MEMORYを自動表示</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1417,6 +1417,48 @@ function drawSoftEnglishHeading(text,x,y,maxW){
   ctx.restore();
   return size;
 }
+
+function supporterMemoryDateLabel(){
+  const key=currentMonthKey();
+  const [y,m]=String(key).split('-');
+  return (y&&m)?`${y}.${m}`:String(key).replace('-','.');
+}
+function drawSupporterMemory(person){
+  if(!person)return;
+  const w=canvas.width,h=canvas.height;
+  const month=monthLabel(currentMonthKey())||'今月';
+  const rank=Math.max(1,Number(person.rank)||1);
+  const cx=w*.49;
+  const topY=h*.802;
+  ctx.save();
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+
+  // Small keepsake label
+  ctx.fillStyle='#9b748a';
+  ctx.font=`700 28px ${TEXT_FONT}`;
+  ctx.fillText('SUPPORTER MEMORY',cx,topY);
+
+  // Main monthly thank-you line
+  const main=`${month}も応援ありがとう！`;
+  ctx.fillStyle='#332a30';
+  ctx.font=`700 ${fitSingle(main,w*.44,44,30,700,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(main,cx,topY+52);
+
+  // Automatic record line
+  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}  ♡  from syuri`;
+  ctx.fillStyle='#9b748a';
+  ctx.font=`600 ${fitSingle(record,w*.52,30,20,600,TEXT_FONT)}px ${TEXT_FONT}`;
+  ctx.fillText(record,cx,topY+101);
+
+  // Tiny side ornaments so the lower frame feels intentional, not crowded.
+  ctx.fillStyle='#d89abb';
+  ctx.font=`700 24px ${UI_FONT}`;
+  ctx.fillText('✦',cx-w*.245,topY+53);
+  ctx.fillText('✦',cx+w*.245,topY+53);
+  ctx.restore();
+}
+
 function syncEnglishColorButtons(){
   const c=englishHeadingColor().toLowerCase();
   document.querySelectorAll('.englishColorBtn').forEach(btn=>{
@@ -1475,6 +1517,7 @@ async function renderPreview(person=people[current]){
     ctx.font=`${para.weight} ${para.size}px ${TEXT_FONT}`;
     const startY=h*L.msgY-(para.lines.length-1)*para.lh/2;
     para.lines.forEach((line,i)=>drawCenteredSpacedText(line,w*L.msgX,startY+i*para.lh,Math.max(1,para.size*.025)));
+    drawSupporterMemory(person);
     $('#whoLabel').textContent=`${current+1} / ${people.length}　${name}`;
   }else{
     $('#whoLabel').textContent='対象者なし';
