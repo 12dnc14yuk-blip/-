@@ -350,7 +350,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.12.2 月替わり素材 大きめ版</h1>
+    <h1>🌷 サポーター画像メーカー v5.12.3 月替わり素材 位置調整版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -571,7 +571,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.12.2：月替わり素材を約1.4〜1.5倍に拡大・HTML内蔵</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.12.3：月替わり素材をさらに拡大・4か所の位置を見た目重視で調整</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -935,23 +935,32 @@ function currentMonthNumber(){
 }
 function monthlyAssetPath(month, role){return EMBEDDED_MONTHLY_ASSETS[`m${String(month).padStart(2,'0')}_${role}`] || '';}
 function monthlyDefaults(){return {
-  A:{choice:0,show:true,x:.14,y:.205,scale:.25},
-  B:{choice:1,show:true,x:.865,y:.245,scale:.19},
-  C:{choice:2,show:true,x:.205,y:.485,scale:.125},
-  D:{choice:3,show:true,x:.835,y:.805,scale:.27}
+  A:{choice:0,show:true,x:.108,y:.178,scale:.33},
+  B:{choice:1,show:true,x:.892,y:.232,scale:.26},
+  C:{choice:2,show:true,x:.155,y:.470,scale:.17},
+  D:{choice:3,show:true,x:.822,y:.812,scale:.35}
 };}
 function loadMonthlyMaterialState(){
   const all=loadJSON(MONTHLY_MATERIAL_KEY,{}), key=currentMonthKey(), def=monthlyDefaults();
   monthlyState=all[key]||{};
   for(const role of MONTHLY_ROLES) monthlyState[role]={...def[role],...(monthlyState[role]||{})};
 
-  const SIZE_MIGRATION_KEY='shuri_monthly_material_size_v5122';
-  if(!localStorage.getItem(SIZE_MIGRATION_KEY)){
-    const bigger={A:.25,B:.19,C:.125,D:.27};
-    for(const role of MONTHLY_ROLES) monthlyState[role].scale=bigger[role];
+  const LAYOUT_MIGRATION_KEY='shuri_monthly_material_layout_v5123';
+  if(!localStorage.getItem(LAYOUT_MIGRATION_KEY)){
+    const tuned={
+      A:{x:.108,y:.178,scale:.33},
+      B:{x:.892,y:.232,scale:.26},
+      C:{x:.155,y:.470,scale:.17},
+      D:{x:.822,y:.812,scale:.35}
+    };
+    for(const role of MONTHLY_ROLES){
+      monthlyState[role].x=tuned[role].x;
+      monthlyState[role].y=tuned[role].y;
+      monthlyState[role].scale=tuned[role].scale;
+    }
     all[key]=monthlyState;
     saveJSON(MONTHLY_MATERIAL_KEY,all);
-    localStorage.setItem(SIZE_MIGRATION_KEY,'1');
+    localStorage.setItem(LAYOUT_MIGRATION_KEY,'1');
   }
 
   setMonthlyImages();
