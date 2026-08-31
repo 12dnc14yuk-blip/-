@@ -1,8 +1,13 @@
-ありがとうメッセージメーカー 正式版 1.0.1
+GitHub Pagesへのアップロード
+・supporter.html
+・assets フォルダ
+・TekitouPoem.ttf
+・TekitouPoem_SemiBold.ttf
+・TekitouPoem_Bold.ttf
+・TekitouPoem_ExtraBold.ttf
+を同じ構成のままアップロードしてください。
 
-修正:
-- サポーター向けX投稿を、サイト上から直接開けるボタンに変更
-- ③ チケット・サポーター確認 と ④ 完成メッセージ の両方にリンクを追加
-- 生成本文内のURLはそのまま維持
+assets/monthly：1〜12月の月替わり素材48点
+assets/core：ベース画像・女の子・うさぎ・キラキラ
 
-GitHub PagesではZIP内の index.html を既存の index.html と差し替えてください。
+HTML本体に画像を埋め込まないため、起動がかなり軽くなります。
