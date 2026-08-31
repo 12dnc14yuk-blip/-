@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.14 全月対応 下部文字微調整版</title>
+<title>サポーター画像メーカー v5.19.15 全月固定文字表示版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,8 +419,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.14 全月対応 下部文字微調整版</h1>
-    <div class="lead">ハート内の薄ピンク背景は維持したまま、下部文字の左右バランスを全月共通で微調整しました。</div>
+    <h1>🌷 サポーター画像メーカー v5.19.15 全月固定文字表示版</h1>
+    <div class="lead">ハート内の薄ピンク背景は維持。対象者がまだいない月でも、下部の月メッセージとSUPPORTER MEMORYを表示します。</div>
   </section>
 
   <div class="stickyPreviewBar" id="stickyPreviewBar">
@@ -729,7 +729,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.19.14：下部の「8月もありがとう！」は少し右へ、「SUPPORTER MEMORY」は少し左上へ。調整は全月共通です。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.19.15：対象者がいない月でも「○月もありがとう！」とSUPPORTER MEMORYを表示します。全月共通です。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1444,10 +1444,9 @@ function drawLinesInBox(lines,x,y,w,h,{size=32,lh=38,weight=700,font=TEXT_FONT,a
   ctx.restore();
 }
 function drawSupporterMemory(person){
-  if(!person)return;
   const w=canvas.width,h=canvas.height;
   const month=monthLabel(currentMonthKey())||'今月';
-  const rank=Math.max(1,Number(person.rank)||1);
+  const rank=person ? Math.max(1,Number(person.rank)||1) : null;
 
   const mainTop=`${month}も`;
   const mainBottom='ありがとう！';
@@ -1472,7 +1471,7 @@ function drawSupporterMemory(person){
   drawLinesInBox(mainLines,leftBox.x+8,leftBox.y,leftBox.w-16,leftBox.h,{size:mainSize,lh:mainLh,weight:800,font:TEXT_FONT,align:'center',color:'#332a30'});
 
   const title='SUPPORTER MEMORY';
-  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
+  const record=`Rank.${rank ?? '-'}  ♡  ${supporterMemoryDateLabel()}`;
   const sign='from syuri';
   const titleFit=fitBoxText(title,rightBox.w-10,rightBox.h*.30,{maxSize:36,minSize:25,weight:800,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
   const recordFit=fitBoxText(record,rightBox.w-10,rightBox.h*.25,{maxSize:31,minSize:21,weight:700,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
@@ -1555,11 +1554,13 @@ async function renderPreview(person=people[current]){
     ctx.font=`${para.weight} ${para.size}px ${TEXT_FONT}`;
     const startY=h*L.msgY-(para.lines.length-1)*para.lh/2;
     para.lines.forEach((line,i)=>drawCenteredSpacedText(line,w*L.msgX,startY+i*para.lh,Math.max(1,para.size*.025)));
-    drawSupporterMemory(person);
     $('#whoLabel').textContent=`${current+1} / ${people.length}　${name}`;
   }else{
     $('#whoLabel').textContent='対象者なし';
   }
+
+  // 下部の月メッセージとSUPPORTER MEMORYは、対象者の有無に関係なく全月で表示。
+  drawSupporterMemory(person||null);
 
   if($('#showSparkles').checked&&sparkles.complete)ctx.drawImage(sparkles,0,0,1024,1536);
   updateStickyPreview();
