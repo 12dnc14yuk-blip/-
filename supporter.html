@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.17 全月固定文字表示版</title>
+<title>サポーター画像メーカー v5.19.18 全月固定文字表示版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.17 全月固定文字表示版</h1>
+    <h1>🌷 サポーター画像メーカー v5.19.18 全月固定文字表示版</h1>
     <div class="lead">ハート内の薄ピンク背景は維持。対象者がまだいない月でも、下部の月メッセージとSUPPORTER MEMORYを表示します。</div>
   </section>
 
@@ -729,7 +729,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.19.17：ハート内の薄ピンクは維持。ハート外の白・黄みモヤを季節色へ整え、下部文字バランスを全月共通で微調整。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.19.18：上側の背景処理は維持し、ハート内部だけ完全保護。下部文字位置は変更していません。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1347,40 +1347,51 @@ function hexToRgb(hex){
   return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 function replaceNearWhiteWithBg(){
-  // v5.19.17
-  // ・ハート内の「薄ピンク」だけ保護
-  // ・女の子の後ろ〜ハート左側など、ハート外の白/黄みモヤは季節色へ
-  // ・金枠、リボン、文字枠など色のある部分は触らない
+  // v5.19.18
+  // 上側・ハート外の背景だけ季節色へ。
+  // ハート内部は元の薄ピンクを丸ごと保護する。
   const {r:br,g:bg,b:bb}=hexToRgb(bgColor);
   const im=ctx.getImageData(0,0,1024,1536);
   const d=im.data;
 
-  const inCircle=(x,y,cx,cy,r)=>{const dx=x-cx,dy=y-cy;return dx*dx+dy*dy<=r*r};
-  const inTri=(x,y,x1,y1,x2,y2,x3,y3)=>{
-    const s=(x1-x3)*(y-y3)-(y1-y3)*(x-x3);
-    const t=(x2-x1)*(y-y1)-(y2-y1)*(x-x1);
-    const u=(x3-x2)*(y-y2)-(y3-y2)*(x-x2);
-    return (s>=0&&t>=0&&u>=0)||(s<=0&&t<=0&&u<=0);
+  // 実際のハート内側に沿わせた保護マスク。
+  // 上の2つの丸み＋下のV部分で構成。
+  const inCircle=(x,y,cx,cy,r)=>{
+    const dx=x-cx,dy=y-cy;
+    return dx*dx+dy*dy<=r*r;
   };
-  const inHeartArea=(x,y)=>
-    inCircle(x,y,535,770,205) ||
-    inCircle(x,y,755,770,205) ||
-    inTri(x,y,350,760,965,760,660,1228);
+  const inTri=(x,y,x1,y1,x2,y2,x3,y3)=>{
+    const den=(y2-y3)*(x1-x3)+(x3-x2)*(y1-y3);
+    const a=((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/den;
+    const b=((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/den;
+    const c=1-a-b;
+    return a>=0 && b>=0 && c>=0;
+  };
+  const inHeart=(x,y)=>{
+    // 少し内側に寄せて、ハート外の白背景を保護しすぎない
+    const top =
+      inCircle(x,y,505,770,176) ||
+      inCircle(x,y,755,770,176);
+    const lower =
+      inTri(x,y,330,760,930,760,640,1165);
+    return top || lower;
+  };
 
   for(let i=0;i<d.length;i+=4){
-    const p=i/4, x=p%1024, y=Math.floor(p/1024);
-    const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
+    const p=i/4;
+    const x=p%1024, y=Math.floor(p/1024);
+    const r=d[i], g=d[i+1], b=d[i+2], a=d[i+3];
     if(a<10) continue;
 
-    // Pink heart fill: R and B are both slightly stronger than G.
-    // Preserve that pink instead of protecting a huge geometric white area.
-    const heartPink = inHeartArea(x,y) && r>g+3 && b>g+2;
-    if(heartPink) continue;
+    // ハート内部は一切色を変えない
+    if(inHeart(x,y)) continue;
 
-    const max=Math.max(r,g,b), min=Math.min(r,g,b), lum=(r+g+b)/3;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    const lum=(r+g+b)/3;
     const neutralish=(max-min)<24;
-    const warmHaze=(r>b+3 && g>b+2 && lum>216);
+    const warmHaze=(r>b+3 && g>b+2 && lum>214);
 
+    // ハート外の白〜黄みだけ季節色へなじませる
     if(lum>238 && (neutralish || warmHaze)){
       const mix=.80;
       d[i]=Math.round(r*(1-mix)+br*mix);
