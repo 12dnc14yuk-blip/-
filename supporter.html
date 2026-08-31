@@ -323,6 +323,24 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 }
 </style>
 
+
+<style id="v512-monthly-materials">
+.monthlyMaterialHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.monthlyMaterialHead b{font-size:18px;color:#7f4b67}
+.monthlySlotGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.monthlySlot{border:1px solid var(--line);border-radius:18px;background:#fffafd;padding:10px}
+.monthlySlot.off{opacity:.48}
+.monthlySlotTop{display:flex;justify-content:space-between;align-items:center;gap:7px;margin-bottom:7px}
+.monthlySlotTop b{font-size:14px;color:#6f4a60}
+.monthlyThumb{height:112px;border:1px dashed #edcfe0;border-radius:14px;background:linear-gradient(180deg,#fff,#fff8fc);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.monthlyThumb img{max-width:94%;max-height:94%;object-fit:contain}
+.monthlySlotActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.monthlySlotActions button{padding:9px 8px;font-size:12px}
+.monthlyHint{margin-top:9px;font-size:12px;color:var(--muted);line-height:1.55}
+.monthlyPreset{display:flex;gap:7px;flex-wrap:wrap;margin:9px 0}
+.monthlyPreset button{padding:8px 11px;font-size:12px}
+@media(max-width:430px){.monthlySlotGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.monthlyThumb{height:96px}.monthlySlot{padding:8px}.monthlySlotActions{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -332,8 +350,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.10.6 名前枠内調整版</h1>
-    <div class="lead">英文の見え方はそのままに、名前が下枠へ乗らないよう枠内に戻して間隔を整えました。</div>
+    <h1>🌷 サポーター画像メーカー v5.12 月替わり素材版</h1>
+    <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
   <section class="card">
@@ -375,33 +393,53 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </section>
 
   <section class="card">
-    <details class="sectionFold">
-      <summary><h2 style="margin:0">② 季節素材</h2><span class="foldHint">必要な時だけ開く</span></summary>
-      <div class="sectionFoldBody">    <div class="grid2">
-      <div>
-        <label>季節素材を追加（3〜4個まとめてOK）</label>
-        <input id="seasonFiles" type="file" accept="image/*" multiple>
-        <div class="hint">ひまわり等。配置時は縦横比を絶対に崩さず、X/Y同じ倍率でだけ拡大縮小します。</div>
-      </div>
-      <div>
-        <label>現在の候補</label>
-        <div id="seasonPreview" class="seasonPreview"><span class="mini">まだ未登録</span></div>
-      </div>
-    </div>
-    <div class="btnrow">
-      <button class="primary" id="swapSeasonBtn">🔄 入れ替え</button>
-      <button class="secondary" id="removeSeasonBtn">この素材を削除</button>
-    </div>
-    <div class="status" id="seasonStatus">候補を入れると「入れ替え」で順番に切り替わります。</div>
-    <details>
-      <summary>季節素材の微調整</summary>
-      <div class="detailsBody settingsGrid">
-        <div><label>左右</label><input id="seasonX" type="range" min="0" max="1" step=".005" value=".80"></div>
-        <div><label>上下</label><input id="seasonY" type="range" min="0" max="1" step=".005" value=".79"></div>
-        <div><label>大きさ（等倍のみ）</label><input id="seasonScale" type="range" min=".08" max=".42" step=".005" value=".20"></div>
-      </div>
-    </details>
-  
+    <details class="sectionFold" open>
+      <summary><h2 style="margin:0">② 月替わり素材</h2><span class="foldHint">1〜12月 自動</span></summary>
+      <div class="sectionFoldBody">
+        <div class="monthlyMaterialHead">
+          <div><b id="monthlyMaterialTitle">今月の素材</b><div class="mini">ChatGPTで作った透過素材を使用</div></div>
+          <button type="button" class="secondary" id="monthlyShuffleAll">🎲 全部入れ替え</button>
+        </div>
+        <div class="monthlySlotGrid">
+          <div class="monthlySlot" data-slot="A">
+            <div class="monthlySlotTop"><b>A 左上</b><span class="mini">中</span></div>
+            <div class="monthlyThumb"><img id="monthlyThumbA" alt="A素材"></div>
+            <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="A">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="A">表示中</button></div>
+          </div>
+          <div class="monthlySlot" data-slot="B">
+            <div class="monthlySlotTop"><b>B 右上</b><span class="mini">小〜中</span></div>
+            <div class="monthlyThumb"><img id="monthlyThumbB" alt="B素材"></div>
+            <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="B">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="B">表示中</button></div>
+          </div>
+          <div class="monthlySlot" data-slot="C">
+            <div class="monthlySlotTop"><b>C 女の子左上</b><span class="mini">小</span></div>
+            <div class="monthlyThumb"><img id="monthlyThumbC" alt="C素材"></div>
+            <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="C">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="C">表示中</button></div>
+          </div>
+          <div class="monthlySlot" data-slot="D">
+            <div class="monthlySlotTop"><b>D 右下</b><span class="mini">中〜大</span></div>
+            <div class="monthlyThumb"><img id="monthlyThumbD" alt="D素材"></div>
+            <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="D">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="D">表示中</button></div>
+          </div>
+        </div>
+        <div class="monthlyHint">A/B/C/Dは、さっき決めた空き位置に固定。素材だけ月ごとに変わります。入れ替えはその月の4素材の中で循環します。</div>
+
+        <details style="margin-top:10px">
+          <summary>自分の素材も追加する（今までの機能）</summary>
+          <div class="detailsBody">
+            <div class="grid2">
+              <div><label>透過素材を追加</label><input id="seasonFiles" type="file" accept="image/*" multiple></div>
+              <div><label>現在の追加素材</label><div id="seasonPreview" class="seasonPreview"><span class="mini">まだ未登録</span></div></div>
+            </div>
+            <div class="btnrow"><button class="primary" id="swapSeasonBtn">🔄 入れ替え</button><button class="secondary" id="removeSeasonBtn">この素材を削除</button></div>
+            <div class="status" id="seasonStatus">追加素材は任意です。</div>
+            <details><summary>追加素材の位置調整</summary><div class="detailsBody settingsGrid">
+              <div><label>左右</label><input id="seasonX" type="range" min="0" max="1" step=".005" value=".80"></div>
+              <div><label>上下</label><input id="seasonY" type="range" min="0" max="1" step=".005" value=".79"></div>
+              <div><label>大きさ</label><input id="seasonScale" type="range" min=".08" max=".42" step=".005" value=".20"></div>
+            </div></details>
+          </div>
+        </details>
       </div>
     </details>
   </section>
@@ -533,7 +571,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.10.6：名前を枠内に戻して英文との間隔を調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.12：1〜12月のAI素材を内蔵・4か所へ自動配置</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -550,6 +588,7 @@ const NICK_KEY='shuri_v13_nick';
 const SEASON_KEY='shuri_supporter_season_assets_v2';
 const SEASON_SELECTED_KEY='shuri_supporter_season_selected_v2';
 const SEASON_LAYOUT_KEY='shuri_supporter_season_layout_v2';
+const MONTHLY_MATERIAL_KEY='shuri_supporter_monthly_material_v512';
 const STYLE_KEY='shuri_supporter_style_v3';
 const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 const LAYOUT_MIGRATION_KEY='shuri_supporter_layout_migration_v55';
@@ -618,6 +657,9 @@ let people=[],current=0;
 let template=new Image(), usingCustomTemplate=false;
 let character=new Image(), bunny=new Image(), sparkles=new Image();
 let seasonAssets=[],seasonSelected=0,seasonImg=new Image();
+const MONTHLY_ROLES=['A','B','C','D'];
+const monthlyImgs={A:new Image(),B:new Image(),C:new Image(),D:new Image()};
+let monthlyState={};
 
 function loadJSON(key,def){try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??def}catch(e){return def}}
 function saveJSON(key,val){localStorage.setItem(key,JSON.stringify(val))}
@@ -885,6 +927,61 @@ function saveStyle(){
 function layout(){return Object.fromEntries(Object.keys(defaults).map(k=>[k,+$('#'+k).value]))}
 function seasonLayout(){return Object.fromEntries(Object.keys(seasonDefaults).map(k=>[k,+$('#'+k).value]))}
 
+function currentMonthNumber(){
+  return Math.max(1,Math.min(12,Number(String(currentMonthKey()).split('-')[1]||new Date().getMonth()+1)));
+}
+function monthlyAssetPath(month, role){return `monthly_assets/m${String(month).padStart(2,'0')}_${role}.png`;}
+function monthlyDefaults(){return {
+  A:{choice:0,show:true,x:.14,y:.205,scale:.17},
+  B:{choice:1,show:true,x:.865,y:.245,scale:.13},
+  C:{choice:2,show:true,x:.205,y:.485,scale:.085},
+  D:{choice:3,show:true,x:.835,y:.805,scale:.18}
+};}
+function loadMonthlyMaterialState(){
+  const all=loadJSON(MONTHLY_MATERIAL_KEY,{}), key=currentMonthKey(), def=monthlyDefaults();
+  monthlyState=all[key]||{};
+  for(const role of MONTHLY_ROLES) monthlyState[role]={...def[role],...(monthlyState[role]||{})};
+  setMonthlyImages();
+}
+function saveMonthlyMaterialState(){
+  const all=loadJSON(MONTHLY_MATERIAL_KEY,{});all[currentMonthKey()]=monthlyState;saveJSON(MONTHLY_MATERIAL_KEY,all);
+}
+function roleAssetRole(role){
+  const order=['A','B','C','D'];
+  const st=monthlyState[role]||monthlyDefaults()[role];
+  return order[(Number(st.choice)||0)%4];
+}
+function setMonthlyImages(){
+  const month=currentMonthNumber();
+  const title=$('#monthlyMaterialTitle'); if(title) title.textContent=`${month}月の素材`;
+  for(const role of MONTHLY_ROLES){
+    const st=monthlyState[role]||monthlyDefaults()[role];
+    const src=monthlyAssetPath(month,roleAssetRole(role));
+    const img=monthlyImgs[role]; img.onload=renderPreview; img.src=src;
+    const thumb=$(`#monthlyThumb${role}`); if(thumb) thumb.src=src;
+    const card=document.querySelector(`.monthlySlot[data-slot="${role}"]`); if(card) card.classList.toggle('off',st.show===false);
+    const toggle=document.querySelector(`.monthlyToggle[data-slot="${role}"]`); if(toggle) toggle.textContent=st.show===false?'非表示':'表示中';
+  }
+  saveMonthlyMaterialState();renderPreview();
+}
+function swapMonthlyRole(role){
+  const st=monthlyState[role]||monthlyDefaults()[role];st.choice=((Number(st.choice)||0)+1)%4;monthlyState[role]=st;setMonthlyImages();
+}
+function toggleMonthlyRole(role){
+  const st=monthlyState[role]||monthlyDefaults()[role];st.show=st.show===false?true:false;monthlyState[role]=st;setMonthlyImages();
+}
+function shuffleMonthlyAll(){for(const role of MONTHLY_ROLES){const st=monthlyState[role]||monthlyDefaults()[role];st.choice=(Number(st.choice||0)+1+Math.floor(Math.random()*3))%4;monthlyState[role]=st;}setMonthlyImages();}
+function drawMonthlyMaterials(){
+  const w=canvas.width,h=canvas.height;
+  for(const role of MONTHLY_ROLES){
+    const st=monthlyState[role]||monthlyDefaults()[role], img=monthlyImgs[role];
+    if(st.show===false||!img.complete||!img.naturalWidth)continue;
+    const targetW=w*Number(st.scale||.12), k=targetW/img.naturalWidth, dw=img.naturalWidth*k, dh=img.naturalHeight*k;
+    const cx=w*Number(st.x||.5),cy=h*Number(st.y||.5);
+    ctx.drawImage(img,cx-dw/2,cy-dh/2,dw,dh);
+  }
+}
+
 function loadSeasonAssets(){
   seasonAssets=loadJSON(SEASON_KEY,[]);
   const sel=loadJSON(SEASON_SELECTED_KEY,{});
@@ -1102,6 +1199,9 @@ async function renderPreview(person=people[current]){
   const wrap=$('.canvasWrap')||$('#canvas')?.parentElement;
   if(wrap) wrap.style.background=bgColor;
 
+  // Built-in monthly decorations sit on the frame but behind the character/bunny.
+  drawMonthlyMaterials();
+
   // Fixed layers stay 1:1. Only Y position is corrected; no scale distortion.
   const charY=1536*(+($('#characterY')?.value||0));
   const bunnyY=1536*(+($('#bunnyY')?.value||0));
@@ -1119,13 +1219,13 @@ async function renderPreview(person=people[current]){
 
   if(person){
     const name=normalize(person.name||person.official||'')||'名前未設定';
-    const englishY=h*(L.nameY+.018);
-    const nameY=h*(L.nameY+.074);
+    const englishY=h*(L.nameY+.021);
+    const nameY=h*(L.nameY+.071);
     drawSoftEnglishHeading(NAME_TOPTEXT,w*L.nameX,englishY,w*.70);
 
     ctx.fillStyle='#181818';
     const nameWeight=Math.max(700,Number($('#msgWeight').value||700));
-    const nameSize=fitSingle(name,w*.54,62,30,nameWeight,TEXT_FONT);
+    const nameSize=fitSingle(name,w*.56,66,31,nameWeight,TEXT_FONT);
     ctx.font=`${nameWeight} ${nameSize}px ${TEXT_FONT}`;
     ctx.fillText(name,w*L.nameX,nameY);
 
@@ -1157,7 +1257,7 @@ function loadImages(){
 }
 
 $('#monthPick').value=monthKeyNow();
-$('#monthPick').onchange=()=>{current=0;reloadMonth();loadSeasonAssets();if(bgMode==='auto')chooseBgColor(false)};
+$('#monthPick').onchange=()=>{current=0;reloadMonth();loadSeasonAssets();loadMonthlyMaterialState();if(bgMode==='auto')chooseBgColor(false)};
 $('#reloadBtn').onclick=reloadMonth;
 $('#manualAddBtn').onclick=addManualNames;
 $('#clearMonthBtn').onclick=()=>{if(confirm('この月の対象者だけ全消去します。呼び方辞書は消えません。')){saveRosterList([]);reloadMonth()}};
@@ -1170,6 +1270,10 @@ $('#templateFile').onchange=e=>{
   const r=new FileReader();r.onload=()=>{usingCustomTemplate=true;localStorage.setItem(TEMPLATE_KEY,r.result);template.src=r.result};r.readAsDataURL(f);
 };
 $('#seasonFiles').onchange=async e=>{await addSeasonFiles(e.target.files||[]);e.target.value=''};
+
+document.querySelectorAll('.monthlySwap').forEach(btn=>btn.onclick=()=>swapMonthlyRole(btn.dataset.slot));
+document.querySelectorAll('.monthlyToggle').forEach(btn=>btn.onclick=()=>toggleMonthlyRole(btn.dataset.slot));
+$('#monthlyShuffleAll').onclick=shuffleMonthlyAll;
 
 document.querySelectorAll('.seasonModeBtn').forEach(btn=>{
   btn.onclick=()=>{
@@ -1223,7 +1327,7 @@ $('#downloadAll').onclick=async()=>{
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
 };
 
-loadLayout();loadBgStyle();loadImages();loadSeasonAssets();reloadMonth();
+loadLayout();loadBgStyle();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
 ensureTekitouPoem().then(()=>renderPreview());
 document.fonts?.ready?.then(()=>renderPreview());
 </script>
