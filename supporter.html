@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.13 背景復元・文字バランス調整版</title>
+<title>サポーター画像メーカー v5.19.14 全月対応 下部文字微調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,8 +419,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.13 背景復元・文字バランス調整版</h1>
-    <div class="lead">ハート内の薄ピンク背景はそのまま維持。ハート後ろの黄みだけ自然に整え、下部文字のバランスを微調整しました。</div>
+    <h1>🌷 サポーター画像メーカー v5.19.14 全月対応 下部文字微調整版</h1>
+    <div class="lead">ハート内の薄ピンク背景は維持したまま、下部文字の左右バランスを全月共通で微調整しました。</div>
   </section>
 
   <div class="stickyPreviewBar" id="stickyPreviewBar">
@@ -484,7 +484,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
       <summary><h2 style="margin:0">② 月替わり素材</h2><span class="foldHint">1〜12月 内蔵済み</span></summary>
       <div class="sectionFoldBody">
         <div class="monthlyMaterialHead">
-          <div><b id="monthlyMaterialTitle">今月の素材</b><div class="mini">ChatGPTで作った透過素材を使用（1〜12月・全48素材をHTML埋め込み済み）</div></div>
+          <div><b id="monthlyMaterialTitle">今月の素材</b><div class="mini">ChatGPTで作った透過素材を使用（1〜12月・全48素材をHTML埋め込み済み（下部文字位置も全月共通で調整））</div></div>
           <button type="button" class="secondary" id="monthlyShuffleAll">🎲 全部入れ替え</button>
         </div>
         <div class="monthlySlotGrid">
@@ -729,7 +729,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.19.13：ハート内の薄ピンク背景を維持し、黄みのモヤだけ整えました。下部文字は微調整のみです。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.19.14：下部の「8月もありがとう！」は少し右へ、「SUPPORTER MEMORY」は少し左上へ。調整は全月共通です。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1454,8 +1454,8 @@ function drawSupporterMemory(person){
   // Keep both text groups inside the two blank safe zones.
   // Left message: make it larger and clearly two-line.
   // Memory block: slightly larger and optically centered.
-  const leftBox={x:w*.068,y:h*.724,w:w*.33,h:h*.084};
-  const rightBox={x:w*.335,y:h*.828,w:w*.37,h:h*.100};
+  const leftBox={x:w*.086,y:h*.724,w:w*.33,h:h*.084};
+  const rightBox={x:w*.323,y:h*.816,w:w*.37,h:h*.100};
 
   ctx.save();
   ctx.textBaseline='middle';
