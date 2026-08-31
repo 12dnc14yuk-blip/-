@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.15 全月固定文字表示版</title>
+<title>サポーター画像メーカー v5.19.16 全月固定文字表示版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.15 全月固定文字表示版</h1>
+    <h1>🌷 サポーター画像メーカー v5.19.16 全月固定文字表示版</h1>
     <div class="lead">ハート内の薄ピンク背景は維持。対象者がまだいない月でも、下部の月メッセージとSUPPORTER MEMORYを表示します。</div>
   </section>
 
@@ -729,7 +729,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.19.15：対象者がいない月でも「○月もありがとう！」とSUPPORTER MEMORYを表示します。全月共通です。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.19.16：対象者がいない月でも「○月もありがとう！」とSUPPORTER MEMORYを表示します。全月共通です。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1347,10 +1347,47 @@ function hexToRgb(hex){
   return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 function replaceNearWhiteWithBg(){
-  // v5.19.11: 以前は白っぽい画素を季節色へ直接置換していたため、
-  // ハート・名前枠・白い装飾まで誤って着色されていた。
-  // 元イラストの色を守るため、画像本体へのピクセル着色は行わない。
-  return;
+  // v5.19.16: v5.12.7 の見え方を復元。
+  // ハート内の薄ピンクは絶対に残し、ハートの外の白い空き背景だけ季節色へ。
+  const {r:br,g:bg,b:bb}=hexToRgb(bgColor);
+  const im=ctx.getImageData(0,0,1024,1536);
+  const d=im.data;
+
+  // Heart protection mask (two rounded lobes + lower triangle).
+  const inCircle=(x,y,cx,cy,r)=>{const dx=x-cx,dy=y-cy;return dx*dx+dy*dy<=r*r};
+  const inTri=(x,y,x1,y1,x2,y2,x3,y3)=>{
+    const s=(x1-x3)*(y-y3)-(y1-y3)*(x-x3);
+    const t=(x2-x1)*(y-y1)-(y2-y1)*(x-x1);
+    const u=(x3-x2)*(y-y2)-(y3-y2)*(x-x2);
+    return (s>=0&&t>=0&&u>=0)||(s<=0&&t<=0&&u<=0);
+  };
+  const protectedHeart=(x,y)=>
+    inCircle(x,y,535,770,205) ||
+    inCircle(x,y,755,770,205) ||
+    inTri(x,y,350,760,965,760,660,1228);
+
+  for(let i=0;i<d.length;i+=4){
+    const p=i/4, x=p%1024, y=Math.floor(p/1024);
+    if(protectedHeart(x,y)) continue;
+
+    const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
+    if(a<10) continue;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b), lum=(r+g+b)/3;
+
+    // Same gentle seasonal tinting used by the good v5.12.7 version.
+    if(lum>238 && (max-min)<18){
+      const mix=.78;
+      d[i]=Math.round(r*(1-mix)+br*mix);
+      d[i+1]=Math.round(g*(1-mix)+bg*mix);
+      d[i+2]=Math.round(b*(1-mix)+bb*mix);
+    }else if(lum>220 && (max-min)<24){
+      const mix=.34;
+      d[i]=Math.round(r*(1-mix)+br*mix);
+      d[i+1]=Math.round(g*(1-mix)+bg*mix);
+      d[i+2]=Math.round(b*(1-mix)+bb*mix);
+    }
+  }
+  ctx.putImageData(im,0,0);
 }
 function drawCenteredSpacedText(text,cx,y,spacing){
   const chars=[...(text||'')];
