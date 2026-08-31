@@ -217,6 +217,41 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 }
 
 .canvasWrap{position:relative}
+.stickyPreviewBar{
+  position:sticky;top:0;z-index:60;
+  margin:0 0 12px;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:rgba(255,252,253,.96);
+  box-shadow:0 8px 24px rgba(108,64,88,.10);
+  backdrop-filter:blur(8px);
+}
+.stickyPreviewInner{display:flex;align-items:center;gap:10px;min-width:0}
+.stickyThumbWrap{flex:0 0 88px}
+#miniPreviewCanvas{
+  width:88px;height:132px;display:block;border-radius:12px;
+  border:1px solid #efd4e3;background:#fff;
+}
+.stickyMeta{min-width:0;flex:1;display:grid;gap:4px}
+.stickyKicker{font-size:10px;font-weight:900;letter-spacing:.12em;color:#a27992}
+.stickyTitle{font-size:15px;font-weight:900;color:#6d495d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stickySub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stickyActions{display:flex;gap:6px;flex-wrap:wrap}
+.stickyActionBtn{
+  appearance:none;border:1px solid var(--line);background:#fff;color:#8a5e77;
+  border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;cursor:pointer
+}
+.stickyActionBtn.primaryMini{background:linear-gradient(135deg,#ed70c6,#ff9cda);color:#fff;border-color:#ed70c6}
+@media(max-width:520px){
+  .stickyPreviewBar{padding:7px 8px;border-radius:16px}
+  .stickyPreviewInner{gap:8px;align-items:flex-start}
+  .stickyThumbWrap{flex-basis:72px}
+  #miniPreviewCanvas{width:72px;height:108px}
+  .stickyTitle{font-size:14px}
+  .stickyActions{gap:5px}
+  .stickyActionBtn{padding:6px 9px;font-size:10px}
+}
 
 </style>
 
@@ -366,7 +401,24 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
-  <section class="card">
+  <div class="stickyPreviewBar" id="stickyPreviewBar">
+    <div class="stickyPreviewInner">
+      <div class="stickyThumbWrap"><canvas id="miniPreviewCanvas" width="160" height="240" aria-label="ミニプレビュー"></canvas></div>
+      <div class="stickyMeta">
+        <div class="stickyKicker">LIVE PREVIEW</div>
+        <div class="stickyTitle" id="stickyTitle">表示中のプレビュー</div>
+        <div class="stickySub" id="stickySub">スクロール中でも今の見た目を確認できます</div>
+        <div class="stickyActions">
+          <button type="button" class="stickyActionBtn" id="jumpPeopleBtn">①対象者</button>
+          <button type="button" class="stickyActionBtn" id="jumpMonthlyBtn">②月替わり素材</button>
+          <button type="button" class="stickyActionBtn" id="jumpPreviewBtn">③プレビュー</button>
+          <button type="button" class="stickyActionBtn primaryMini" id="stickySaveBtn">今の1枚を保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="card" id="peopleSection">
     <h2>① 今月の対象者</h2>
     <div class="grid2">
       <div><label>月</label><input id="monthPick" type="month"></div>
@@ -404,7 +456,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <section class="card">
+  <section class="card" id="monthlySection">
     <details class="sectionFold" open>
       <summary><h2 style="margin:0">② 月替わり素材</h2><span class="foldHint">1〜12月 自動</span></summary>
       <div class="sectionFoldBody">
@@ -675,6 +727,8 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 const $ = s => document.querySelector(s);
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
+const miniCanvas = document.getElementById('miniPreviewCanvas');
+const miniCtx = miniCanvas ? miniCanvas.getContext('2d') : null;
 
 const ROSTER_KEY='shuri_supporter_roster_v4';
 const DRAFT_KEY='shuri_supporter_drafts_v4';
@@ -756,6 +810,36 @@ let seasonAssets=[],seasonSelected=0,seasonImg=new Image();
 const MONTHLY_ROLES=['A','B','C','D'];
 const monthlyImgs={A:new Image(),B:new Image(),C:new Image(),D:new Image()};
 let monthlyState={};
+
+function updateStickyPreview(){
+  if(!miniCanvas || !miniCtx || !canvas) return;
+  miniCtx.clearRect(0,0,miniCanvas.width,miniCanvas.height);
+  miniCtx.fillStyle='#fff7fb';
+  miniCtx.fillRect(0,0,miniCanvas.width,miniCanvas.height);
+  const scale=Math.min(miniCanvas.width/canvas.width, miniCanvas.height/canvas.height);
+  const dw=canvas.width*scale, dh=canvas.height*scale;
+  const dx=(miniCanvas.width-dw)/2, dy=(miniCanvas.height-dh)/2;
+  miniCtx.drawImage(canvas, dx, dy, dw, dh);
+  const p=people[current];
+  const month=monthLabel(currentMonthKey()) || '今月';
+  const name=p?.name || '対象者なし';
+  const msg=(p?.msg||'').replace(/\s+/g,' ').trim();
+  const stickyTitle=document.getElementById('stickyTitle');
+  const stickySub=document.getElementById('stickySub');
+  if(stickyTitle) stickyTitle.textContent=`${month}｜${name}`;
+  if(stickySub) stickySub.textContent=msg ? `一言：${msg}` : 'スクロール中でも今の見た目を確認できます';
+}
+function setupStickyPreviewBar(){
+  const bindJump=(id,targetId)=>{
+    const btn=document.getElementById(id), target=document.getElementById(targetId);
+    if(btn && target) btn.addEventListener('click',()=>target.scrollIntoView({behavior:'smooth',block:'start'}));
+  };
+  bindJump('jumpPeopleBtn','peopleSection');
+  bindJump('jumpMonthlyBtn','monthlySection');
+  bindJump('jumpPreviewBtn','previewSection');
+  const saveBtn=document.getElementById('stickySaveBtn');
+  if(saveBtn) saveBtn.addEventListener('click',()=>document.getElementById('downloadOne')?.click());
+}
 
 function loadJSON(key,def){try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??def}catch(e){return def}}
 function saveJSON(key,val){localStorage.setItem(key,JSON.stringify(val))}
@@ -1397,6 +1481,7 @@ async function renderPreview(person=people[current]){
   }
 
   if($('#showSparkles').checked&&sparkles.complete)ctx.drawImage(sparkles,0,0,1024,1536);
+  updateStickyPreview();
 }
 async function currentPng(person){
   await renderPreview(person);
@@ -1492,7 +1577,8 @@ $('#downloadAll').onclick=async()=>{
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
 };
 
-loadLayout();loadBgStyle();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
+loadLayout();loadBgStyle();
+setupStickyPreviewBar();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
 ensureTekitouPoem().then(()=>renderPreview());
 document.fonts?.ready?.then(()=>renderPreview());
 </script>
