@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.16 全月固定文字表示版</title>
+<title>サポーター画像メーカー v5.19.17 全月固定文字表示版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.16 全月固定文字表示版</h1>
+    <h1>🌷 サポーター画像メーカー v5.19.17 全月固定文字表示版</h1>
     <div class="lead">ハート内の薄ピンク背景は維持。対象者がまだいない月でも、下部の月メッセージとSUPPORTER MEMORYを表示します。</div>
   </section>
 
@@ -729,7 +729,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.19.16：対象者がいない月でも「○月もありがとう！」とSUPPORTER MEMORYを表示します。全月共通です。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.19.17：ハート内の薄ピンクは維持。ハート外の白・黄みモヤを季節色へ整え、下部文字バランスを全月共通で微調整。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1347,13 +1347,14 @@ function hexToRgb(hex){
   return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 function replaceNearWhiteWithBg(){
-  // v5.19.16: v5.12.7 の見え方を復元。
-  // ハート内の薄ピンクは絶対に残し、ハートの外の白い空き背景だけ季節色へ。
+  // v5.19.17
+  // ・ハート内の「薄ピンク」だけ保護
+  // ・女の子の後ろ〜ハート左側など、ハート外の白/黄みモヤは季節色へ
+  // ・金枠、リボン、文字枠など色のある部分は触らない
   const {r:br,g:bg,b:bb}=hexToRgb(bgColor);
   const im=ctx.getImageData(0,0,1024,1536);
   const d=im.data;
 
-  // Heart protection mask (two rounded lobes + lower triangle).
   const inCircle=(x,y,cx,cy,r)=>{const dx=x-cx,dy=y-cy;return dx*dx+dy*dy<=r*r};
   const inTri=(x,y,x1,y1,x2,y2,x3,y3)=>{
     const s=(x1-x3)*(y-y3)-(y1-y3)*(x-x3);
@@ -1361,27 +1362,32 @@ function replaceNearWhiteWithBg(){
     const u=(x3-x2)*(y-y2)-(y3-y2)*(x-x2);
     return (s>=0&&t>=0&&u>=0)||(s<=0&&t<=0&&u<=0);
   };
-  const protectedHeart=(x,y)=>
+  const inHeartArea=(x,y)=>
     inCircle(x,y,535,770,205) ||
     inCircle(x,y,755,770,205) ||
     inTri(x,y,350,760,965,760,660,1228);
 
   for(let i=0;i<d.length;i+=4){
     const p=i/4, x=p%1024, y=Math.floor(p/1024);
-    if(protectedHeart(x,y)) continue;
-
     const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];
     if(a<10) continue;
-    const max=Math.max(r,g,b), min=Math.min(r,g,b), lum=(r+g+b)/3;
 
-    // Same gentle seasonal tinting used by the good v5.12.7 version.
-    if(lum>238 && (max-min)<18){
-      const mix=.78;
+    // Pink heart fill: R and B are both slightly stronger than G.
+    // Preserve that pink instead of protecting a huge geometric white area.
+    const heartPink = inHeartArea(x,y) && r>g+3 && b>g+2;
+    if(heartPink) continue;
+
+    const max=Math.max(r,g,b), min=Math.min(r,g,b), lum=(r+g+b)/3;
+    const neutralish=(max-min)<24;
+    const warmHaze=(r>b+3 && g>b+2 && lum>216);
+
+    if(lum>238 && (neutralish || warmHaze)){
+      const mix=.80;
       d[i]=Math.round(r*(1-mix)+br*mix);
       d[i+1]=Math.round(g*(1-mix)+bg*mix);
       d[i+2]=Math.round(b*(1-mix)+bb*mix);
-    }else if(lum>220 && (max-min)<24){
-      const mix=.34;
+    }else if(lum>218 && (neutralish || warmHaze)){
+      const mix=.42;
       d[i]=Math.round(r*(1-mix)+br*mix);
       d[i+1]=Math.round(g*(1-mix)+bg*mix);
       d[i+2]=Math.round(b*(1-mix)+bb*mix);
@@ -1490,8 +1496,8 @@ function drawSupporterMemory(person){
   // Keep both text groups inside the two blank safe zones.
   // Left message: make it larger and clearly two-line.
   // Memory block: slightly larger and optically centered.
-  const leftBox={x:w*.086,y:h*.724,w:w*.33,h:h*.084};
-  const rightBox={x:w*.323,y:h*.816,w:w*.37,h:h*.100};
+  const leftBox={x:w*.100,y:h*.731,w:w*.33,h:h*.084};
+  const rightBox={x:w*.315,y:h*.802,w:w*.385,h:h*.104};
 
   ctx.save();
   ctx.textBaseline='middle';
@@ -1510,11 +1516,11 @@ function drawSupporterMemory(person){
   const title='SUPPORTER MEMORY';
   const record=`Rank.${rank ?? '-'}  ♡  ${supporterMemoryDateLabel()}`;
   const sign='from syuri';
-  const titleFit=fitBoxText(title,rightBox.w-10,rightBox.h*.30,{maxSize:36,minSize:25,weight:800,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
-  const recordFit=fitBoxText(record,rightBox.w-10,rightBox.h*.25,{maxSize:31,minSize:21,weight:700,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
-  const signFit=fitBoxText(sign,rightBox.w-14,rightBox.h*.21,{maxSize:27,minSize:19,weight:700,font:TEXT_FONT,lineHeight:1.08,preferredLineCounts:[1]});
+  const titleFit=fitBoxText(title,rightBox.w-10,rightBox.h*.30,{maxSize:38,minSize:26,weight:800,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
+  const recordFit=fitBoxText(record,rightBox.w-10,rightBox.h*.25,{maxSize:33,minSize:22,weight:700,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
+  const signFit=fitBoxText(sign,rightBox.w-14,rightBox.h*.21,{maxSize:29,minSize:20,weight:700,font:TEXT_FONT,lineHeight:1.08,preferredLineCounts:[1]});
 
-  ctx.fillStyle='#69495d';
+  ctx.fillStyle='#5f4053';
   ctx.textAlign='center';
   ctx.font=`800 ${titleFit.size}px ${TEXT_FONT}`;
   ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.18);
