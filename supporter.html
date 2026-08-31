@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.19.1 軽量修正版</title>
+<title>サポーター画像メーカー v5.19.2 ルート配置対応版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.19.1 軽量修正版</h1>
+    <h1>🌷 サポーター画像メーカー v5.19.2 ルート配置対応版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。名前一覧は3〜4列表示、下部メッセージはイラストと重なりにくい配置に調整しました。</div>
   </section>
 
@@ -1100,8 +1100,8 @@ function saveStyle(){
 function layout(){return Object.fromEntries(Object.keys(defaults).map(k=>[k,+$('#'+k).value]))}
 function seasonLayout(){return Object.fromEntries(Object.keys(seasonDefaults).map(k=>[k,+$('#'+k).value]))}
 
-const EMBEDDED_CORE_ASSETS = {"base.jpg": "assets/core/base.jpg", "character.png": "assets/core/character.png", "bunny_flowers.png": "assets/core/bunny_flowers.png", "sparkles.png": "assets/core/sparkles.png"};
-const EMBEDDED_MONTHLY_ASSETS = {"m01_A": "assets/monthly/m01_A.png", "m01_B": "assets/monthly/m01_B.png", "m01_C": "assets/monthly/m01_C.png", "m01_D": "assets/monthly/m01_D.png", "m02_A": "assets/monthly/m02_A.png", "m02_B": "assets/monthly/m02_B.png", "m02_C": "assets/monthly/m02_C.png", "m02_D": "assets/monthly/m02_D.png", "m03_A": "assets/monthly/m03_A.png", "m03_B": "assets/monthly/m03_B.png", "m03_C": "assets/monthly/m03_C.png", "m03_D": "assets/monthly/m03_D.png", "m04_A": "assets/monthly/m04_A.png", "m04_B": "assets/monthly/m04_B.png", "m04_C": "assets/monthly/m04_C.png", "m04_D": "assets/monthly/m04_D.png", "m05_A": "assets/monthly/m05_A.png", "m05_B": "assets/monthly/m05_B.png", "m05_C": "assets/monthly/m05_C.png", "m05_D": "assets/monthly/m05_D.png", "m06_A": "assets/monthly/m06_A.png", "m06_B": "assets/monthly/m06_B.png", "m06_C": "assets/monthly/m06_C.png", "m06_D": "assets/monthly/m06_D.png", "m07_A": "assets/monthly/m07_A.png", "m07_B": "assets/monthly/m07_B.png", "m07_C": "assets/monthly/m07_C.png", "m07_D": "assets/monthly/m07_D.png", "m08_A": "assets/monthly/m08_A.png", "m08_B": "assets/monthly/m08_B.png", "m08_C": "assets/monthly/m08_C.png", "m08_D": "assets/monthly/m08_D.png", "m09_A": "assets/monthly/m09_A.png", "m09_B": "assets/monthly/m09_B.png", "m09_C": "assets/monthly/m09_C.png", "m09_D": "assets/monthly/m09_D.png", "m10_A": "assets/monthly/m10_A.png", "m10_B": "assets/monthly/m10_B.png", "m10_C": "assets/monthly/m10_C.png", "m10_D": "assets/monthly/m10_D.png", "m11_A": "assets/monthly/m11_A.png", "m11_B": "assets/monthly/m11_B.png", "m11_C": "assets/monthly/m11_C.png", "m11_D": "assets/monthly/m11_D.png", "m12_A": "assets/monthly/m12_A.png", "m12_B": "assets/monthly/m12_B.png", "m12_C": "assets/monthly/m12_C.png", "m12_D": "assets/monthly/m12_D.png"};
+const EMBEDDED_CORE_ASSETS = {"base.jpg": "base.jpg", "character.png": "character.png", "bunny_flowers.png": "bunny_flowers.png", "sparkles.png": "sparkles.png"};
+const EMBEDDED_MONTHLY_ASSETS = {"m01_A": "m01_A.png", "m01_B": "m01_B.png", "m01_C": "m01_C.png", "m01_D": "m01_D.png", "m02_A": "m02_A.png", "m02_B": "m02_B.png", "m02_C": "m02_C.png", "m02_D": "m02_D.png", "m03_A": "m03_A.png", "m03_B": "m03_B.png", "m03_C": "m03_C.png", "m03_D": "m03_D.png", "m04_A": "m04_A.png", "m04_B": "m04_B.png", "m04_C": "m04_C.png", "m04_D": "m04_D.png", "m05_A": "m05_A.png", "m05_B": "m05_B.png", "m05_C": "m05_C.png", "m05_D": "m05_D.png", "m06_A": "m06_A.png", "m06_B": "m06_B.png", "m06_C": "m06_C.png", "m06_D": "m06_D.png", "m07_A": "m07_A.png", "m07_B": "m07_B.png", "m07_C": "m07_C.png", "m07_D": "m07_D.png", "m08_A": "m08_A.png", "m08_B": "m08_B.png", "m08_C": "m08_C.png", "m08_D": "m08_D.png", "m09_A": "m09_A.png", "m09_B": "m09_B.png", "m09_C": "m09_C.png", "m09_D": "m09_D.png", "m10_A": "m10_A.png", "m10_B": "m10_B.png", "m10_C": "m10_C.png", "m10_D": "m10_D.png", "m11_A": "m11_A.png", "m11_B": "m11_B.png", "m11_C": "m11_C.png", "m11_D": "m11_D.png", "m12_A": "m12_A.png", "m12_B": "m12_B.png", "m12_C": "m12_C.png", "m12_D": "m12_D.png"};
 
 function currentMonthNumber(){
   return Math.max(1,Math.min(12,Number(String(currentMonthKey()).split('-')[1]||new Date().getMonth()+1)));
