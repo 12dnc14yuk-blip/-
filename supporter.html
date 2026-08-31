@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.18.6 下部文字サイズ調整版</title>
+<title>サポーター画像メーカー v5.18.7 下部メッセージ枠最適化版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.18.6 下部文字サイズ調整版</h1>
+    <h1>🌷 サポーター画像メーカー v5.18.7 下部メッセージ枠最適化版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。名前一覧は3〜4列表示、下部メッセージはイラストと重なりにくい配置に調整しました。</div>
   </section>
 
@@ -1416,49 +1416,92 @@ function supporterMemoryDateLabel(){
   const [y,m]=String(key).split('-');
   return (y&&m)?`${y}.${m}`:String(key).replace('-','.');
 }
+function fitBoxText(text,maxW,maxH,{maxSize=44,minSize=18,weight=700,font=TEXT_FONT,lineHeight=1.2,preferredLineCounts=[1,2,3]}={}){
+  const raw=String(text||'').trim();
+  if(!raw)return{size:maxSize,lines:[''],lh:maxSize*lineHeight,weight,font};
+  const explicit=raw.split(/
+/);
+  if(explicit.length>1){
+    for(let size=maxSize;size>=minSize;size-=1){
+      ctx.font=`${weight} ${size}px ${font}`;
+      const lh=size*lineHeight;
+      const widest=Math.max(...explicit.map(x=>ctx.measureText(x).width),0);
+      if(widest<=maxW && explicit.length*lh<=maxH)return{size,lines:explicit,lh,weight,font};
+    }
+    return{size:minSize,lines:explicit,lh:minSize*lineHeight,weight,font};
+  }
+  for(const count of preferredLineCounts){
+    const lines=(count===1)?[raw]:splitBalancedChars(raw,count);
+    for(let size=maxSize;size>=minSize;size-=1){
+      ctx.font=`${weight} ${size}px ${font}`;
+      const lh=size*lineHeight;
+      const widest=Math.max(...lines.map(x=>ctx.measureText(x).width),0);
+      if(widest<=maxW && lines.length*lh<=maxH)return{size,lines,lh,weight,font};
+    }
+  }
+  for(let size=maxSize;size>=minSize;size-=1){
+    const lines=wrapText(raw,maxW,size,weight,font);
+    ctx.font=`${weight} ${size}px ${font}`;
+    const lh=size*lineHeight;
+    const widest=Math.max(...lines.map(x=>ctx.measureText(x).width),0);
+    if(widest<=maxW && lines.length*lh<=maxH)return{size,lines,lh,weight,font};
+  }
+  return{size:minSize,lines:wrapText(raw,maxW,minSize,weight,font),lh:minSize*lineHeight,weight,font};
+}
+function drawLinesInBox(lines,x,y,w,h,{size=32,lh=38,weight=700,font=TEXT_FONT,align='center',color='#332a30'}={}){
+  ctx.save();
+  ctx.font=`${weight} ${size}px ${font}`;
+  ctx.fillStyle=color;
+  ctx.textBaseline='middle';
+  ctx.textAlign=align;
+  const totalH=lh*Math.max(1,lines.length);
+  let cy=y+(h-totalH)/2+lh/2;
+  const tx=align==='left'?x:(align==='right'?x+w:x+w/2);
+  for(const line of lines){
+    ctx.fillText(line,tx,cy);
+    cy+=lh;
+  }
+  ctx.restore();
+}
 function drawSupporterMemory(person){
   if(!person)return;
   const w=canvas.width,h=canvas.height;
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
 
-  // Lower message area split into two zones:
-  // 1) upper-left thank-you line
-  // 2) lower-centre memory meta
-  const mainLeftX=w*.155;
-  const mainRightX=w*.415;
-  const mainY=h*.777;
-  const infoX=w*.545;
-  const labelY=h*.804;
-  const recordY=h*.830;
-  const signY=h*.855;
+  const main=`${month}も応援ありがとう！`;
+  const leftBox={x:w*.085,y:h*.748,w:w*.33,h:h*.082};
+  const rightBox={x:w*.47,y:h*.792,w:w*.31,h:h*.088};
 
   ctx.save();
   ctx.textBaseline='middle';
 
-  const main=`${month}も応援ありがとう！`;
-  const mainCx=(mainLeftX+mainRightX)/2;
-  ctx.fillStyle='#332a30';
-  ctx.font=`700 ${fitSingle(main,(mainRightX-mainLeftX),40,27,700,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.textAlign='center';
-  ctx.fillText(main,mainCx,mainY);
+  const mainFit=fitBoxText(main,leftBox.w-22,leftBox.h-10,{maxSize:42,minSize:22,weight:800,font:TEXT_FONT,lineHeight:1.16,preferredLineCounts:[1,2]});
+  drawLinesInBox(mainFit.lines,leftBox.x+10,leftBox.y,leftBox.w-20,leftBox.h,{size:mainFit.size,lh:mainFit.lh,weight:800,font:TEXT_FONT,align:'left',color:'#332a30'});
+
+  const title='SUPPORTER MEMORY';
+  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
+  const sign='from syuri';
+  const titleFit=fitBoxText(title,rightBox.w-16,rightBox.h*.26,{maxSize:25,minSize:17,weight:700,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
+  const recordFit=fitBoxText(record,rightBox.w-18,rightBox.h*.22,{maxSize:26,minSize:17,weight:600,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
+  const signFit=fitBoxText(sign,rightBox.w-18,rightBox.h*.20,{maxSize:22,minSize:15,weight:600,font:TEXT_FONT,lineHeight:1.1,preferredLineCounts:[1]});
 
   ctx.fillStyle='#9b748a';
-  ctx.font=`700 24px ${TEXT_FONT}`;
-  ctx.fillText('SUPPORTER MEMORY',infoX,labelY);
+  ctx.textAlign='center';
+  ctx.font=`700 ${titleFit.size}px ${TEXT_FONT}`;
+  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.18);
 
-  const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
-  ctx.font=`600 ${fitSingle(record,w*.28,25,17,600,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(record,infoX,recordY);
+  ctx.font=`600 ${recordFit.size}px ${TEXT_FONT}`;
+  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.50);
 
-  ctx.font=`600 ${fitSingle('from syuri',w*.18,22,16,600,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText('from syuri',infoX,signY);
+  ctx.font=`600 ${signFit.size}px ${TEXT_FONT}`;
+  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.80);
 
   ctx.fillStyle='#d89abb';
   ctx.font=`700 16px ${UI_FONT}`;
-  ctx.fillText('✦',mainLeftX-10,mainY);
-  ctx.fillText('✦',infoX-w*.14,recordY);
-  ctx.fillText('✦',infoX+w*.14,recordY);
+  ctx.fillText('✦',leftBox.x-8,leftBox.y+leftBox.h*.52);
+  ctx.fillText('✦',rightBox.x-10,rightBox.y+rightBox.h*.50);
+  ctx.fillText('✦',rightBox.x+rightBox.w+10,rightBox.y+rightBox.h*.50);
   ctx.restore();
 }
 
