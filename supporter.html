@@ -1473,8 +1473,8 @@ function drawSupporterMemory(person){
   // Keep both text groups inside the two blank safe zones.
   // Left message: make it larger and clearly two-line.
   // Memory block: slightly larger and optically centered.
-  const leftBox={x:w*.125,y:h*.713,w:w*.34,h:h*.086};
-  const rightBox={x:w*.415,y:h*.758,w:w*.305,h:h*.096};
+  const leftBox={x:w*.095,y:h*.742,w:w*.33,h:h*.084};
+  const rightBox={x:w*.405,y:h*.748,w:w*.33,h:h*.108};
 
   ctx.save();
   ctx.textBaseline='middle';
@@ -1493,20 +1493,20 @@ function drawSupporterMemory(person){
   const title='SUPPORTER MEMORY';
   const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}`;
   const sign='from syuri';
-  const titleFit=fitBoxText(title,rightBox.w-10,rightBox.h*.28,{maxSize:29,minSize:18,weight:700,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
-  const recordFit=fitBoxText(record,rightBox.w-10,rightBox.h*.24,{maxSize:29,minSize:18,weight:600,font:TEXT_FONT,lineHeight:1.12,preferredLineCounts:[1]});
-  const signFit=fitBoxText(sign,rightBox.w-14,rightBox.h*.22,{maxSize:24,minSize:16,weight:600,font:TEXT_FONT,lineHeight:1.1,preferredLineCounts:[1]});
+  const titleFit=fitBoxText(title,rightBox.w-10,rightBox.h*.30,{maxSize:32,minSize:22,weight:800,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
+  const recordFit=fitBoxText(record,rightBox.w-10,rightBox.h*.25,{maxSize:28,minSize:20,weight:700,font:TEXT_FONT,lineHeight:1.10,preferredLineCounts:[1]});
+  const signFit=fitBoxText(sign,rightBox.w-14,rightBox.h*.21,{maxSize:24,minSize:18,weight:700,font:TEXT_FONT,lineHeight:1.08,preferredLineCounts:[1]});
 
-  ctx.fillStyle='#9b748a';
+  ctx.fillStyle='#77566a';
   ctx.textAlign='center';
-  ctx.font=`700 ${titleFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.22);
+  ctx.font=`800 ${titleFit.size}px ${TEXT_FONT}`;
+  ctx.fillText(title,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.20);
 
-  ctx.font=`600 ${recordFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.53);
+  ctx.font=`700 ${recordFit.size}px ${TEXT_FONT}`;
+  ctx.fillText(record,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.52);
 
-  ctx.font=`600 ${signFit.size}px ${TEXT_FONT}`;
-  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.81);
+  ctx.font=`700 ${signFit.size}px ${TEXT_FONT}`;
+  ctx.fillText(sign,rightBox.x+rightBox.w/2,rightBox.y+rightBox.h*.82);
 
   ctx.fillStyle='#d89abb';
   ctx.font=`700 16px ${UI_FONT}`;
