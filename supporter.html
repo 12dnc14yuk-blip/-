@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.15 SUPPORTER MEMORY版</title>
+<title>サポーター画像メーカー v5.16 全月素材内蔵＋メッセージ位置調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -397,7 +397,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.15 SUPPORTER MEMORY版</h1>
+    <h1>🌷 サポーター画像メーカー v5.16 全月素材内蔵＋メッセージ位置調整版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -458,10 +458,10 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 
   <section class="card" id="monthlySection">
     <details class="sectionFold" open>
-      <summary><h2 style="margin:0">② 月替わり素材</h2><span class="foldHint">1〜12月 自動</span></summary>
+      <summary><h2 style="margin:0">② 月替わり素材</h2><span class="foldHint">1〜12月 内蔵済み</span></summary>
       <div class="sectionFoldBody">
         <div class="monthlyMaterialHead">
-          <div><b id="monthlyMaterialTitle">今月の素材</b><div class="mini">ChatGPTで作った透過素材を使用（HTML埋め込み済み）</div></div>
+          <div><b id="monthlyMaterialTitle">今月の素材</b><div class="mini">ChatGPTで作った透過素材を使用（1〜12月・全48素材をHTML埋め込み済み）</div></div>
           <button type="button" class="secondary" id="monthlyShuffleAll">🎲 全部入れ替え</button>
         </div>
         <div class="monthlySlotGrid">
@@ -719,7 +719,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.15：下の空白枠にSUPPORTER MEMORYを自動表示</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.16：1〜12月ぶんの月替わり素材をHTMLに全て内蔵。下のメッセージも少し上に寄せて、イラストと被りにくく調整しました。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -748,6 +748,7 @@ const TEXT_WEIGHT_MIGRATION_KEY='shuri_supporter_text_weight_v57';
 const MSG_WRAP_MIGRATION_KEY='shuri_supporter_msg_wrap_v58';
 const MSG_RATIO_MIGRATION_KEY='shuri_supporter_msg_ratio_v581';
 const CLEAN_UI_LAYOUT_KEY='shuri_supporter_clean_ui_v59';
+const LOWER_MESSAGE_LIFT_KEY='shuri_supporter_lower_message_lift_v516';
 
 const defaults={
   monthX:.500,monthY:.232,
@@ -1065,6 +1066,11 @@ function loadLayout(){
     st.nameY=.317;
     saveJSON(LAYOUT_KEY,st);
     localStorage.setItem(CLEAN_UI_LAYOUT_KEY,'1');
+  }
+  if(!localStorage.getItem(LOWER_MESSAGE_LIFT_KEY)){
+    if(Number(st.msgY??defaults.msgY) > .585) st.msgY = .582;
+    saveJSON(LAYOUT_KEY,st);
+    localStorage.setItem(LOWER_MESSAGE_LIFT_KEY,'1');
   }
   if(!localStorage.getItem(ENGLISH_NAME_FIX_KEY)){
     st.nameY=.286;
@@ -1429,7 +1435,7 @@ function drawSupporterMemory(person){
   const month=monthLabel(currentMonthKey())||'今月';
   const rank=Math.max(1,Number(person.rank)||1);
   const cx=w*.49;
-  const topY=h*.802;
+  const topY=h*.782;
   ctx.save();
   ctx.textAlign='center';
   ctx.textBaseline='middle';
@@ -1443,19 +1449,19 @@ function drawSupporterMemory(person){
   const main=`${month}も応援ありがとう！`;
   ctx.fillStyle='#332a30';
   ctx.font=`700 ${fitSingle(main,w*.44,44,30,700,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(main,cx,topY+52);
+  ctx.fillText(main,cx,topY+46);
 
   // Automatic record line
   const record=`Rank.${rank}  ♡  ${supporterMemoryDateLabel()}  ♡  from syuri`;
   ctx.fillStyle='#9b748a';
   ctx.font=`600 ${fitSingle(record,w*.52,30,20,600,TEXT_FONT)}px ${TEXT_FONT}`;
-  ctx.fillText(record,cx,topY+101);
+  ctx.fillText(record,cx,topY+88);
 
   // Tiny side ornaments so the lower frame feels intentional, not crowded.
   ctx.fillStyle='#d89abb';
   ctx.font=`700 24px ${UI_FONT}`;
-  ctx.fillText('✦',cx-w*.245,topY+53);
-  ctx.fillText('✦',cx+w*.245,topY+53);
+  ctx.fillText('✦',cx-w*.245,topY+47);
+  ctx.fillText('✦',cx+w*.245,topY+47);
   ctx.restore();
 }
 
