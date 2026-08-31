@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.10.4 英文カラー比較版</title>
+<title>サポーター画像メーカー v5.13 月替わり素材 微調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -339,6 +339,18 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
 .monthlyHint{margin-top:9px;font-size:12px;color:var(--muted);line-height:1.55}
 .monthlyPreset{display:flex;gap:7px;flex-wrap:wrap;margin:9px 0}
 .monthlyPreset button{padding:8px 11px;font-size:12px}
+.monthlyTune{margin-top:8px;border:1px dashed #efd5e3;border-radius:14px;background:#fff;padding:8px}
+.monthlyTune summary{padding:0;margin:0;list-style:none;font-size:12px;font-weight:900;color:#7b556c;cursor:pointer}
+.monthlyTune summary::-webkit-details-marker{display:none}
+.monthlyTuneBody{padding-top:8px;display:grid;gap:8px}
+.monthlyTuneGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.monthlyTuneGrid label{margin:0;font-size:11px}
+.monthlyTuneGrid input[type=range]{margin-top:5px}
+.monthlyTuneValue{display:block;margin-top:3px;font-size:10px;color:#9b7d8e;font-weight:800}
+.monthlyNudgeRow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.monthlyNudgeRow button,.monthlyScaleRow button,.monthlyResetBtn{padding:8px 6px;font-size:11px;border-radius:12px}
+.monthlyScaleRow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.monthlyResetBtn{width:100%}
 @media(max-width:430px){.monthlySlotGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.monthlyThumb{height:96px}.monthlySlot{padding:8px}.monthlySlotActions{grid-template-columns:1fr}}
 </style>
 </head>
@@ -350,7 +362,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.12.5 月替わり素材 位置微調整版</h1>
+    <h1>🌷 サポーター画像メーカー v5.13 月替わり素材 微調整版</h1>
     <div class="lead">文字の微調整は維持したまま、1〜12月のAI透過素材を内蔵。月に合わせて4か所へ自動配置します。</div>
   </section>
 
@@ -405,24 +417,108 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
             <div class="monthlySlotTop"><b>A 左上</b><span class="mini">中</span></div>
             <div class="monthlyThumb"><img id="monthlyThumbA" alt="A素材"></div>
             <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="A">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="A">表示中</button></div>
+            <details class="monthlyTune">
+              <summary>↕ 微調整</summary>
+              <div class="monthlyTuneBody">
+                <div class="monthlyTuneGrid">
+                  <label>左右<input id="monthlyAX" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyAXVal"></span></label>
+                  <label>上下<input id="monthlyAY" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyAYVal"></span></label>
+                  <label>大きさ<input id="monthlyAScale" type="range" min=".10" max=".55" step=".0025"><span class="monthlyTuneValue" id="monthlyAScaleVal"></span></label>
+                </div>
+                <div class="monthlyNudgeRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="A" data-key="x" data-delta="-0.005">←</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="A" data-key="y" data-delta="-0.005">↑</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="A" data-key="y" data-delta="0.005">↓</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="A" data-key="x" data-delta="0.005">→</button>
+                </div>
+                <div class="monthlyScaleRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="A" data-key="scale" data-delta="-0.01">− 小さく</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="A" data-key="scale" data-delta="0.01">＋ 大きく</button>
+                </div>
+                <button type="button" class="secondary monthlyResetBtn" data-slot="A">この位置を初期値へ</button>
+              </div>
+            </details>
           </div>
           <div class="monthlySlot" data-slot="B">
             <div class="monthlySlotTop"><b>B 右上</b><span class="mini">小〜中</span></div>
             <div class="monthlyThumb"><img id="monthlyThumbB" alt="B素材"></div>
             <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="B">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="B">表示中</button></div>
+            <details class="monthlyTune">
+              <summary>↕ 微調整</summary>
+              <div class="monthlyTuneBody">
+                <div class="monthlyTuneGrid">
+                  <label>左右<input id="monthlyBX" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyBXVal"></span></label>
+                  <label>上下<input id="monthlyBY" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyBYVal"></span></label>
+                  <label>大きさ<input id="monthlyBScale" type="range" min=".10" max=".55" step=".0025"><span class="monthlyTuneValue" id="monthlyBScaleVal"></span></label>
+                </div>
+                <div class="monthlyNudgeRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="B" data-key="x" data-delta="-0.005">←</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="B" data-key="y" data-delta="-0.005">↑</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="B" data-key="y" data-delta="0.005">↓</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="B" data-key="x" data-delta="0.005">→</button>
+                </div>
+                <div class="monthlyScaleRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="B" data-key="scale" data-delta="-0.01">− 小さく</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="B" data-key="scale" data-delta="0.01">＋ 大きく</button>
+                </div>
+                <button type="button" class="secondary monthlyResetBtn" data-slot="B">この位置を初期値へ</button>
+              </div>
+            </details>
           </div>
           <div class="monthlySlot" data-slot="C">
-            <div class="monthlySlotTop"><b>C 女の子左上</b><span class="mini">小</span></div>
+            <div class="monthlySlotTop"><b>C 女の子左上</b><span class="mini">小〜中</span></div>
             <div class="monthlyThumb"><img id="monthlyThumbC" alt="C素材"></div>
             <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="C">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="C">表示中</button></div>
+            <details class="monthlyTune">
+              <summary>↕ 微調整</summary>
+              <div class="monthlyTuneBody">
+                <div class="monthlyTuneGrid">
+                  <label>左右<input id="monthlyCX" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyCXVal"></span></label>
+                  <label>上下<input id="monthlyCY" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyCYVal"></span></label>
+                  <label>大きさ<input id="monthlyCScale" type="range" min=".10" max=".55" step=".0025"><span class="monthlyTuneValue" id="monthlyCScaleVal"></span></label>
+                </div>
+                <div class="monthlyNudgeRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="C" data-key="x" data-delta="-0.005">←</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="C" data-key="y" data-delta="-0.005">↑</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="C" data-key="y" data-delta="0.005">↓</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="C" data-key="x" data-delta="0.005">→</button>
+                </div>
+                <div class="monthlyScaleRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="C" data-key="scale" data-delta="-0.01">− 小さく</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="C" data-key="scale" data-delta="0.01">＋ 大きく</button>
+                </div>
+                <button type="button" class="secondary monthlyResetBtn" data-slot="C">この位置を初期値へ</button>
+              </div>
+            </details>
           </div>
           <div class="monthlySlot" data-slot="D">
             <div class="monthlySlotTop"><b>D 右下</b><span class="mini">中〜大</span></div>
             <div class="monthlyThumb"><img id="monthlyThumbD" alt="D素材"></div>
             <div class="monthlySlotActions"><button class="secondary monthlySwap" data-slot="D">🔄 入れ替え</button><button class="secondary monthlyToggle" data-slot="D">表示中</button></div>
+            <details class="monthlyTune">
+              <summary>↕ 微調整</summary>
+              <div class="monthlyTuneBody">
+                <div class="monthlyTuneGrid">
+                  <label>左右<input id="monthlyDX" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyDXVal"></span></label>
+                  <label>上下<input id="monthlyDY" type="range" min="0" max="1" step=".0025"><span class="monthlyTuneValue" id="monthlyDYVal"></span></label>
+                  <label>大きさ<input id="monthlyDScale" type="range" min=".10" max=".55" step=".0025"><span class="monthlyTuneValue" id="monthlyDScaleVal"></span></label>
+                </div>
+                <div class="monthlyNudgeRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="D" data-key="x" data-delta="-0.005">←</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="D" data-key="y" data-delta="-0.005">↑</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="D" data-key="y" data-delta="0.005">↓</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="D" data-key="x" data-delta="0.005">→</button>
+                </div>
+                <div class="monthlyScaleRow">
+                  <button type="button" class="secondary monthlyNudge" data-slot="D" data-key="scale" data-delta="-0.01">− 小さく</button>
+                  <button type="button" class="secondary monthlyNudge" data-slot="D" data-key="scale" data-delta="0.01">＋ 大きく</button>
+                </div>
+                <button type="button" class="secondary monthlyResetBtn" data-slot="D">この位置を初期値へ</button>
+              </div>
+            </details>
           </div>
         </div>
-        <div class="monthlyHint">A/B/C/Dは、さっき決めた空き位置に固定。素材だけ月ごとに変わります。入れ替えはその月の4素材の中で循環します。</div>
+        <div class="monthlyHint">A/B/C/Dは、その月の4素材を入れ替えながら使えます。各カードの「微調整」で位置と大きさを少しずつ動かせます。</div>
 
         <details style="margin-top:10px">
           <summary>自分の素材も追加する（今までの機能）</summary>
@@ -571,7 +667,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.12.7：左上素材をさらに少し上へ調整</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.13：月替わり素材に位置・サイズの微調整を追加</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -983,6 +1079,7 @@ function setMonthlyImages(){
     const thumb=$(`#monthlyThumb${role}`); if(thumb) thumb.src=src;
     const card=document.querySelector(`.monthlySlot[data-slot="${role}"]`); if(card) card.classList.toggle('off',st.show===false);
     const toggle=document.querySelector(`.monthlyToggle[data-slot="${role}"]`); if(toggle) toggle.textContent=st.show===false?'非表示':'表示中';
+    syncMonthlyUi(role);
   }
   saveMonthlyMaterialState();renderPreview();
 }
@@ -993,6 +1090,43 @@ function toggleMonthlyRole(role){
   const st=monthlyState[role]||monthlyDefaults()[role];st.show=st.show===false?true:false;monthlyState[role]=st;setMonthlyImages();
 }
 function shuffleMonthlyAll(){for(const role of MONTHLY_ROLES){const st=monthlyState[role]||monthlyDefaults()[role];st.choice=(Number(st.choice||0)+1+Math.floor(Math.random()*3))%4;monthlyState[role]=st;}setMonthlyImages();}
+
+function monthlyControlBounds(key){
+  if(key==='scale') return {min:.10,max:.55};
+  return {min:0,max:1};
+}
+function clampMonthlyValue(key,val){
+  const b=monthlyControlBounds(key);
+  return Math.min(b.max,Math.max(b.min,Number(val)||0));
+}
+function syncMonthlyUi(role){
+  const st=monthlyState[role]||monthlyDefaults()[role];
+  const map={X:'x',Y:'y',Scale:'scale'};
+  for(const [suffix,key] of Object.entries(map)){
+    const el=$(`#monthly${role}${suffix}`), out=$(`#monthly${role}${suffix}Val`);
+    if(el) el.value=st[key];
+    if(out) out.textContent=key==='scale' ? `${Math.round(Number(st[key]||0)*100)}%` : `${Math.round(Number(st[key]||0)*1000)/10}%`;
+  }
+}
+function updateMonthlyControl(role,key,val){
+  const st=monthlyState[role]||monthlyDefaults()[role];
+  st[key]=clampMonthlyValue(key,val);
+  monthlyState[role]=st;
+  saveMonthlyMaterialState();
+  syncMonthlyUi(role);
+  renderPreview();
+}
+function nudgeMonthly(role,key,delta){
+  const st=monthlyState[role]||monthlyDefaults()[role];
+  updateMonthlyControl(role,key,Number(st[key]||0)+Number(delta||0));
+}
+function resetMonthlyRoleLayout(role){
+  const def=monthlyDefaults()[role], st=monthlyState[role]||{};
+  monthlyState[role]={...st,x:def.x,y:def.y,scale:def.scale};
+  saveMonthlyMaterialState();
+  syncMonthlyUi(role);
+  renderPreview();
+}
 function drawMonthlyMaterials(){
   const w=canvas.width,h=canvas.height;
   for(const role of MONTHLY_ROLES){
@@ -1296,6 +1430,15 @@ $('#seasonFiles').onchange=async e=>{await addSeasonFiles(e.target.files||[]);e.
 document.querySelectorAll('.monthlySwap').forEach(btn=>btn.onclick=()=>swapMonthlyRole(btn.dataset.slot));
 document.querySelectorAll('.monthlyToggle').forEach(btn=>btn.onclick=()=>toggleMonthlyRole(btn.dataset.slot));
 $('#monthlyShuffleAll').onclick=shuffleMonthlyAll;
+MONTHLY_ROLES.forEach(role=>{
+  const pairs=[['X','x'],['Y','y'],['Scale','scale']];
+  pairs.forEach(([suffix,key])=>{
+    const el=$(`#monthly${role}${suffix}`);
+    if(el) el.oninput=()=>updateMonthlyControl(role,key,el.value);
+  });
+});
+document.querySelectorAll('.monthlyNudge').forEach(btn=>btn.onclick=()=>nudgeMonthly(btn.dataset.slot,btn.dataset.key,btn.dataset.delta));
+document.querySelectorAll('.monthlyResetBtn').forEach(btn=>btn.onclick=()=>resetMonthlyRoleLayout(btn.dataset.slot));
 
 document.querySelectorAll('.seasonModeBtn').forEach(btn=>{
   btn.onclick=()=>{
