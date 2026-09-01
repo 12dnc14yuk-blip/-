@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.20.1 8月ありがとう微調整版</title>
+<title>サポーター画像メーカー v5.20.2 下部ありがとう位置調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.20.1 8月ありがとう微調整版</h1>
+    <h1>🌷 サポーター画像メーカー v5.20.2 下部ありがとう位置調整版</h1>
     <div class="lead">v5.12.7の見え方を基準に、背景・ベース・月素材・文字を分離。ハート内の薄ピンクは固定し、ベース画像の画素はHTML側で加工しません。</div>
   </section>
 
@@ -722,9 +722,23 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
               <div><label>MEMORY 上下</label><input id="memoryYMonth" type="range" min=".74" max=".87" step=".002" value=".802"></div>
               <div><label>MEMORY 大きさ</label><input id="memoryScaleMonth" type="range" min=".80" max="1.25" step=".01" value="1"></div>
             </div>
+
+            <div style="margin-top:10px;padding:10px;border:1px dashed #efd5e3;border-radius:14px;background:#fff">
+              <div style="font-size:12px;font-weight:900;color:#7b556c;margin-bottom:7px">「○月もありがとう！」位置を矢印で調整</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+                <button type="button" class="secondary thanksNudge" data-key="x" data-delta="-0.004">← 左</button>
+                <button type="button" class="secondary thanksNudge" data-key="y" data-delta="-0.004">↑ 上</button>
+                <button type="button" class="secondary thanksNudge" data-key="y" data-delta="0.004">↓ 下</button>
+                <button type="button" class="secondary thanksNudge" data-key="x" data-delta="0.004">右 →</button>
+              </div>
+              <div class="mini" style="margin-top:6px">押した位置はこの月だけに保存されます。</div>
+            </div>
+
             <div class="btnrow">
+              <button type="button" class="primary" id="saveMonthTextBtn">この月の文字位置を保存</button>
               <button type="button" class="secondary" id="resetMonthTextBtn">この月だけ初期値へ</button>
             </div>
+            <div class="status" id="monthTextSaveStatus"></div>
           </div>
         </details>
 
@@ -747,7 +761,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.20.1：8月の「8月もありがとう！」だけ、ほんの少し右へ。ほかは変更していません。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.20.2：「○月もありがとう！」を月ごとに矢印で微調整・保存できます。9月は気持ち右＋上を初期値にしました。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -770,6 +784,7 @@ const MONTHLY_MATERIAL_KEY='shuri_supporter_monthly_material_v512';
 const MONTH_TEXT_LAYOUT_KEY='shuri_supporter_month_text_layout_v520';
 const BASE_MASTER_MIGRATION_KEY='shuri_supporter_base_master_v520';
 const AUGUST_THANKS_MIGRATION_KEY='shuri_supporter_august_thanks_right_v5201';
+const SEPTEMBER_THANKS_MIGRATION_KEY='shuri_supporter_september_thanks_rightup_v5202';
 const STYLE_KEY='shuri_supporter_style_v3';
 const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 const LAYOUT_MIGRATION_KEY='shuri_supporter_layout_migration_v55';
@@ -1473,7 +1488,7 @@ const MONTH_TEXT_DEFAULTS={
   6:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
   7:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
   8:{thanksX:.108,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
-  9:{thanksX:.100,thanksY:.731,memoryX:.305,memoryY:.794,memoryScale:1.04},
+  9:{thanksX:.108,thanksY:.725,memoryX:.305,memoryY:.794,memoryScale:1.04},
  10:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
  11:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
  12:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1}
@@ -1487,6 +1502,18 @@ function migrateAugustThanksRight(){
   all['8']=aug;
   saveJSON(MONTH_TEXT_LAYOUT_KEY,all);
   localStorage.setItem(AUGUST_THANKS_MIGRATION_KEY,'1');
+}
+
+
+function migrateSeptemberThanksRightUp(){
+  if(localStorage.getItem(SEPTEMBER_THANKS_MIGRATION_KEY)) return;
+  const all=loadJSON(MONTH_TEXT_LAYOUT_KEY,{});
+  const sep={...(all['9']||{})};
+  sep.thanksX=.108;
+  sep.thanksY=.725;
+  all['9']=sep;
+  saveJSON(MONTH_TEXT_LAYOUT_KEY,all);
+  localStorage.setItem(SEPTEMBER_THANKS_MIGRATION_KEY,'1');
 }
 
 function monthTextLayout(){
@@ -1667,10 +1694,32 @@ function setupMonthTextControls(){
   bind('memoryYMonth','memoryY');
   bind('memoryScaleMonth','memoryScale');
 
+  document.querySelectorAll('.thanksNudge').forEach(btn=>{
+    btn.onclick=()=>{
+      const T=monthTextLayout();
+      const key=btn.dataset.key;
+      const delta=Number(btn.dataset.delta||0);
+      const next=Math.max(0,Math.min(1,Number(T[key==='x'?'thanksX':'thanksY'])+delta));
+      saveMonthTextLayout({[key==='x'?'thanksX':'thanksY']:next});
+      syncMonthTextControls();
+      const status=document.getElementById('monthTextSaveStatus');
+      if(status) status.textContent='位置を保存しました';
+      renderPreview();
+    };
+  });
+
+  const save=document.getElementById('saveMonthTextBtn');
+  if(save) save.onclick=()=>{
+    const status=document.getElementById('monthTextSaveStatus');
+    if(status) status.textContent=`${currentMonthNumber()}月の文字位置を保存しました`;
+  };
+
   const reset=document.getElementById('resetMonthTextBtn');
   if(reset) reset.onclick=()=>{
     resetMonthTextLayout();
     syncMonthTextControls();
+    const status=document.getElementById('monthTextSaveStatus');
+    if(status) status.textContent='この月の位置を初期値に戻しました';
     renderPreview();
   };
 }
@@ -1772,7 +1821,7 @@ $('#downloadAll').onclick=async()=>{
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
 };
 
-loadLayout();loadBgStyle();migrateAugustThanksRight();setupMonthTextControls();syncMonthTextControls();
+loadLayout();loadBgStyle();migrateAugustThanksRight();migrateSeptemberThanksRightUp();setupMonthTextControls();syncMonthTextControls();
 setupStickyPreviewBar();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
 ensureTekitouPoem().then(()=>renderPreview());
 document.fonts?.ready?.then(()=>renderPreview());
