@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.20.2 下部ありがとう位置調整版</title>
+<title>サポーター画像メーカー v5.20.3 全月位置コピー対応版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.20.2 下部ありがとう位置調整版</h1>
+    <h1>🌷 サポーター画像メーカー v5.20.3 全月位置コピー対応版</h1>
     <div class="lead">v5.12.7の見え方を基準に、背景・ベース・月素材・文字を分離。ハート内の薄ピンクは固定し、ベース画像の画素はHTML側で加工しません。</div>
   </section>
 
@@ -731,11 +731,12 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
                 <button type="button" class="secondary thanksNudge" data-key="y" data-delta="0.004">↓ 下</button>
                 <button type="button" class="secondary thanksNudge" data-key="x" data-delta="0.004">右 →</button>
               </div>
-              <div class="mini" style="margin-top:6px">押した位置はこの月だけに保存されます。</div>
+              <div class="mini" style="margin-top:6px">矢印でこの月を調整できます。決まったら「この位置を全月に保存」で1〜12月へコピーできます。</div>
             </div>
 
             <div class="btnrow">
               <button type="button" class="primary" id="saveMonthTextBtn">この月の文字位置を保存</button>
+              <button type="button" class="primary" id="applyThanksAllMonthsBtn">この位置を全月に保存</button>
               <button type="button" class="secondary" id="resetMonthTextBtn">この月だけ初期値へ</button>
             </div>
             <div class="status" id="monthTextSaveStatus"></div>
@@ -761,7 +762,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.20.2：「○月もありがとう！」を月ごとに矢印で微調整・保存できます。9月は気持ち右＋上を初期値にしました。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.20.3：「○月もありがとう！」を1回調整した位置から、全月へまとめて保存できるようにしました。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1712,6 +1713,21 @@ function setupMonthTextControls(){
   if(save) save.onclick=()=>{
     const status=document.getElementById('monthTextSaveStatus');
     if(status) status.textContent=`${currentMonthNumber()}月の文字位置を保存しました`;
+  };
+
+  const applyAll=document.getElementById('applyThanksAllMonthsBtn');
+  if(applyAll) applyAll.onclick=()=>{
+    const current=monthTextLayout();
+    const all=loadJSON(MONTH_TEXT_LAYOUT_KEY,{});
+    for(let m=1;m<=12;m++){
+      const base={...MONTH_TEXT_DEFAULTS[m],...(all[String(m)]||{})};
+      all[String(m)]={...base,thanksX:current.thanksX,thanksY:current.thanksY};
+    }
+    saveJSON(MONTH_TEXT_LAYOUT_KEY,all);
+    syncMonthTextControls();
+    const status=document.getElementById('monthTextSaveStatus');
+    if(status) status.textContent='この「ありがとう！」位置を1〜12月すべてに保存しました';
+    renderPreview();
   };
 
   const reset=document.getElementById('resetMonthTextBtn');
