@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.20 安定レイヤー版</title>
+<title>サポーター画像メーカー v5.20.1 8月ありがとう微調整版</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -419,7 +419,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.20 安定レイヤー版</h1>
+    <h1>🌷 サポーター画像メーカー v5.20.1 8月ありがとう微調整版</h1>
     <div class="lead">v5.12.7の見え方を基準に、背景・ベース・月素材・文字を分離。ハート内の薄ピンクは固定し、ベース画像の画素はHTML側で加工しません。</div>
   </section>
 
@@ -747,7 +747,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.20：背景加工を廃止し、透過済みベースを背景レイヤー上に重ねる安定構造へ。下部文字は1〜12月それぞれ個別調整できます。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.20.1：8月の「8月もありがとう！」だけ、ほんの少し右へ。ほかは変更していません。</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -769,6 +769,7 @@ const SEASON_LAYOUT_KEY='shuri_supporter_season_layout_v2';
 const MONTHLY_MATERIAL_KEY='shuri_supporter_monthly_material_v512';
 const MONTH_TEXT_LAYOUT_KEY='shuri_supporter_month_text_layout_v520';
 const BASE_MASTER_MIGRATION_KEY='shuri_supporter_base_master_v520';
+const AUGUST_THANKS_MIGRATION_KEY='shuri_supporter_august_thanks_right_v5201';
 const STYLE_KEY='shuri_supporter_style_v3';
 const BG_STYLE_KEY='shuri_supporter_bg_style_v1';
 const LAYOUT_MIGRATION_KEY='shuri_supporter_layout_migration_v55';
@@ -1471,12 +1472,23 @@ const MONTH_TEXT_DEFAULTS={
   5:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
   6:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
   7:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
-  8:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
+  8:{thanksX:.108,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
   9:{thanksX:.100,thanksY:.731,memoryX:.305,memoryY:.794,memoryScale:1.04},
  10:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
  11:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1},
  12:{thanksX:.100,thanksY:.731,memoryX:.315,memoryY:.802,memoryScale:1}
 };
+
+function migrateAugustThanksRight(){
+  if(localStorage.getItem(AUGUST_THANKS_MIGRATION_KEY)) return;
+  const all=loadJSON(MONTH_TEXT_LAYOUT_KEY,{});
+  const aug={...(all['8']||{})};
+  aug.thanksX=.108;
+  all['8']=aug;
+  saveJSON(MONTH_TEXT_LAYOUT_KEY,all);
+  localStorage.setItem(AUGUST_THANKS_MIGRATION_KEY,'1');
+}
+
 function monthTextLayout(){
   const month=currentMonthNumber();
   const saved=loadJSON(MONTH_TEXT_LAYOUT_KEY,{});
@@ -1760,7 +1772,7 @@ $('#downloadAll').onclick=async()=>{
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
 };
 
-loadLayout();loadBgStyle();setupMonthTextControls();syncMonthTextControls();
+loadLayout();loadBgStyle();migrateAugustThanksRight();setupMonthTextControls();syncMonthTextControls();
 setupStickyPreviewBar();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
 ensureTekitouPoem().then(()=>renderPreview());
 document.fonts?.ready?.then(()=>renderPreview());
