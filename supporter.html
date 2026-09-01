@@ -10,7 +10,7 @@
 <link rel="preload" href="TekitouPoem_Bold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="TekitouPoem_ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
 
-<title>サポーター画像メーカー v5.20.3 全月位置コピー対応版</title>
+<title>サポーター画像メーカー v5.20.3 + iPhone保存・翻訳</title>
 <style>
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"TekitouPoem";src:url("TekitouPoem_SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
@@ -267,14 +267,6 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .stickyActionBtn{padding:6px 9px;font-size:10px}
 }
 
-
-.translateWrap{margin-top:10px;padding:9px 10px;border:1px dashed #efd5e3;border-radius:14px;background:#fffafb}
-.translateSummary{cursor:pointer;font-weight:900;color:#7b556c;font-size:12px}
-.translateBtns{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.translateBtn{border:1px solid #e8bfd4;background:#fff;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:800;color:#7b556c;line-height:1.15;white-space:nowrap}
-.translateMini{font-size:10px;color:#947789;line-height:1.45;margin-top:7px}
-.translateStatus{font-size:11px;color:#86697b;line-height:1.45;margin-top:7px}
-
 </style>
 
 <style id="supporter-v3-ui">
@@ -418,6 +410,38 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .namePickList{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 </style>
+
+<style id="added-translate-only">
+.translateOnly{margin-top:9px;border:1px dashed #efd4e3;border-radius:14px;background:#fffafd;overflow:hidden}
+.translateOnly>summary{padding:8px 10px;font-size:11px;color:#856176;font-weight:900}
+.translateOnlyBody{padding:0 9px 9px}
+.translateOnlyBtns{display:flex;flex-wrap:wrap;gap:5px}
+.translateOnlyBtn,.translateRestoreBtn{
+  border:1px solid #ead4e0;background:#fff;color:#855e75;border-radius:999px;
+  padding:6px 8px;font-size:10px;font-weight:900;line-height:1
+}
+.translateOnlyBtn:active,.translateRestoreBtn:active{transform:translateY(1px)}
+.translateOnlyStatus{margin-top:7px;font-size:10px;color:#96798a;line-height:1.5}
+</style>
+
+
+<style id="added-ios-save-only">
+.iosSaveModal[hidden]{display:none!important}
+.iosSaveModal{
+  position:fixed;inset:0;z-index:9999;background:rgba(55,35,48,.50);
+  display:flex;align-items:center;justify-content:center;padding:14px
+}
+.iosSaveBox{
+  width:min(94vw,520px);max-height:92vh;overflow:auto;background:#fffafd;
+  border:1px solid #efd4e3;border-radius:22px;padding:14px;box-shadow:0 18px 50px rgba(80,45,65,.25)
+}
+.iosSaveTitle{font-size:17px;font-weight:900;color:#765466;margin-bottom:4px}
+.iosSaveNote{font-size:11px;line-height:1.6;color:#92788a}
+.iosSaveImage{display:block;width:100%;height:auto;border-radius:16px;border:1px solid #efd4e3;background:#fff;margin:10px 0}
+.iosSaveActions{display:flex;gap:7px;flex-wrap:wrap}
+.iosSaveActions button{flex:1 1 120px}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -427,7 +451,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   </nav>
 
   <section class="card">
-    <h1>🌷 サポーター画像メーカー v5.20.3 全月位置コピー対応版</h1>
+    <h1>🌷 サポーター画像メーカー v5.20.3 + 保存・翻訳</h1>
     <div class="lead">v5.12.7の見え方を基準に、背景・ベース・月素材・文字を分離。ハート内の薄ピンクは固定し、ベース画像の画素はHTML側で加工しません。</div>
   </section>
 
@@ -646,22 +670,25 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
             <label class="quickMsgLabel">MESSAGE
               <textarea class="quickMsgArea" id="quickMsgA" rows="5" placeholder="ここに一言"></textarea>
             </label>
-            <details class="translateWrap" id="translatePanel">
-              <summary class="translateSummary">🌍 海外向け翻訳</summary>
-              <div class="translateBtns">
-                <button type="button" class="translateBtn" data-lang="en">EN 英語</button>
-                <button type="button" class="translateBtn" data-lang="ko">KO 韓国語</button>
-                <button type="button" class="translateBtn" data-lang="zh-CN">简 中国語</button>
-                <button type="button" class="translateBtn" data-lang="zh-TW">繁 中国語</button>
-                <button type="button" class="translateBtn" data-lang="id">ID インドネシア</button>
-                <button type="button" class="translateBtn" data-lang="th">TH タイ</button>
-                <button type="button" class="translateBtn" data-lang="es">ES スペイン</button>
-                <button type="button" class="translateBtn" data-lang="pt">PT ポルトガル</button>
-                <button type="button" class="translateBtn" id="restoreJapaneseBtn">JP 戻す</button>
+
+            <details class="translateOnly">
+              <summary>🌍 翻訳</summary>
+              <div class="translateOnlyBody">
+                <div class="translateOnlyBtns">
+                  <button type="button" class="translateOnlyBtn" data-lang="en">EN</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="ko">한국어</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="zh-CN">中文 简</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="zh-TW">中文 繁</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="id">ID</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="th">ไทย</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="es">ES</button>
+                  <button type="button" class="translateOnlyBtn" data-lang="pt">PT</button>
+                  <button type="button" class="translateRestoreBtn" id="translateRestoreBtn">日本語へ戻す</button>
+                </div>
+                <div class="translateOnlyStatus" id="translateOnlyStatus">日本語の一言を入れて、言語ボタンを押すと翻訳してそのまま反映します。</div>
               </div>
-              <div class="translateMini">今入力してある日本語の一言を翻訳して、そのままカードに反映します。</div>
-              <div class="translateStatus" id="translateStatus">対象者を選んでから言語ボタンを押してください。</div>
             </details>
+
             <div class="quickMiniActions">
               <button type="button" class="secondary" id="quickClearA">クリア</button>
               <button type="button" class="primary" id="quickApplyA">反映</button>
@@ -786,7 +813,21 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.20.7：安定版v5.20.3を土台に、海外向け翻訳を独立追加。対象者・月素材・プレビュー処理はそのまま。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.20.3をそのまま基準に、iPhone保存と海外サポーター用翻訳だけ追加。</div>
+</div>
+
+
+<div class="iosSaveModal" id="iosSaveModal" hidden>
+  <div class="iosSaveBox">
+    <div class="iosSaveTitle" id="iosSaveTitle">画像を保存</div>
+    <div class="iosSaveNote" id="iosSaveNote">iPhoneは「共有して保存」→「画像を保存」で写真アプリへ保存できます。うまくいかない時は画像を長押ししてください。</div>
+    <img class="iosSaveImage" id="iosSaveImage" alt="保存するサポーター画像">
+    <div class="iosSaveActions">
+      <button type="button" class="primary" id="iosShareImageBtn">共有して保存</button>
+      <button type="button" class="secondary" id="iosOpenImageBtn">画像だけ開く</button>
+      <button type="button" class="secondary" id="iosCloseSaveBtn">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -922,67 +963,151 @@ function currentMonthKey(){return $('#monthPick').value||monthKeyNow()}
 function monthLabel(k){const m=Number(String(k).split('-')[1]||'');return m?m+'月':''}
 function safeName(s){return normalize(s||'no-name').replace(/[\\/:*?"<>|]/g,'_')||'no-name'}
 
-const TRANSLATE_BACKUP_KEY='shuri_supporter_translate_backup_v1';
-const TRANSLATE_LANG_LABELS={en:'英語',ko:'韓国語','zh-CN':'中国語(簡体)','zh-TW':'中国語(繁体)',id:'インドネシア語',th:'タイ語',es:'スペイン語',pt:'ポルトガル語'};
-function translateBackupKey(p){return currentMonthKey()+'::'+(p?.official||p?.name||'');}
-function getTranslateBackups(){return loadJSON(TRANSLATE_BACKUP_KEY,{})}
-function saveTranslateBackup(p,text){const all=getTranslateBackups();all[translateBackupKey(p)]=String(text||'');saveJSON(TRANSLATE_BACKUP_KEY,all)}
-function getTranslateBackup(p){return getTranslateBackups()[translateBackupKey(p)]||''}
-function setTranslateStatus(t){const el=document.getElementById('translateStatus');if(el)el.textContent=t||''}
-function looksJapaneseText(t){return /[ぁ-んァ-ヶ一-龠]/.test(String(t||''))}
-
-const TRANSLATE_FALLBACK={
-  en:{'いつもありがとう。':'Thank you always.','これからも仲良くして':'Let’s keep getting along.','沢山話そう':'Let’s talk a lot.','いっぱい逢いに来てね！':'Come visit me lots!'},
-  ko:{'いつもありがとう。':'항상 고마워.','これからも仲良くして':'앞으로도 친하게 지내자.','沢山話そう':'우리 많이 이야기하자.','いっぱい逢いに来てね！':'많이 보러 와줘!'},
-  'zh-CN':{'いつもありがとう。':'一直以来都谢谢你。','これからも仲良くして':'以后也要一直好好相处哦。','沢山話そう':'我们多多聊天吧。','いっぱい逢いに来てね！':'要常来看我哦！'},
-  'zh-TW':{'いつもありがとう。':'一直以來都謝謝你。','これからも仲良くして':'之後也要一直好好相處喔。','沢山話そう':'我們多多聊天吧。','いっぱい逢いに来てね！':'要常來看我喔！'},
-  id:{'いつもありがとう。':'Terima kasih selalu.','これからも仲良くして':'Semoga kita tetap akrab ya.','沢山話そう':'Ayo banyak ngobrol ya.','いっぱい逢いに来てね！':'Sering-sering datang ya!'},
-  th:{'いつもありがとう。':'ขอบคุณเสมอนะ','これからも仲良くして':'ต่อจากนี้ก็สนิทกันต่อไปนะ','沢山話そう':'มาคุยกันเยอะ ๆ นะ','いっぱい逢いに来てね！':'แวะมาหากันบ่อย ๆ นะ!'},
-  es:{'いつもありがとう。':'Gracias siempre.','これからも仲良くして':'Sigamos llevándonos bien.','沢山話そう':'Hablemos mucho.','いっぱい逢いに来てね！':'¡Ven a verme muchas veces!'},
-  pt:{'いつもありがとう。':'Obrigada, como sempre.','これからも仲良くして':'Vamos continuar nos dando bem.','沢山話そう':'Vamos conversar bastante.','いっぱい逢いに来てね！':'Vem me ver bastante!'}
-};
-function fallbackTranslate(text,lang){
-  const dict=TRANSLATE_FALLBACK[lang]||{};
-  return String(text||'').split(/\r?\n/).map(line=>dict[line.trim()]||line).join('\n');
+// ===== 追加機能1：翻訳（既存読み込み処理とは独立） =====
+const TRANSLATE_ORIGINAL_KEY='shuri_supporter_translate_original_v1';
+function translateStore(){
+  try{return JSON.parse(localStorage.getItem(TRANSLATE_ORIGINAL_KEY)||'{}')||{}}
+  catch(e){return {}}
 }
-async function fetchTranslation(text,lang){
-  const q=String(text||'').trim();
-  if(!q)return '';
-  try{
-    const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair=ja|'+encodeURIComponent(lang);
-    const res=await fetch(url,{method:'GET'});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    const translated=String(data?.responseData?.translatedText||'').trim();
-    if(translated)return translated;
-  }catch(err){console.warn('translation fallback',err)}
-  return fallbackTranslate(q,lang);
+function translatePersonKey(p){
+  return `${currentMonthKey()}::${normalize(p?.official||p?.name||'')}`;
 }
-async function translateCurrentMessage(lang){
+function rememberJapaneseForCurrent(textValue){
   const p=people[current];
-  if(!p){setTranslateStatus('対象者を先に選んでください。');return}
-  const area=document.getElementById('quickMsgA');
-  const now=String(area?.value||p.msg||'').trim();
-  if(!now){setTranslateStatus('先に日本語の一言を入力してください。');return}
-  let original=getTranslateBackup(p);
-  if(looksJapaneseText(now)){original=now;saveTranslateBackup(p,now)}
-  if(!original)original=now;
-  setTranslateStatus((TRANSLATE_LANG_LABELS[lang]||lang)+'に翻訳中…');
-  const translated=await fetchTranslation(original,lang);
-  if(area)area.value=translated;
-  p.msg=translated;
+  if(!p) return;
+  const s=String(textValue||'').trim();
+  if(!s || !/[ぁ-んァ-ヶ一-龠]/.test(s)) return;
+  const all=translateStore();
+  all[translatePersonKey(p)]=s;
+  localStorage.setItem(TRANSLATE_ORIGINAL_KEY,JSON.stringify(all));
+}
+function originalJapaneseForCurrent(){
+  const p=people[current];
+  if(!p) return '';
+  const all=translateStore();
+  const saved=String(all[translatePersonKey(p)]||'').trim();
+  if(saved) return saved;
+  const now=String($('#quickMsgA')?.value||p.msg||'').trim();
+  if(/[ぁ-んァ-ヶ一-龠]/.test(now)) return now;
+  return '';
+}
+function translateStatus(msg){
+  const el=document.getElementById('translateOnlyStatus');
+  if(el) el.textContent=msg;
+}
+async function fetchTranslation(textValue,target){
+  const q=encodeURIComponent(textValue);
+  const pair=`ja|${target}`;
+  const url=`https://api.mymemory.translated.net/get?q=${q}&langpair=${encodeURIComponent(pair)}`;
+  const res=await fetch(url,{method:'GET',mode:'cors',cache:'no-store'});
+  if(!res.ok) throw new Error('translate HTTP '+res.status);
+  const data=await res.json();
+  const translated=String(data?.responseData?.translatedText||'').trim();
+  if(!translated) throw new Error('empty translation');
+  return translated
+    .replace(/&#39;/g,"'")
+    .replace(/&quot;/g,'"')
+    .replace(/&amp;/g,'&');
+}
+async function runTranslate(target){
+  const p=people[current];
+  if(!p){alert('対象者を選んでください');return}
+  const box=$('#quickMsgA');
+  const currentText=String(box?.value||p.msg||'').trim();
+  if(/[ぁ-んァ-ヶ一-龠]/.test(currentText)) rememberJapaneseForCurrent(currentText);
+  const source=originalJapaneseForCurrent() || currentText;
+  if(!source){alert('先に日本語の一言を入れてください');return}
+  translateStatus('翻訳中…');
+  try{
+    const translated=await fetchTranslation(source,target);
+    box.value=translated;
+    p.msg=translated;
+    saveDrafts();
+    renderPeople();
+    renderPreview();
+    translateStatus('翻訳して反映しました。必要ならこのまま手直しできます。');
+  }catch(err){
+    console.warn(err);
+    translateStatus('翻訳できませんでした。通信状況を確認して、もう一度押してください。');
+  }
+}
+function restoreJapaneseTranslation(){
+  const p=people[current];
+  if(!p){alert('対象者を選んでください');return}
+  const original=originalJapaneseForCurrent();
+  if(!original){translateStatus('戻せる日本語がまだありません。');return}
+  const box=$('#quickMsgA');
+  box.value=original;
+  p.msg=original;
   saveDrafts();
-  renderPeople();syncCurrentEditor();renderPreview();
-  setTranslateStatus((TRANSLATE_LANG_LABELS[lang]||lang)+'に翻訳して反映しました。');
+  renderPeople();
+  renderPreview();
+  translateStatus('翻訳前の日本語に戻しました。');
 }
-function restoreJapaneseMessage(){
-  const p=people[current];if(!p){setTranslateStatus('対象者を先に選んでください。');return}
-  const original=getTranslateBackup(p);
-  if(!original){setTranslateStatus('戻す日本語がまだ保存されていません。');return}
-  const area=document.getElementById('quickMsgA');if(area)area.value=original;
-  p.msg=original;saveDrafts();renderPeople();syncCurrentEditor();renderPreview();
-  setTranslateStatus('日本語に戻しました。');
+document.querySelectorAll('.translateOnlyBtn').forEach(btn=>{
+  btn.addEventListener('click',()=>runTranslate(btn.dataset.lang));
+});
+document.getElementById('translateRestoreBtn')?.addEventListener('click',restoreJapaneseTranslation);
+
+// 一言の「反映」を押した時、日本語なら翻訳前原文として覚える。
+// 既存の反映処理そのものは変更しない。
+document.getElementById('quickApplyA')?.addEventListener('click',()=>{
+  const v=document.getElementById('quickMsgA')?.value||'';
+  rememberJapaneseForCurrent(v);
+});
+
+// ===== 追加機能2：iPhone保存（既存読み込み処理とは独立） =====
+const IS_APPLE_MOBILE=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+let IOS_SAVE_PAYLOAD=null;
+
+async function dataUrlToPngBlob(dataUrl){
+  const res=await fetch(dataUrl);
+  return await res.blob();
 }
+function openIosImageSave(dataUrl,name){
+  IOS_SAVE_PAYLOAD={dataUrl,name,blob:null,file:null};
+  const modal=document.getElementById('iosSaveModal');
+  const img=document.getElementById('iosSaveImage');
+  if(img) img.src=dataUrl;
+  if(modal) modal.hidden=false;
+  dataUrlToPngBlob(dataUrl).then(blob=>{
+    IOS_SAVE_PAYLOAD.blob=blob;
+    try{IOS_SAVE_PAYLOAD.file=new File([blob],name,{type:'image/png'})}catch(e){}
+  });
+}
+function closeIosImageSave(){
+  const modal=document.getElementById('iosSaveModal');
+  const img=document.getElementById('iosSaveImage');
+  if(modal) modal.hidden=true;
+  if(img) img.removeAttribute('src');
+  IOS_SAVE_PAYLOAD=null;
+}
+document.getElementById('iosCloseSaveBtn')?.addEventListener('click',closeIosImageSave);
+document.getElementById('iosSaveModal')?.addEventListener('click',e=>{
+  if(e.target?.id==='iosSaveModal') closeIosImageSave();
+});
+document.getElementById('iosOpenImageBtn')?.addEventListener('click',()=>{
+  if(!IOS_SAVE_PAYLOAD?.dataUrl)return;
+  const win=window.open();
+  if(win){
+    win.document.write(`<meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#111}img{width:100%;height:auto;display:block}</style><img src="${IOS_SAVE_PAYLOAD.dataUrl}">`);
+    win.document.close();
+  }
+});
+document.getElementById('iosShareImageBtn')?.addEventListener('click',async()=>{
+  if(!IOS_SAVE_PAYLOAD)return;
+  try{
+    if(!IOS_SAVE_PAYLOAD.blob) IOS_SAVE_PAYLOAD.blob=await dataUrlToPngBlob(IOS_SAVE_PAYLOAD.dataUrl);
+    if(!IOS_SAVE_PAYLOAD.file) IOS_SAVE_PAYLOAD.file=new File([IOS_SAVE_PAYLOAD.blob],IOS_SAVE_PAYLOAD.name,{type:'image/png'});
+    if(navigator.share && (!navigator.canShare || navigator.canShare({files:[IOS_SAVE_PAYLOAD.file]}))){
+      await navigator.share({files:[IOS_SAVE_PAYLOAD.file],title:IOS_SAVE_PAYLOAD.name});
+      return;
+    }
+  }catch(e){console.warn(e)}
+  document.getElementById('iosOpenImageBtn')?.click();
+});
+
 
 function nickMap(){
   return {...loadJSON(NICK_KEY,{}),...loadJSON('thanksNickDict',{})};
@@ -1905,21 +2030,16 @@ $('#resetLayoutBtn').onclick=()=>{
 $('#downloadOne').onclick=async()=>{
   if(!people.length)return alert('対象者がいません');
   const p=people[current];
-  const dataUrl=await currentPng(p);
-  const filename=`supporter_${currentMonthKey()}_${safeName(p.name)}.png`;
-  try{
-    const blob=await (await fetch(dataUrl)).blob();
-    const file=new File([blob],filename,{type:'image/png'});
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:filename});
-      $('#saveStatus').textContent='共有を開きました。「画像を保存」を選んでください。';
-    }else{
-      const a=document.createElement('a');a.href=dataUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();
-      $('#saveStatus').textContent=`${filename} を保存しました。`;
-    }
-  }catch(err){
-    const a=document.createElement('a');a.href=dataUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();
-    $('#saveStatus').textContent='保存を開始しました。';
+  const png=await currentPng(p);
+  const filename=`${currentMonthKey()}_${safeName(p.name)}.png`;
+  if(IS_APPLE_MOBILE){
+    openIosImageSave(png,filename);
+    $('#saveStatus').textContent='保存用画像を開きました。「共有して保存」を押してください。';
+  }else{
+    const a=document.createElement('a');
+    a.href=png;
+    a.download=filename;
+    a.click();
   }
   renderPreview();
 };
@@ -1931,17 +2051,27 @@ $('#downloadAll').onclick=async()=>{
     const p=people[i],blob=await(await fetch(await currentPng(p))).blob();
     zip.file(`${String(i+1).padStart(2,'0')}_${safeName(p.name)}.png`,blob);
   }
-  const out=await zip.generateAsync({type:'blob'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(out);a.download=`supporter_${currentMonthKey()}.zip`;a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
+  const out=await zip.generateAsync({type:'blob'});
+  const zipName=`supporter_${currentMonthKey()}.zip`;
+  if(IS_APPLE_MOBILE && navigator.share){
+    try{
+      const zipFile=new File([out],zipName,{type:'application/zip'});
+      if(!navigator.canShare || navigator.canShare({files:[zipFile]})){
+        await navigator.share({files:[zipFile],title:zipName});
+        $('#saveStatus').textContent=`${people.length}人分の共有画面を開きました。`;
+        renderPreview();
+        return;
+      }
+    }catch(e){console.warn(e)}
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(out);
+  a.download=zipName;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  $('#saveStatus').textContent=`${people.length}人分を保存しました。`;
+  renderPreview();
 };
-
-
-// 翻訳は既存の読み込み処理とは完全に独立。
-document.querySelectorAll('.translateBtn[data-lang]').forEach(btn=>{
-  btn.addEventListener('click',()=>translateCurrentMessage(btn.dataset.lang));
-});
-document.getElementById('restoreJapaneseBtn')?.addEventListener('click',restoreJapaneseMessage);
 
 loadLayout();loadBgStyle();migrateAugustThanksRight();migrateSeptemberThanksRightUp();setupMonthTextControls();syncMonthTextControls();
 setupStickyPreviewBar();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
