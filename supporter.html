@@ -805,7 +805,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.20.5：海外サポーター向けの翻訳ボタンを追加。保存のしやすさも維持しています。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.20.6：画像・月素材の読み込みを最優先で安定化。翻訳ボタンとiPhone保存も維持。</div>
 </div>
 
 
@@ -1963,8 +1963,31 @@ $('#downloadAll').onclick=async()=>{
 };
 
 
-(function setupSavePreviewControls(){
-  bindTranslateButtons();
+// v5.20.6: まずカード画像・月素材などのコア機能を必ず初期化する。
+// 翻訳やiPhone保存などの追加機能でエラーが出ても、画像表示を巻き込まない構造。
+try{
+  loadLayout();
+  loadBgStyle();
+  migrateAugustThanksRight();
+  migrateSeptemberThanksRightUp();
+  setupMonthTextControls();
+  syncMonthTextControls();
+  setupStickyPreviewBar();
+  loadImages();
+  loadSeasonAssets();
+  loadMonthlyMaterialState();
+  reloadMonth();
+  ensureTekitouPoem().then(()=>renderPreview()).catch(()=>renderPreview());
+  if(document.fonts?.ready) document.fonts.ready.then(()=>renderPreview()).catch(()=>{});
+}catch(err){
+  console.error('core init error',err);
+  const s=document.getElementById('saveStatus');
+  if(s) s.textContent='画像の初期化でエラーが出ました。ページを再読み込みしてください。';
+}
+
+// 追加機能はコア初期化の後に個別起動。
+try{ bindTranslateButtons(); }catch(err){ console.warn('translate init skipped',err); }
+try{
   updateSaveHelp();
   $('#closeSavePreviewBtn')?.addEventListener('click',closeSavePreview);
   $('#savePreviewModal')?.addEventListener('click',(e)=>{if(e.target?.id==='savePreviewModal')closeSavePreview()});
@@ -1984,12 +2007,7 @@ $('#downloadAll').onclick=async()=>{
     const ok=await tryNativeShare(savePreviewPayload.file, savePreviewPayload.name);
     setSaveStatus(ok ? '共有シートを開きました。' : '共有シートを開けませんでした。画像を長押し保存してください。');
   });
-})();
-
-loadLayout();loadBgStyle();migrateAugustThanksRight();migrateSeptemberThanksRightUp();setupMonthTextControls();syncMonthTextControls();
-setupStickyPreviewBar();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
-ensureTekitouPoem().then(()=>renderPreview());
-document.fonts?.ready?.then(()=>renderPreview());
+}catch(err){ console.warn('save helper init skipped',err); }
 </script>
 </body>
 </html>
