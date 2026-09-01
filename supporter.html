@@ -267,6 +267,29 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
   .stickyActionBtn{padding:6px 9px;font-size:10px}
 }
 
+
+.saveHelp{margin-top:6px;font-size:12px;color:#8f6f82;line-height:1.6}
+.savePreviewModal[hidden]{display:none !important}
+.savePreviewModal{position:fixed;inset:0;background:rgba(52,30,45,.48);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999}
+.savePreviewBox{width:min(92vw,520px);max-height:90vh;overflow:auto;background:#fff8fb;border:2px solid #f1d2e3;border-radius:22px;padding:16px;box-shadow:0 18px 48px rgba(85,47,73,.22)}
+.savePreviewTitle{font-size:20px;font-weight:900;color:#6f4f63;margin-bottom:6px}
+.savePreviewImage{display:block;width:100%;height:auto;border-radius:18px;background:#fff;border:1px solid #f1d2e3;margin:12px 0}
+.savePreviewActions{display:flex;gap:10px;flex-wrap:wrap}
+.savePreviewActions button{flex:1 1 140px}
+.iosHint{background:#fff;border:1px dashed #e8bfd4;border-radius:14px;padding:10px 12px;margin-top:8px;color:#7a6270;font-size:12px;line-height:1.6}
+
+
+.translateWrap{margin-top:10px;padding:10px 12px;border:1px dashed #efd5e3;border-radius:16px;background:#fffafb}
+.translateSummary{cursor:pointer;font-weight:900;color:#7b556c;font-size:13px}
+.translateHint{font-size:11px;color:#907487;line-height:1.55;margin-top:8px}
+.translateBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.translateBtn{appearance:none;border:1px solid #e8bfd4;background:#fff;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;color:#7b556c;line-height:1.2;white-space:nowrap}
+.translateBtn:hover{background:#fff3f8}.translateBtn:active{transform:translateY(1px)}
+.translateRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.translateRow .miniBtn{appearance:none;border:1px solid #e8bfd4;background:#fff;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#7b556c;line-height:1.1}
+.translateStatus{margin-top:8px;font-size:12px;color:#8a6b80;line-height:1.5}
+.translateBadge{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #f0d6e4;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;color:#8e6f83}
+
 </style>
 
 <style id="supporter-v3-ui">
@@ -638,6 +661,25 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
             <label class="quickMsgLabel">MESSAGE
               <textarea class="quickMsgArea" id="quickMsgA" rows="5" placeholder="ここに一言"></textarea>
             </label>
+            <details class="translateWrap">
+              <summary class="translateSummary">🌍 翻訳ボタン（海外サポーター用）</summary>
+              <div class="translateHint">よく使いそうな言語を小さめボタンでまとめました。今の一言を翻訳して、そのまま反映できます。空欄の時は定番メッセージを入れて翻訳します。</div>
+              <div class="translateBtns" id="translateBtns">
+                <button type="button" class="translateBtn" data-lang="en">🇺🇸 英語</button>
+                <button type="button" class="translateBtn" data-lang="ko">🇰🇷 韓国語</button>
+                <button type="button" class="translateBtn" data-lang="zh-CN">🇨🇳 中国語(簡体)</button>
+                <button type="button" class="translateBtn" data-lang="zh-TW">🇹🇼 中国語(繁体)</button>
+                <button type="button" class="translateBtn" data-lang="id">🇮🇩 インドネシア語</button>
+                <button type="button" class="translateBtn" data-lang="th">🇹🇭 タイ語</button>
+                <button type="button" class="translateBtn" data-lang="es">🇪🇸 スペイン語</button>
+                <button type="button" class="translateBtn" data-lang="pt">🇧🇷 ポルトガル語</button>
+              </div>
+              <div class="translateRow">
+                <span class="translateBadge" id="translateTargetLabel">対象：ハート内の一言</span>
+                <button type="button" class="miniBtn" id="restoreJapaneseBtn">日本語に戻す</button>
+              </div>
+              <div class="translateStatus" id="translateStatus">英語・韓国語・中国語・インドネシア語・タイ語・スペイン語・ポルトガル語に対応しています。</div>
+            </details>
             <div class="quickMiniActions">
               <button type="button" class="secondary" id="quickClearA">クリア</button>
               <button type="button" class="primary" id="quickApplyA">反映</button>
@@ -696,6 +738,7 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
       <button class="primary" id="downloadAll">全員分まとめて保存</button>
     </div>
     <div class="status" id="saveStatus"></div>
+    <div class="saveHelp" id="saveHelpText">保存のしかた：PCはそのまま保存。iPhone / iPad は「今の1枚を保存」→ 共有シートの「画像を保存」、またはプレビュー画像を長押し保存。</div>
 
     <details>
       <summary>固定素材・文字位置の詳細</summary>
@@ -762,7 +805,22 @@ hr{border:0;border-top:1px solid var(--line);margin:13px 0}
     </details>
   </section>
 
-  <div class="mini" style="text-align:center;margin:18px 0">v5.20.3：「○月もありがとう！」を1回調整した位置から、全月へまとめて保存できるようにしました。</div>
+  <div class="mini" style="text-align:center;margin:18px 0">v5.20.5：海外サポーター向けの翻訳ボタンを追加。保存のしやすさも維持しています。</div>
+</div>
+
+
+<div class="savePreviewModal" id="savePreviewModal" hidden>
+  <div class="savePreviewBox">
+    <div class="savePreviewTitle">保存用プレビュー</div>
+    <div class="inlineNote">iPhone / iPad は「共有」→「画像を保存」がおすすめです。うまくいかない時は画像を長押しして保存してください。</div>
+    <div class="iosHint" id="savePreviewHint">画像名は保存時に分かりやすいよう「supporter_年-月_名前.png」になります。</div>
+    <img id="savePreviewImage" class="savePreviewImage" alt="保存用プレビュー画像">
+    <div class="savePreviewActions">
+      <button type="button" class="secondary" id="shareCurrentBtn">共有</button>
+      <button type="button" class="secondary" id="openCurrentBtn">別タブで開く</button>
+      <button type="button" class="primary" id="closeSavePreviewBtn">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -898,6 +956,47 @@ function currentMonthKey(){return $('#monthPick').value||monthKeyNow()}
 function monthLabel(k){const m=Number(String(k).split('-')[1]||'');return m?m+'月':''}
 function safeName(s){return normalize(s||'no-name').replace(/[\\/:*?"<>|]/g,'_')||'no-name'}
 
+
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+let savePreviewPayload=null;
+function makeOneFilename(name){return `supporter_${currentMonthKey()}_${safeName(name)}.png`;}
+function makeZipFilename(){return `supporter_${currentMonthKey()}_all.zip`;}
+function triggerDownload(url,name){const a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();}
+async function dataUrlToBlob(dataUrl){return await (await fetch(dataUrl)).blob();}
+async function buildCurrentImagePayload(person){const dataUrl=await currentPng(person);const blob=await dataUrlToBlob(dataUrl);const name=makeOneFilename(person?.name||'no-name');const file=new File([blob],name,{type:'image/png'});return {dataUrl,blob,file,name};}
+function setSaveStatus(msg){const el=$('#saveStatus');if(el)el.textContent=msg||'';}
+function updateSaveHelp(){const el=$('#saveHelpText');if(!el)return;el.textContent=IS_IOS?'保存のしかた：iPhone / iPad は「今の1枚を保存」→ 共有シートの「画像を保存」。うまくいかない時は出てきたプレビュー画像を長押し保存。ZIPは共有シートから「ファイルに保存」がおすすめです。':'保存のしかた：ボタンを押すとダウンロードされます。画像名は「supporter_年-月_名前.png」、まとめ保存は「supporter_年-月_all.zip」です。';}
+function openSavePreview(payload){savePreviewPayload=payload;const modal=$('#savePreviewModal'),img=$('#savePreviewImage'),hint=$('#savePreviewHint');if(img)img.src=payload.dataUrl;if(hint)hint.textContent=`画像名：${payload.name}。iPhone / iPad は「共有」→「画像を保存」または画像長押しで保存できます。`;if(modal)modal.hidden=false;}
+function closeSavePreview(){const modal=$('#savePreviewModal'),img=$('#savePreviewImage');if(modal)modal.hidden=true;if(img)img.removeAttribute('src');}
+async function tryNativeShare(file,title){if(!navigator.share)return false;try{if(file && navigator.canShare && navigator.canShare({files:[file]})){await navigator.share({files:[file],title:title||file.name});return true;}await navigator.share({title:title||document.title});return true;}catch(err){return false;}}
+
+const DEFAULT_TRANSLATE_JA=`いつもありがとう。
+これからも仲良くして
+沢山話そう
+いっぱい逢いに来てね！`;
+const TRANSLATE_LANG_LABELS={'en':'英語','ko':'韓国語','zh-CN':'中国語(簡体)','zh-TW':'中国語(繁体)','id':'インドネシア語','th':'タイ語','es':'スペイン語','pt':'ポルトガル語'};
+const TRANSLATE_LINE_RULES=[
+  {test:(s)=>/^いつもありがとう/.test(s),out:{'en':'Thank you always.','ko':'항상 고마워.','zh-CN':'一直以来都谢谢你。','zh-TW':'一直以來都謝謝你。','id':'Terima kasih selalu.','th':'ขอบคุณเสมอนะ','es':'Gracias siempre.','pt':'Obrigada, como sempre.'}},
+  {test:(s)=>/^(ほんとに|本当に)?ありがとう$/.test(s)||/^ありがとう$/.test(s),out:{'en':'Thank you.','ko':'고마워.','zh-CN':'谢谢你。','zh-TW':'謝謝你。','id':'Terima kasih.','th':'ขอบคุณนะ','es':'Gracias.','pt':'Obrigada.'}},
+  {test:(s)=>/^応援ありがとう/.test(s),out:{'en':'Thank you for your support!','ko':'응원해줘서 고마워!','zh-CN':'谢谢你的支持！','zh-TW':'謝謝你的支持！','id':'Terima kasih atas dukunganmu!','th':'ขอบคุณที่ซัพพอร์ตนะ!','es':'¡Gracias por tu apoyo!','pt':'Obrigada pelo seu apoio!'}},
+  {test:(s)=>/^これからも仲良くして/.test(s),out:{'en':'Let’s keep getting along.','ko':'앞으로도 친하게 지내자.','zh-CN':'以后也请和我继续好好相处。','zh-TW':'之後也請繼續和我好好相處。','id':'Semoga kita tetap akrab ya.','th':'ต่อจากนี้ก็สนิทกันต่อไปนะ','es':'Sigamos llevándonos bien.','pt':'Vamos continuar nos dando bem.'}},
+  {test:(s)=>/^これからもよろしく/.test(s),out:{'en':'I hope we stay close from now on too.','ko':'앞으로도 잘 부탁해.','zh-CN':'今后也请多多关照。','zh-TW':'今後也請多多指教。','id':'Mohon dukungannya terus ya.','th':'จากนี้ไปก็ฝากตัวด้วยนะ','es':'Sigamos juntos de ahora en adelante.','pt':'Continue comigo de agora em diante.'}},
+  {test:(s)=>/^(沢山|たくさん|いっぱい)話そう/.test(s),out:{'en':'Let’s talk a lot.','ko':'우리 많이 이야기하자.','zh-CN':'我们多多聊天吧。','zh-TW':'我們多多聊天吧。','id':'Ayo banyak ngobrol ya.','th':'มาคุยกันเยอะ ๆ นะ','es':'Hablemos mucho.','pt':'Vamos conversar bastante.'}},
+  {test:(s)=>/^また(話|はな)そう/.test(s),out:{'en':'Let’s talk again soon.','ko':'또 이야기하자.','zh-CN':'我们再聊天吧。','zh-TW':'我們再聊天吧。','id':'Nanti kita ngobrol lagi ya.','th':'ไว้คุยกันอีกนะ','es':'Hablemos otra vez pronto.','pt':'Vamos conversar de novo em breve.'}},
+  {test:(s)=>/^(いっぱい|また).*(会い|逢い|遊び).*(来て|きて).*/.test(s)||/^(会い|逢い).*(来て|きて).*/.test(s),out:{'en':'Come visit me lots!','ko':'많이 보러 와줘!','zh-CN':'要常来见我哦！','zh-TW':'要常來見我喔！','id':'Sering-sering datang ya!','th':'แวะมาหากันบ่อย ๆ นะ!','es':'¡Ven a verme muchas veces!','pt':'Vem me ver bastante!'}},
+  {test:(s)=>/^また来てね/.test(s)||/^またきてね/.test(s),out:{'en':'Come again!','ko':'또 와줘!','zh-CN':'再来哦！','zh-TW':'再來喔！','id':'Datang lagi ya!','th':'มาอีกนะ!','es':'¡Vuelve a venir!','pt':'Volta aqui de novo!'}},
+  {test:(s)=>/^ゆっくりしていってね/.test(s),out:{'en':'Take your time and relax.','ko':'편하게 쉬어 가.','zh-CN':'慢慢放松一下吧。','zh-TW':'慢慢放鬆一下吧。','id':'Santai saja ya.','th':'พักผ่อนสบาย ๆ นะ','es':'Relájate y tómate tu tiempo.','pt':'Fica à vontade e relaxa.'}}
+];
+function normalizeTranslateLine(line=''){return String(line||'').trim().replace(/[ 　]/g,'').replace(/[。．!！?？〜～]/g,'');}
+function looksJapanese(text=''){return /[ぁ-んァ-ヶ一-龠]/.test(text||'');}
+function translateLineTo(line,lang){const raw=String(line||'').trim();if(!raw)return '';const key=normalizeTranslateLine(raw);const rule=TRANSLATE_LINE_RULES.find(r=>r.test(key));return rule&&rule.out[lang]?rule.out[lang]:raw;}
+function translateMessageTextJP(text,lang){const source=String(text||'').trim()||DEFAULT_TRANSLATE_JA;const lines=source.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean);return lines.map(line=>translateLineTo(line,lang)).join('\n');}
+function setTranslateStatus(msg){const el=$('#translateStatus');if(el)el.textContent=msg||'';}
+function ensureCurrentPerson(){return people[current]||null;}
+function applyTranslatedMessage(lang){const p=ensureCurrentPerson();if(!p){alert('対象者を先に選んでください');return;}const msgEl=$('#quickMsgA');const currentText=String(msgEl?.value||p.msg||'').trim();const jpBase=(currentText&&looksJapanese(currentText))?currentText:String(p.msgJaBackup||'').trim();const baseText=jpBase||currentText||DEFAULT_TRANSLATE_JA;if(!p.msgJaBackup||looksJapanese(currentText))p.msgJaBackup=baseText;const translated=translateMessageTextJP(baseText,lang);if(msgEl)msgEl.value=translated;p.msg=translated;p.msgLang=lang;saveDrafts();renderPeople();syncCurrentEditor();renderPreview();setTranslateStatus(`${TRANSLATE_LANG_LABELS[lang]||lang}に翻訳して反映しました。必要ならそのまま手直しもできます。`);setSaveStatus(`${p.name||p.official||'対象者'} の一言を${TRANSLATE_LANG_LABELS[lang]||lang}にしました。`);}
+function restoreJapaneseMessage(){const p=ensureCurrentPerson();if(!p){alert('対象者を先に選んでください');return;}const back=String(p.msgJaBackup||'').trim();if(!back){setTranslateStatus('まだ戻す日本語がありません。日本語の一言を入れてから翻訳してください。');return;}const msgEl=$('#quickMsgA');if(msgEl)msgEl.value=back;p.msg=back;p.msgLang='ja';saveDrafts();renderPeople();syncCurrentEditor();renderPreview();setTranslateStatus('翻訳前の日本語に戻しました。');setSaveStatus(`${p.name||p.official||'対象者'} の一言を日本語に戻しました。`);}
+function bindTranslateButtons(){document.querySelectorAll('.translateBtn').forEach(btn=>{btn.addEventListener('click',()=>applyTranslatedMessage(btn.dataset.lang||'en'));});$('#restoreJapaneseBtn')?.addEventListener('click',restoreJapaneseMessage);}
+
 function nickMap(){
   return {...loadJSON(NICK_KEY,{}),...loadJSON('thanksNickDict',{})};
 }
@@ -1010,9 +1109,11 @@ function bindQuickCurrent(){
     badge.textContent='-';
     msg.value='';
     msg.disabled=true;
+    const translateTarget=$('#translateTargetLabel'); if(translateTarget) translateTarget.textContent='対象：ハート内の一言';
     return;
   }
   const shownName=p.name||p.official||'名前未設定';
+  const translateTarget=$('#translateTargetLabel'); if(translateTarget) translateTarget.textContent=`対象：${shownName} のハート内メッセージ`;
   card.hidden=false;
   card.classList.add('active');
   nameBtn.textContent=shownName;
@@ -1818,24 +1919,72 @@ $('#resetLayoutBtn').onclick=()=>{
 
 $('#downloadOne').onclick=async()=>{
   if(!people.length)return alert('対象者がいません');
-  const p=people[current],a=document.createElement('a');
-  a.href=await currentPng(p);
-  a.download=`${currentMonthKey()}_${safeName(p.name)}.png`;
-  a.click();
+  const p=people[current];
+  setSaveStatus('保存画像を準備中…');
+  const payload=await buildCurrentImagePayload(p);
+  if(IS_IOS){
+    openSavePreview(payload);
+    const shared=await tryNativeShare(payload.file,payload.name);
+    setSaveStatus(shared ? `共有シートを開きました。画像名：${payload.name}` : `保存プレビューを開きました。画像名：${payload.name}`);
+  }else{
+    triggerDownload(payload.dataUrl,payload.name);
+    setSaveStatus(`${payload.name} を保存しました。`);
+  }
   renderPreview();
 };
 $('#downloadAll').onclick=async()=>{
   if(!people.length)return alert('対象者がいません');
   if(typeof JSZip==='undefined')return alert('ZIPライブラリを読み込めませんでした');
-  const zip=new JSZip();$('#saveStatus').textContent='全員分を作成中…';
+  const zip=new JSZip();setSaveStatus('全員分を作成中…');
   for(let i=0;i<people.length;i++){
     const p=people[i],blob=await(await fetch(await currentPng(p))).blob();
-    zip.file(`${String(i+1).padStart(2,'0')}_${safeName(p.name)}.png`,blob);
+    zip.file(`${String(i+1).padStart(2,'0')}_${makeOneFilename(p.name)}`,blob);
   }
-  const out=await zip.generateAsync({type:'blob'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(out);a.download=`supporter_${currentMonthKey()}.zip`;a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1500);$('#saveStatus').textContent=`${people.length}人分を保存しました。`;renderPreview();
+  const out=await zip.generateAsync({type:'blob'});
+  const zipName=makeZipFilename();
+  const zipFile=new File([out],zipName,{type:'application/zip'});
+  if(IS_IOS){
+    const shared=await tryNativeShare(zipFile,zipName);
+    if(shared){
+      setSaveStatus(`${people.length}人分の共有シートを開きました。ZIP名：${zipName}`);
+    }else{
+      const url=URL.createObjectURL(out);
+      triggerDownload(url,zipName);
+      setTimeout(()=>URL.revokeObjectURL(url),1500);
+      setSaveStatus(`${people.length}人分を保存しました。ZIP名：${zipName}`);
+    }
+  }else{
+    const url=URL.createObjectURL(out);
+    triggerDownload(url,zipName);
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    setSaveStatus(`${people.length}人分を保存しました。ZIP名：${zipName}`);
+  }
+  renderPreview();
 };
+
+
+(function setupSavePreviewControls(){
+  bindTranslateButtons();
+  updateSaveHelp();
+  $('#closeSavePreviewBtn')?.addEventListener('click',closeSavePreview);
+  $('#savePreviewModal')?.addEventListener('click',(e)=>{if(e.target?.id==='savePreviewModal')closeSavePreview()});
+  $('#openCurrentBtn')?.addEventListener('click',()=>{
+    if(!savePreviewPayload?.dataUrl) return;
+    const w=window.open();
+    if(w){
+      const title=savePreviewPayload.name || 'supporter.png';
+      w.document.write(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:100vw;max-height:100vh;height:auto}</style></head><body><img src="${savePreviewPayload.dataUrl}" alt="preview"></body></html>`);
+      w.document.close();
+    }else{
+      location.href=savePreviewPayload.dataUrl;
+    }
+  });
+  $('#shareCurrentBtn')?.addEventListener('click',async()=>{
+    if(!savePreviewPayload?.file) return;
+    const ok=await tryNativeShare(savePreviewPayload.file, savePreviewPayload.name);
+    setSaveStatus(ok ? '共有シートを開きました。' : '共有シートを開けませんでした。画像を長押し保存してください。');
+  });
+})();
 
 loadLayout();loadBgStyle();migrateAugustThanksRight();migrateSeptemberThanksRightUp();setupMonthTextControls();syncMonthTextControls();
 setupStickyPreviewBar();loadImages();loadSeasonAssets();loadMonthlyMaterialState();reloadMonth();
